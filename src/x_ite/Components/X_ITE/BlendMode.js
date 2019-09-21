@@ -70,8 +70,8 @@ function (Fields,
 
 		this .addType (X3DConstants .BlendMode);
 
-		this .blendTypes = { };
-		this .blendModes = { };
+		this .factorTypes   = new Map ();
+		this .equationTypes = new Map ();
 	}
 
 	BlendMode .prototype = Object .assign (Object .create (X3DAppearanceChildNode .prototype),
@@ -81,8 +81,8 @@ function (Fields,
 			new X3DFieldDefinition (X3DConstants .inputOutput, "metadata",                new Fields .SFNode ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput, "blendColor",              new Fields .SFColorRGBA ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput, "sourceColorFactor",       new Fields .SFString ("SRC_ALPHA")),
-			new X3DFieldDefinition (X3DConstants .inputOutput, "sourceAlphaFactor",       new Fields .SFString ("ONE_MINUS_SRC_ALPHA")),
-			new X3DFieldDefinition (X3DConstants .inputOutput, "destinationColorFactor",  new Fields .SFString ("ONE")),
+			new X3DFieldDefinition (X3DConstants .inputOutput, "sourceAlphaFactor",       new Fields .SFString ("ONE")),
+			new X3DFieldDefinition (X3DConstants .inputOutput, "destinationColorFactor",  new Fields .SFString ("ONE_MINUS_SRC_ALPHA")),
 			new X3DFieldDefinition (X3DConstants .inputOutput, "destinationAlphaFactor",  new Fields .SFString ("ONE_MINUS_SRC_ALPHA")),
 			new X3DFieldDefinition (X3DConstants .inputOutput, "colorEquation",           new Fields .SFString ("FUNC_ADD")),
 			new X3DFieldDefinition (X3DConstants .inputOutput, "alphaEquation",           new Fields .SFString ("FUNC_ADD")),
@@ -107,34 +107,34 @@ function (Fields,
 				gl  = this .getBrowser () .getContext (),
 				ext = gl .getExtension ('EXT_blend_minmax');
 
-			this .blendTypes ["ZERO"]                     = gl .ZERO;
-			this .blendTypes ["ONE"]                      = gl .ONE;
-			this .blendTypes ["SRC_COLOR"]                = gl .SRC_COLOR;
-			this .blendTypes ["ONE_MINUS_SRC_COLOR"]      = gl .ONE_MINUS_SRC_COLOR;
-			this .blendTypes ["DST_COLOR"]                = gl .DST_COLOR;
-			this .blendTypes ["ONE_MINUS_DST_COLOR"]      = gl .ONE_MINUS_DST_COLOR;
-			this .blendTypes ["SRC_ALPHA"]                = gl .SRC_ALPHA;
-			this .blendTypes ["ONE_MINUS_SRC_ALPHA"]      = gl .ONE_MINUS_SRC_ALPHA;
-			this .blendTypes ["DST_ALPHA"]                = gl .DST_ALPHA;
-			this .blendTypes ["ONE_MINUS_DST_ALPHA"]      = gl .ONE_MINUS_DST_ALPHA;
-			this .blendTypes ["SRC_ALPHA_SATURATE"]       = gl .SRC_ALPHA_SATURATE;
-			this .blendTypes ["CONSTANT_COLOR"]           = gl .CONSTANT_COLOR;
-			this .blendTypes ["ONE_MINUS_CONSTANT_COLOR"] = gl .ONE_MINUS_CONSTANT_COLOR;
-			this .blendTypes ["CONSTANT_ALPHA"]           = gl .CONSTANT_ALPHA;
-			this .blendTypes ["ONE_MINUS_CONSTANT_ALPHA"] = gl .ONE_MINUS_CONSTANT_ALPHA;
+			this .factorTypes .set ("ZERO",                     gl .ZERO);
+			this .factorTypes .set ("ONE",                      gl .ONE);
+			this .factorTypes .set ("SRC_COLOR",                gl .SRC_COLOR);
+			this .factorTypes .set ("ONE_MINUS_SRC_COLOR",      gl .ONE_MINUS_SRC_COLOR);
+			this .factorTypes .set ("DST_COLOR",                gl .DST_COLOR);
+			this .factorTypes .set ("ONE_MINUS_DST_COLOR",      gl .ONE_MINUS_DST_COLOR);
+			this .factorTypes .set ("SRC_ALPHA",                gl .SRC_ALPHA);
+			this .factorTypes .set ("ONE_MINUS_SRC_ALPHA",      gl .ONE_MINUS_SRC_ALPHA);
+			this .factorTypes .set ("DST_ALPHA",                gl .DST_ALPHA);
+			this .factorTypes .set ("ONE_MINUS_DST_ALPHA",      gl .ONE_MINUS_DST_ALPHA);
+			this .factorTypes .set ("SRC_ALPHA_SATURATE",       gl .SRC_ALPHA_SATURATE);
+			this .factorTypes .set ("CONSTANT_COLOR",           gl .CONSTANT_COLOR);
+			this .factorTypes .set ("ONE_MINUS_CONSTANT_COLOR", gl .ONE_MINUS_CONSTANT_COLOR);
+			this .factorTypes .set ("CONSTANT_ALPHA",           gl .CONSTANT_ALPHA);
+			this .factorTypes .set ("ONE_MINUS_CONSTANT_ALPHA", gl .ONE_MINUS_CONSTANT_ALPHA);
 
-			this .blendModes ["FUNC_ADD"]              = gl .FUNC_ADD;
-			this .blendModes ["FUNC_SUBTRACT"]         = gl .FUNC_SUBTRACT;
-			this .blendModes ["FUNC_REVERSE_SUBTRACT"] = gl .FUNC_REVERSE_SUBTRACT;
-			this .blendModes ["MIN"]                   = gl .MIN || ext .MIN_EXT;
-			this .blendModes ["MAX"]                   = gl .MAX || ext .MAX_EXT;
+			this .equationTypes .set ("FUNC_ADD",              gl .FUNC_ADD);
+			this .equationTypes .set ("FUNC_SUBTRACT",         gl .FUNC_SUBTRACT);
+			this .equationTypes .set ("FUNC_REVERSE_SUBTRACT", gl .FUNC_REVERSE_SUBTRACT);
+			this .equationTypes .set ("MIN",                   gl .MIN || (ext && ext .MIN_EXT));
+			this .equationTypes .set ("MAX",                   gl .MAX || (ext && ext .MAX_EXT));
 
-			this .sourceColorFactor_      .addInterest ("set_sourceColorFactor__", this);
-			this .sourceAlphaFactor_      .addInterest ("set_sourceAlphaFactor__", this);
-			this .destinationColorFactor_ .addInterest ("set_destinationColorFactor__",  this);
-			this .destinationAlphaFactor_ .addInterest ("set_destinationAlphaFactor__",  this);
-			this .colorEquation_          .addInterest ("set_colorEquation__",     this);
-			this .alphaEquation_          .addInterest ("set_alphaEquation__",     this);
+			this .sourceColorFactor_      .addInterest ("set_sourceColorFactor__",      this);
+			this .sourceAlphaFactor_      .addInterest ("set_sourceAlphaFactor__",      this);
+			this .destinationColorFactor_ .addInterest ("set_destinationColorFactor__", this);
+			this .destinationAlphaFactor_ .addInterest ("set_destinationAlphaFactor__", this);
+			this .colorEquation_          .addInterest ("set_colorEquation__",          this);
+			this .alphaEquation_          .addInterest ("set_alphaEquation__",          this);
 
 			this .set_sourceColorFactor__ ();
 			this .set_sourceAlphaFactor__ ();
@@ -145,52 +145,52 @@ function (Fields,
 		},
 		set_sourceColorFactor__: function ()
 		{
-			this .sourceColorFactorType = this .blendTypes [this .sourceColorFactor_ .getValue ()];
+			this .sourceColorFactorType = this .factorTypes .get (this .sourceColorFactor_ .getValue ());
 
-			if (! this .sourceColorFactorType)
-				this .sourceColorFactorType = this .blendTypes ["SRC_ALPHA"];
+			if (this .sourceColorFactorType === undefined)
+				this .sourceColorFactorType = this .factorTypes .get ("SRC_ALPHA");
 		},
 		set_sourceAlphaFactor__: function ()
 		{
-			this .sourceAlphaFactorType = this .blendTypes [this .sourceAlphaFactor_ .getValue ()];
+			this .sourceAlphaFactorType = this .factorTypes .get (this .sourceAlphaFactor_ .getValue ());
 
-			if (! this .sourceAlphaFactorType)
-				this .sourceAlphaFactorType = this .blendTypes ["ONE_MINUS_SRC_ALPHA"];
+			if (this .sourceAlphaFactorType === undefined)
+				this .sourceAlphaFactorType = this .factorTypes .get ("ONE");
 		},
 		set_destinationColorFactor__: function ()
 		{
-			this .destinationColorFactorType = this .blendTypes [this .destinationColorFactor_ .getValue ()];
+			this .destinationColorFactorType = this .factorTypes .get (this .destinationColorFactor_ .getValue ());
 
-			if (! this .destinationColorFactorType)
-				this .destinationColorFactorType = this .blendTypes ["ONE"];
+			if (this .destinationColorFactorType === undefined)
+				this .destinationColorFactorType = this .factorTypes .get ("ONE_MINUS_SRC_ALPHA");
 		},
 		set_destinationAlphaFactor__: function ()
 		{
-			this .destinationAlphaFactorType = this .blendTypes [this .destinationAlphaFactor_ .getValue ()];
+			this .destinationAlphaFactorType = this .factorTypes .get (this .destinationAlphaFactor_ .getValue ());
 
-			if (! this .destinationAlphaFactorType)
-				this .destinationAlphaFactorType = this .blendTypes ["ONE_MINUS_SRC_ALPHA"];
+			if (this .destinationAlphaFactorType === undefined)
+				this .destinationAlphaFactorType = this .factorTypes .get ("ONE_MINUS_SRC_ALPHA");
 		},
 		set_colorEquation__: function ()
 		{
-			this .colorEquationType = this .blendModes [this .colorEquation_ .getValue ()];
+			this .colorEquationType = this .equationTypes .get (this .colorEquation_ .getValue ());
 
-			if (! this .colorEquationType)
-				this .colorEquationType = this .blendModes ["FUNC_ADD"];
+			if (this .colorEquationType === undefined)
+				this .colorEquationType = this .equationTypes .get ("FUNC_ADD");
 		},
 		set_alphaEquation__: function ()
 		{
-			this .alphaEquationType = this .blendModes [this .alphaEquation_ .getValue ()];
+			this .alphaEquationType = this .equationTypes .get (this .alphaEquation_ .getValue ());
 
-			if (! this .alphaEquationType)
-				this .alphaEquationType = this .blendModes ["FUNC_ADD"];
+			if (this .alphaEquationType === undefined)
+				this .alphaEquationType = this .equationTypes .get ("FUNC_ADD");
 		},
 		enable: function (gl)
 		{
 			var color = this .blendColor_ .getValue ();
 
 			gl .blendColor (color .r, color .g, color .b, color .a);
-			gl .blendFuncSeparate (this .sourceColorFactorType, this .sourceAlphaFactorType, this .destinationColorFactorType, this .destinationAlphaFactorType);
+			gl .blendFuncSeparate (this .sourceColorFactorType, this .destinationColorFactorType, this .sourceAlphaFactorType, this .destinationAlphaFactorType);
 			gl .blendEquationSeparate (this .colorEquationType, this .alphaEquationType);
 		},
 		disable: function (gl)

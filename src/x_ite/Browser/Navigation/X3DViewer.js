@@ -63,7 +63,7 @@ function (X3DBaseNode,
           ViewVolume)
 {
 "use strict";
-	
+
 	var
 		axis     = new Vector3 (0, 0, 0),
 		distance = new Vector3 (0, 0, 0),
@@ -77,6 +77,10 @@ function (X3DBaseNode,
 	X3DViewer .prototype = Object .assign (Object .create (X3DBaseNode .prototype),
 	{
 		constructor: X3DViewer,
+		getTypeName: function ()
+		{
+			return "X3DViewer";
+		},
 		initialize: function ()
 		{
 		},
@@ -138,20 +142,15 @@ function (X3DBaseNode,
 
 			return vector .set (x, y, tbProjectToSphere (0.5, x, y));
 		},
-		lookAtPoint: (function ()
+		lookAtPoint: function (x, y, straightenHorizon)
 		{
-			var bbox = new Box3 ();
+			if (! this .touch (x, y))
+				return;
 
-			return function (x, y, straightenHorizon)
-			{
-				if (! this .touch (x, y))
-					return;
-	
-				var hit = this .getBrowser () .getNearestHit ();
+			var hit = this .getBrowser () .getNearestHit ();
 
-				this .getActiveViewpoint () .lookAtPoint (hit .intersection .point, 2 - 1.618034, straightenHorizon);
-			};
-		})(),
+			this .getActiveViewpoint () .lookAtPoint (hit .intersection .point, 2 - 1.618034, straightenHorizon);
+		},
 		lookAtBBox: (function ()
 		{
 			var bbox = new Box3 ();
@@ -160,7 +159,7 @@ function (X3DBaseNode,
 			{
 				if (! this .touch (x, y))
 					return;
-	
+
 				var hit = this .getBrowser () .getNearestHit ();
 
 				hit .shape .getBBox (bbox) .multRight (hit .modelViewMatrix);
@@ -171,7 +170,7 @@ function (X3DBaseNode,
 		touch: function (x, y)
 		{
 			this .getBrowser () .touch (x, y);
-		
+
 			return this .getBrowser () .getHits () .length;
 		},
 		dispose: function () { },

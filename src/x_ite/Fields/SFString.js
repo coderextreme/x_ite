@@ -64,10 +64,7 @@ function (X3DField,
 
 	function SFString (value)
 	{
-		if (this instanceof SFString)
-			return X3DField .call (this, arguments .length ? "" + value : "");
-
-		return X3DField .call (Object .create (SFString .prototype), arguments .length ? String (value) : "");
+		return X3DField .call (this, arguments .length ? "" + value : "");
 	}
 	
 	Object .assign (SFString,
@@ -109,6 +106,10 @@ function (X3DField,
 		toStream: function (stream)
 		{
 			stream .string += '"'+ SFString .escape (this .getValue ()) + '"';
+		},
+		toVRMLStream: function (stream)
+		{
+			this .toStream (stream);
 		},
 		toXMLStream: function (stream)
 		{

@@ -66,6 +66,10 @@ function (X3DNode,
 	X3DVolumeRenderStyleNode .prototype = Object .assign (Object .create (X3DNode .prototype),
 	{
 		constructor: X3DVolumeRenderStyleNode,
+		getShader: function ()
+		{
+			return null;
+		},
 	});
 
 	return X3DVolumeRenderStyleNode;

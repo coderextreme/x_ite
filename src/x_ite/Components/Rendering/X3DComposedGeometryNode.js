@@ -66,6 +66,7 @@ function (X3DGeometryNode,
 
 		this .addType (X3DConstants .X3DComposedGeometryNode);
 
+		this .fogCoordNode = null;
 		this .colorNode    = null;
 		this .texCoordNode = null;
 		this .normalNode   = null;
@@ -80,16 +81,22 @@ function (X3DGeometryNode,
 			X3DGeometryNode .prototype .initialize .call (this);
 
 			this .attrib_   .addInterest ("set_attrib__",   this);
+			this .fogCoord_ .addInterest ("set_fogCoord__", this);
 			this .color_    .addInterest ("set_color__",    this);
 			this .texCoord_ .addInterest ("set_texCoord__", this);
 			this .normal_   .addInterest ("set_normal__",   this);
 			this .coord_    .addInterest ("set_coord__",    this);
 
 			this .set_attrib__ ();
+			this .set_fogCoord__ ();
 			this .set_color__ ();
 			this .set_texCoord__ ();
 			this .set_normal__ ();
 			this .set_coord__ ();
+		},
+		getFogCoord: function ()
+		{
+			return this .fogCoordNode;
 		},
 		getColor: function ()
 		{
@@ -127,29 +134,39 @@ function (X3DGeometryNode,
 			for (var i = 0; i < this .attribNodes .length; ++ i)
 				attribNodes [i] .addInterest ("requestRebuild", this);
 		},
+		set_fogCoord__: function ()
+		{
+			if (this .fogCoordNode)
+				this .fogCoordNode .removeInterest ("requestRebuild", this);
+
+			this .fogCoordNode = X3DCast (X3DConstants .FogCoordinate, this .fogCoord_);
+
+			if (this .fogCoordNode)
+				this .fogCoordNode .addInterest ("requestRebuild", this);
+		},
 		set_color__: function ()
 		{
 			if (this .colorNode)
 			{
-				this .colorNode .removeInterest ("requestRebuild",    this);
-				this .colorNode .removeInterest ("set_transparent__", this);
+				this .colorNode .removeInterest ("requestRebuild", this);
+				this .colorNode .transparent_ .removeInterest ("set_transparent__", this);
 			}
 
 			this .colorNode = X3DCast (X3DConstants .X3DColorNode, this .color_);
 
 			if (this .colorNode)
 			{
-				this .colorNode .addInterest ("requestRebuild",    this);
-				this .colorNode .addInterest ("set_transparent__", this);
+				this .colorNode .addInterest ("requestRebuild", this);
+				this .colorNode .transparent_ .addInterest ("set_transparent__", this);
 
 				this .set_transparent__ ();
 			}
 			else
-				this .transparent_ = false;
+				this .setTransparent (false);
 		},
 		set_transparent__: function ()
 		{
-			this .transparent_ = this .colorNode .isTransparent ();
+			this .setTransparent (this .colorNode .getTransparent ());
 		},
 		set_texCoord__: function ()
 		{
@@ -161,7 +178,7 @@ function (X3DGeometryNode,
 			if (this .texCoordNode)
 				this .texCoordNode .addInterest ("requestRebuild", this);
 
-			this .setCurrentTexCoord (this .texCoordNode);
+			this .setTextureCoordinate (this .texCoordNode);
 		},
 		set_normal__: function ()
 		{
@@ -207,10 +224,12 @@ function (X3DGeometryNode,
 				attribNodes        = this .getAttrib (),
 				numAttrib          = attribNodes .length,
 				attribs            = this .getAttribs (),
+				fogCoordNode       = this .getFogCoord (),
 				colorNode          = this .getColor (),
 				texCoordNode       = this .getTexCoord (),
 				normalNode         = this .getNormal (),
 				coordNode          = this .getCoord (),
+				fogDepthArray      = this .getFogDepths (),
 				colorArray         = this .getColors (),
 				multiTexCoordArray = this .getMultiTexCoords (),
 				normalArray        = this .getNormals (),
@@ -230,6 +249,9 @@ function (X3DGeometryNode,
 
 				for (var a = 0; a < numAttrib; ++ a)
 					attribNodes [a] .addValue (index, attribs [a]);
+
+				if (fogCoordNode)
+					fogCoordNode .addDepth (index, fogDepthArray);
 
 				if (colorNode)
 				{

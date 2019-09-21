@@ -63,7 +63,7 @@ function (X3DObject)
 	{
 		constructor: X3DChildObject,
 		_tainted: false,
-		_parents: new Map (),
+		_parents: new Set (),
 		setTainted: function (value)
 		{
 			this ._tainted = value;
@@ -94,20 +94,20 @@ function (X3DObject)
 		addParent: function (parent)
 		{
 			if (! this .hasOwnProperty ("_parents"))
-				this ._parents = new Map ();
+				this ._parents = new Set ();
 
-			this ._parents .set (parent .getId (), parent);
+			this ._parents .add (parent);
 		},
 		removeParent: function (parent)
 		{
-			this ._parents .delete (parent .getId ());
+			this ._parents .delete (parent);
 		},
 		getParents: function ()
 		{
 			return this ._parents;
 		},
-		addClones: Function .prototype,
-		removeClones: Function .prototype,
+		addCloneCount: Function .prototype,
+		removeCloneCount: Function .prototype,
 		dispose: function ()
 		{
 			this ._parents .clear ();

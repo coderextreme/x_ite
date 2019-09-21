@@ -60,20 +60,19 @@ function (Color3,
 
 	function SFColor (r, g, b)
 	{
-		if (this instanceof SFColor)
+		switch (arguments .length)
 		{
-			if (arguments .length)
-			{
-				if (arguments [0] instanceof Color3)
-					return X3DField .call (this, arguments [0]);
-				else
-					return X3DField .call (this, new Color3 (r * 1, g * 1, b * 1));
-			}
+			case 0:
+				return X3DField .call (this, new Color3 ());
 
-			return X3DField .call (this, new Color3 ());
+			case 1:
+				return X3DField .call (this, arguments [0]);
+
+			case 3:
+				return X3DField .call (this, new Color3 (r * 1, g * 1, b * 1));
 		}
 
-		return SFColor .apply (Object .create (SFColor .prototype), arguments);
+		throw new Error ("Invalid arguments.");
 	}
 
 	SFColor .prototype = Object .assign (Object .create (X3DField .prototype),
@@ -117,11 +116,11 @@ function (Color3,
 		},
 		lerp: (function ()
 		{
-			var	
+			var
 				s = [ ],
 				d = [ ],
 				r = [ ];
-     
+
 			return function (destination, t)
 			{
 				var result = new SFColor ();
@@ -129,15 +128,19 @@ function (Color3,
 				this .getValue () .getHSV (s),
 				destination .getValue () .getHSV (d),
 				Color3 .lerp (s, d, t, r),
-	
+
 				result .setHSV (r [0], r [1], r [2], r [3]);
-	
+
 				return result;
 			};
 		})(),
 		toStream: function (stream)
 		{
 			stream .string += this .getValue () .toString ();
+		},
+		toVRMLStream: function (stream)
+		{
+			this .toStream (stream);
 		},
 		toXMLStream: function (stream)
 		{

@@ -60,7 +60,7 @@ define ([
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DComposedGeometryNode, 
+          X3DComposedGeometryNode,
           X3DConstants,
           Vector3,
           Matrix4,
@@ -81,23 +81,27 @@ function (Fields,
 	{
 		constructor: IndexedFaceSet,
 		fieldDefinitions: new FieldDefinitionArray ([
-			new X3DFieldDefinition (X3DConstants .inputOutput,    "metadata",        new Fields .SFNode ()),
-			new X3DFieldDefinition (X3DConstants .initializeOnly, "solid",           new Fields .SFBool (true)),
-			new X3DFieldDefinition (X3DConstants .initializeOnly, "ccw",             new Fields .SFBool (true)),
-			new X3DFieldDefinition (X3DConstants .initializeOnly, "convex",          new Fields .SFBool (true)),
-			new X3DFieldDefinition (X3DConstants .initializeOnly, "creaseAngle",     new Fields .SFFloat ()),
-			new X3DFieldDefinition (X3DConstants .initializeOnly, "colorPerVertex",  new Fields .SFBool (true)),
-			new X3DFieldDefinition (X3DConstants .initializeOnly, "normalPerVertex", new Fields .SFBool (true)),
-			new X3DFieldDefinition (X3DConstants .inputOutput,    "colorIndex",      new Fields .MFInt32 ()),
-			new X3DFieldDefinition (X3DConstants .inputOutput,    "texCoordIndex",   new Fields .MFInt32 ()),
-			new X3DFieldDefinition (X3DConstants .inputOutput,    "normalIndex",     new Fields .MFInt32 ()),
-			new X3DFieldDefinition (X3DConstants .inputOutput,    "coordIndex",      new Fields .MFInt32 ()),
-			new X3DFieldDefinition (X3DConstants .inputOutput,    "attrib",          new Fields .MFNode ()),
-			new X3DFieldDefinition (X3DConstants .inputOutput,    "fogCoord",        new Fields .SFNode ()),
-			new X3DFieldDefinition (X3DConstants .inputOutput,    "color",           new Fields .SFNode ()),
-			new X3DFieldDefinition (X3DConstants .inputOutput,    "texCoord",        new Fields .SFNode ()),
-			new X3DFieldDefinition (X3DConstants .inputOutput,    "normal",          new Fields .SFNode ()),
-			new X3DFieldDefinition (X3DConstants .inputOutput,    "coord",           new Fields .SFNode ()),
+			new X3DFieldDefinition (X3DConstants .inputOutput,    "metadata",          new Fields .SFNode ()),
+			new X3DFieldDefinition (X3DConstants .inputOnly,      "set_colorIndex",    new Fields .MFInt32 ()),
+			new X3DFieldDefinition (X3DConstants .inputOnly,      "set_texCoordIndex", new Fields .MFInt32 ()),
+			new X3DFieldDefinition (X3DConstants .inputOnly,      "set_normalIndex",   new Fields .MFInt32 ()),
+			new X3DFieldDefinition (X3DConstants .inputOnly,      "set_coordIndex",    new Fields .MFInt32 ()),
+			new X3DFieldDefinition (X3DConstants .initializeOnly, "solid",             new Fields .SFBool (true)),
+			new X3DFieldDefinition (X3DConstants .initializeOnly, "ccw",               new Fields .SFBool (true)),
+			new X3DFieldDefinition (X3DConstants .initializeOnly, "convex",            new Fields .SFBool (true)),
+			new X3DFieldDefinition (X3DConstants .initializeOnly, "creaseAngle",       new Fields .SFFloat ()),
+			new X3DFieldDefinition (X3DConstants .initializeOnly, "colorPerVertex",    new Fields .SFBool (true)),
+			new X3DFieldDefinition (X3DConstants .initializeOnly, "normalPerVertex",   new Fields .SFBool (true)),
+			new X3DFieldDefinition (X3DConstants .initializeOnly, "colorIndex",        new Fields .MFInt32 ()),
+			new X3DFieldDefinition (X3DConstants .initializeOnly, "texCoordIndex",     new Fields .MFInt32 ()),
+			new X3DFieldDefinition (X3DConstants .initializeOnly, "normalIndex",       new Fields .MFInt32 ()),
+			new X3DFieldDefinition (X3DConstants .initializeOnly, "coordIndex",        new Fields .MFInt32 ()),
+			new X3DFieldDefinition (X3DConstants .inputOutput,    "attrib",            new Fields .MFNode ()),
+			new X3DFieldDefinition (X3DConstants .inputOutput,    "fogCoord",          new Fields .SFNode ()),
+			new X3DFieldDefinition (X3DConstants .inputOutput,    "color",             new Fields .SFNode ()),
+			new X3DFieldDefinition (X3DConstants .inputOutput,    "texCoord",          new Fields .SFNode ()),
+			new X3DFieldDefinition (X3DConstants .inputOutput,    "normal",            new Fields .SFNode ()),
+			new X3DFieldDefinition (X3DConstants .inputOutput,    "coord",             new Fields .SFNode ()),
 		]),
 		getTypeName: function ()
 		{
@@ -110,6 +114,15 @@ function (Fields,
 		getContainerField: function ()
 		{
 			return "geometry";
+		},
+		initialize: function ()
+		{
+			X3DComposedGeometryNode .prototype .initialize .call (this);
+
+			this .set_colorIndex_    .addFieldInterest (this .colorIndex_);
+			this .set_texCoordIndex_ .addFieldInterest (this .texCoordIndex_);
+			this .set_normalIndex_   .addFieldInterest (this .normalIndex_);
+			this .set_coordIndex_    .addFieldInterest (this .coordIndex_);
 		},
 		getTexCoordPerVertexIndex: function (index)
 		{
@@ -166,10 +179,12 @@ function (Fields,
 				attribNodes        = this .getAttrib (),
 				numAttrib          = attribNodes .length,
 				attribs            = this .getAttribs (),
+				fogCoordNode       = this .getFogCoord (),
 				colorNode          = this .getColor (),
 				texCoordNode       = this .getTexCoord (),
 				normalNode         = this .getNormal (),
 				coordNode          = this .getCoord (),
+				fogDepthArray      = this .getFogDepths (),
 				colorArray         = this .getColors (),
 				multiTexCoordArray = this .getMultiTexCoords (),
 				normalArray        = this .getNormals (),
@@ -182,7 +197,6 @@ function (Fields,
 			{
 				var
 					polygon   = polygons [p],
-					vertices  = polygon .vertices,
 					triangles = polygon .triangles,
 					face      = polygon .face;
 
@@ -194,6 +208,9 @@ function (Fields,
 
 					for (var a = 0; a < numAttrib; ++ a)
 						attribNodes [a] .addValue (index, attribs [a]);
+
+					if (fogCoordNode)
+						fogCoordNode .addDepth (index, fogDepthArray);
 
 					if (colorNode)
 					{
@@ -257,7 +274,7 @@ function (Fields,
 				for (var i = 0; i < coordLength; ++ i)
 				{
 					var index = coordIndex [i];
-	
+
 					if (index > -1)
 					{
 						// Add vertex index.
@@ -315,7 +332,7 @@ function (Fields,
 								}
 							}
 						}
-						
+
 						++ face;
 					}
 				}
@@ -348,7 +365,7 @@ function (Fields,
 				}
 
 				polygon .length = length;
-	
+
 				Triangle3 .triangulatePolygon (polygon, triangles);
 
 				for (var i = 0, length = triangles .length; i < length; ++ i)
@@ -392,17 +409,17 @@ function (Fields,
 					coordIndex  = this .coordIndex_ .getValue (),
 					coord       = this .getCoord (),
 					normal      = null;
-	
+
 				normals     .length = 0;
 				normalIndex .length = 0;
-	
+
 				for (var p = 0, pl = polygons .length; p < pl; ++ p)
 				{
 					var
 						polygon  = polygons [p],
 						vertices = polygon .vertices,
 						length   = vertices .length;
-	
+
 					switch (length)
 					{
 						case 3:
@@ -429,32 +446,28 @@ function (Fields,
 
 					// Add a normal index for each point.
 
-					var numNormals = normals .length;
-
 					for (var i = 0; i < length; ++ i)
 					{
 						var
-							index        = coordIndex [vertices [i]],
-							pointNormals = normalIndex [index];
-	
+							index        = vertices [i],
+							point        = coordIndex [index],
+							pointNormals = normalIndex [point];
+
 						if (! pointNormals)
-							pointNormals = normalIndex [index] = [ ];
-	
-						pointNormals .push (numNormals + i);
+							pointNormals = normalIndex [point] = [ ];
+
+						pointNormals .push (index);
 					}
-	
+
 					if (cw)
 						normal .negate ();
-	
-					// Add this normal for each vertex.
-	
-					for (var i = 0; i < length; ++ i)
-						normals .push (normal);
 
-					// Add one more for -1.
-					normals .push (undefined);
+					// Add this normal for each vertex.
+
+					for (var i = 0; i < length; ++ i)
+						normals [vertices [i]] = normal;
 				}
-	
+
 				return this .refineNormals (normalIndex, normals, this .creaseAngle_ .getValue ());
 			};
 		})(),
@@ -493,5 +506,3 @@ function (Fields,
 
 	return IndexedFaceSet;
 });
-
-

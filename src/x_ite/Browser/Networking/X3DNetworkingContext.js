@@ -49,14 +49,12 @@
 
 define ([
 	"x_ite/Fields",
-	"x_ite/Components/Networking/LoadSensor",
 	"x_ite/Browser/Networking/urls",
 	"standard/Networking/URI",
 	"sprintf",
 	"locale/gettext",
 ],
 function (Fields,
-          LoadSensor,
           urls,
           URI,
           sprintf,
@@ -79,12 +77,10 @@ function (Fields,
 	{
 		this .addChildObjects ("loadCount", new Fields .SFInt32 ());
 
-		this .loadSensor     = new LoadSensor (this .getPrivateScene ());
 		this .loadingTotal   = 0;
 		this .loadingObjects = new Set ();
 		this .loading        = false;
 		this .location       = getBaseURI (this .getElement () [0]);
-		this .defaultScene   = this .createScene (); // Inline node's empty scene.
 
 		this .getCanvas () .fadeOut (0);
 
@@ -95,15 +91,7 @@ function (Fields,
 	X3DNetworkingContext .prototype =
 	{
 		initialize: function ()
-		{
-			this .loadSensor .setup ();
-
-			// Inline node's empty scene.
-
-			this .defaultScene .setPrivate (true);
-			this .defaultScene .setLive (true);
-			this .defaultScene .setup ();
-		},
+		{ },
 		getProviderUrl: function ()
 		{
 			return urls .getProviderUrl ();
@@ -114,11 +102,18 @@ function (Fields,
 		},
 		getDefaultScene: function ()
 		{
+			// Inline node's empty scene.
+
+			if (this .defaultScene)
+				return this .defaultScene;
+
+			this .defaultScene = this .createScene ();
+
+			this .defaultScene .setPrivate (true);
+			this .defaultScene .setLive (true);
+			this .defaultScene .setup ();
+
 			return this .defaultScene;
-		},
-		getLoadSensor: function ()
-		{
-			return this .loadSensor;
 		},
 		setBrowserLoading: function (value)
 		{
@@ -163,7 +158,7 @@ function (Fields,
 			++ this .loadingTotal;
 
 			this .loadingObjects .add (object);
-			
+
 			this .setLoadCount (this .loadingObjects .size);
 			this .setCursor ("DEFAULT");
 		},
@@ -201,7 +196,7 @@ function (Fields,
 			this .loadCount_   = 0;
 			this .loadingTotal = 0;
 
-			this .loadingObjects .clear ();			   
+			this .loadingObjects .clear ();
 		},
 	};
 

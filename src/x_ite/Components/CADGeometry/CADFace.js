@@ -55,7 +55,7 @@ define ([
 	"x_ite/Components/Grouping/X3DBoundedObject",
 	"x_ite/Bits/X3DCast",
 	"x_ite/Bits/X3DConstants",
-	"standard/Math/Numbers/Vector3",
+	"x_ite/Bits/TraverseType",
 ],
 function (Fields,
           X3DFieldDefinition,
@@ -63,7 +63,8 @@ function (Fields,
           X3DProductStructureChildNode, 
           X3DBoundedObject,
           X3DCast,
-          X3DConstants)
+          X3DConstants,
+          TraverseType)
 {
 "use strict";
 
@@ -111,7 +112,7 @@ function (Fields,
 		},
 		getBBox: function (bbox)
 		{
-			if (this .bboxSize_ .getValue () .equals (this .defaultBBoxSize))
+			if (this .bboxSize_ .getValue () .equals (this .getDefaultBBoxSize ()))
 			{
 				var boundedObject = X3DCast (X3DConstants .X3DBoundedObject, this .shape_);
 		
@@ -126,7 +127,10 @@ function (Fields,
 		set_shape__: function ()
 		{
 			if (this .shapeNode)
-				this .shapeNode .isCameraObject_ .removeFieldInterest (this .isCameraObject_);
+			{
+				this .shapeNode .isCameraObject_   .removeFieldInterest (this .isCameraObject_);
+				this .shapeNode .isPickableObject_ .removeFieldInterest (this .isPickableObject_);
+			}
 
 			this .shapeNode = null;
 
@@ -144,8 +148,12 @@ function (Fields,
 						case X3DConstants .Transform:
 						case X3DConstants .X3DShapeNode:
 						{
-							node .isCameraObject_ .addFieldInterest (this .isCameraObject_);
-							this .setCameraObject (node .getCameraObject ());
+							node .isCameraObject_   .addFieldInterest (this .isCameraObject_);
+							node .isPickableObject_ .addFieldInterest (this .isPickableObject_);
+
+							this .setCameraObject   (node .getCameraObject ());
+							this .setPickableObject (node .getPickableObject ());
+
 							this .shapeNode = node;
 							break;
 						}
@@ -164,7 +172,27 @@ function (Fields,
 		},
 		traverse: function (type, renderObject)
 		{
-			this .shapeNode .traverse (type, renderObject);
+			switch (type)
+			{
+				case TraverseType .PICKING:
+				{
+					var
+						browser          = renderObject .getBrowser (),
+						pickingHierarchy = browser .getPickingHierarchy ();
+
+					pickingHierarchy .push (this);
+
+					this .shapeNode .traverse (type, renderObject);
+
+					pickingHierarchy .pop ();
+					return;
+				}
+				default:
+				{
+					this .shapeNode .traverse (type, renderObject);
+					return;
+				}
+			}
 		},
 	});
 

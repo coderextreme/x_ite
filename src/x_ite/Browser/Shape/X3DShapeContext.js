@@ -49,25 +49,112 @@
 
 define ([
 	"x_ite/Components/Shape/Appearance",
+	"x_ite/Components/Shape/LineProperties",
+	"x_ite/Components/Shape/FillProperties",
+	"x_ite/Components/Texturing/ImageTexture",
+	"x_ite/Components/Texturing/TextureProperties",
+	"x_ite/Browser/Networking/urls",
 ],
-function (Appearance)
+function (Appearance,
+          LineProperties,
+          FillProperties,
+          ImageTexture,
+          TextureProperties,
+          urls)
 {
 "use strict";
 
 	function X3DShapeContext ()
 	{
-		this .defaultAppearance = new Appearance (this .getPrivateScene ());
+		this .linetypeTextures   = [ ];
+		this .hatchStyleTextures = [ ];
 	}
 
 	X3DShapeContext .prototype =
 	{
 		initialize: function ()
-		{
-			this .defaultAppearance .setup ();
-		},
+		{ },
 		getDefaultAppearance: function ()
 		{
+			if (this .defaultAppearance)
+				return this .defaultAppearance;
+			
+			this .defaultAppearance = new Appearance (this .getPrivateScene ());
+
+			this .defaultAppearance .setup ();
+
 			return this .defaultAppearance;
+		},
+		getDefaultLineProperties: function ()
+		{
+			if (this .defaultLineProperties)
+				return this .defaultLineProperties;
+			
+			this .defaultLineProperties = new LineProperties (this .getPrivateScene ());
+
+			this .defaultLineProperties .applied_ = false;
+			this .defaultLineProperties .setup ();
+
+			return this .defaultLineProperties;
+		},
+		getDefaultFillProperties: function ()
+		{
+			if (this .defaultFillProperties)
+				return this .defaultFillProperties;
+			
+			this .defaultFillProperties = new FillProperties (this .getPrivateScene ());
+
+			this .defaultFillProperties .hatched_ = false;
+			this .defaultFillProperties .setup ();
+
+			return this .defaultFillProperties;
+		},
+		getLinetype: function (index)
+		{
+			if (index < 1 || index > 15)
+				index = 1;
+
+			var linetypeTexture = this .linetypeTextures [index];
+
+			if (linetypeTexture)
+				return linetypeTexture;
+
+			linetypeTexture = this .linetypeTextures [index] = new ImageTexture (this .getPrivateScene ());
+
+			linetypeTexture .url_ [0]           = urls .getLinetypeUrl (index);
+			linetypeTexture .textureProperties_ = this .getLineFillTextureProperties ();
+			linetypeTexture .setup ();
+
+			return linetypeTexture;
+		},
+		getHatchStyle: function (index)
+		{
+			if (index < 1 || index > 19)
+				index = 1;
+
+			var hatchStyleTexture = this .hatchStyleTextures [index];
+
+			if (hatchStyleTexture)
+				return hatchStyleTexture;
+
+			hatchStyleTexture = this .hatchStyleTextures [index] = new ImageTexture (this .getPrivateScene ());
+
+			hatchStyleTexture .url_ [0]           = urls .getHatchingUrl (index);
+			hatchStyleTexture .textureProperties_ = this .getLineFillTextureProperties ();
+			hatchStyleTexture .setup ();
+
+			return hatchStyleTexture;
+		},
+		getLineFillTextureProperties: function ()
+		{
+			if (this .lineFillTextureProperties)
+				return this .lineFillTextureProperties;
+			
+			this .lineFillTextureProperties = new TextureProperties (this .getPrivateScene ());
+
+			this .lineFillTextureProperties .setup ();
+
+			return this .lineFillTextureProperties;
 		},
 	};
 

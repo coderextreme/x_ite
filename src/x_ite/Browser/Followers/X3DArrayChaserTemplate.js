@@ -60,34 +60,25 @@ function (X3DArrayFollowerTemplate)
 
 		function X3DArrayChaserObject ()
 		{
+			X3DArrayFollower .call (this);
+
 			this .array = this .getArray ();
 		}
 
-		Object .assign (X3DArrayChaserObject .prototype, X3DArrayFollower .prototype,
+		Object .assign (X3DArrayChaserObject .prototype,
+			X3DArrayFollower .prototype,
 		{
-			setPreviousValue: function (value)
-			{
-				this .previousValue .setValue (value);
-			},
 			step: function (value1, value2, t)
 			{
 				var
 					output   = this .output,
 					deltaOut = this .deltaOut;
 
-				deltaOut .length = output .length;
-
 				for (var i = 0, length = output .length; i < length; ++ i)
-				{
-					var di = deltaOut [i] = value1 [i];
-
-					output [i] = output [i] .getValue () .add (di .getValue () .subtract (value2 [i] .getValue ()) .multiply (t));
-				}
+					output [i] .add (deltaOut .assign (value1 [i] || this .zero) .subtract (value2 [i] || this .zero) .multiply (t));
 			},
 		});
 
 		return X3DArrayChaserObject;
 	};
 });
-
-

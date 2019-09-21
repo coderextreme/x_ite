@@ -53,51 +53,16 @@ define ([
 	"x_ite/Basic/FieldDefinitionArray",
 	"x_ite/Components/Core/X3DNode",
 	"x_ite/Bits/X3DConstants",
+	"standard/Math/Algorithm",
 ],
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
           X3DNode, 
-          X3DConstants)
+          X3DConstants, 
+          Algorithm)
 {
 "use strict";
-
-	/*
-	 *  Static members
-	 */
-
-	var boundaryModes = 
-	{
-		CLAMP:             "CLAMP_TO_EDGE", // "CLAMP"
-		CLAMP_TO_EDGE:     "CLAMP_TO_EDGE", 
-		CLAMP_TO_BOUNDARY: "CLAMP_TO_EDGE", // "CLAMP_TO_BORDER"
-		MIRRORED_REPEAT:   "MIRRORED_REPEAT",
-		REPEAT:            "REPEAT",
-	};
-
-	var minificationFilters =
-	{
-		AVG_PIXEL_AVG_MIPMAP:         "LINEAR_MIPMAP_LINEAR",
-		AVG_PIXEL:                    "LINEAR",
-		AVG_PIXEL_NEAREST_MIPMAP:     "LINEAR_MIPMAP_NEAREST",
-		NEAREST_PIXEL_AVG_MIPMAP:     "NEAREST_MIPMAP_LINEAR",
-		NEAREST_PIXEL_NEAREST_MIPMAP: "NEAREST_MIPMAP_NEAREST",
-		NEAREST_PIXEL:                "NEAREST",
-		NICEST:                       "LINEAR_MIPMAP_LINEAR",
-		FASTEST:                      "NEAREST",
-	};
-
-	var magnificationFilters =
-	{
-		AVG_PIXEL:     "LINEAR",
-		NEAREST_PIXEL: "NEAREST",
-		NICEST:        "LINEAR",
-		FASTEST:       "NEAREST",
-	};
-
-	/*
-	 *  TextureProperties
-	 */
 
 	function TextureProperties (executionContext)
 	{
@@ -135,15 +100,31 @@ function (Fields,
 		{
 			return "textureProperties";
 		},
-		getBoundaryMode: function (string)
+		getBorderWidth: function ()
 		{
-			var boundaryMode = boundaryModes [string];
-			
-			if (boundaryMode !== undefined)
-				return boundaryMode;
-
-			return "REPEAT";
+			// https://stackoverflow.com/questions/27760277/webgl-border-color-shader?lq=1
+			return Algorithm .clamp (this .borderWidth_ .getValue (), 0, 1);
 		},
+		getBoundaryMode: (function ()
+		{
+			var boundaryModes = new Map ([
+				["CLAMP",             "CLAMP_TO_EDGE"], // "CLAMP"
+				["CLAMP_TO_EDGE",     "CLAMP_TO_EDGE"], 
+				["CLAMP_TO_BOUNDARY", "CLAMP_TO_EDGE"], // "CLAMP_TO_BORDER"
+				["MIRRORED_REPEAT",   "MIRRORED_REPEAT"],
+				["REPEAT",            "REPEAT"],
+			]);
+
+			return function (string)
+			{
+				var boundaryMode = boundaryModes .get (string);
+
+				if (boundaryMode !== undefined)
+					return boundaryMode;
+	
+				return "REPEAT";
+			};
+		})(),
 		getBoundaryModeS: function ()
 		{
 			return this .getBoundaryMode (this .boundaryModeS_ .getValue ());
@@ -156,30 +137,80 @@ function (Fields,
 		{
 			return this .getBoundaryMode (this .boundaryModeR_ .getValue ());
 		},
-		getMinificationFilter: function ()
+		getMinificationFilter: (function ()
 		{
-			if (this .generateMipMaps_ .getValue ())
+			var minificationFilters = new Map ([
+				["AVG_PIXEL_AVG_MIPMAP",         "LINEAR_MIPMAP_LINEAR"],
+				["AVG_PIXEL",                    "LINEAR"],
+				["AVG_PIXEL_NEAREST_MIPMAP",     "LINEAR_MIPMAP_NEAREST"],
+				["NEAREST_PIXEL_AVG_MIPMAP",     "NEAREST_MIPMAP_LINEAR"],
+				["NEAREST_PIXEL_NEAREST_MIPMAP", "NEAREST_MIPMAP_NEAREST"],
+				["NEAREST_PIXEL",                "NEAREST"],
+				["NICEST",                       "LINEAR_MIPMAP_LINEAR"],
+				["FASTEST",                      "NEAREST"],
+			]);
+
+			return function ()
 			{
-				var minificationFilter = minificationFilters [this .minificationFilter_ .getValue ()];
-			
-				if (minificationFilter !== undefined)
-					return minificationFilter;
-			
-				return this .getBrowser () .getDefaultTextureProperties () .getMinificationFilter ();
-			}
+				if (this .generateMipMaps_ .getValue ())
+				{
+					var minificationFilter = minificationFilters .get (this .minificationFilter_ .getValue ());
+				
+					if (minificationFilter !== undefined)
+						return minificationFilter;
 
-			return "LINEAR";
-		},
-		getMagnificationFilter: function ()
+					return this .getBrowser () .getDefaultTextureProperties () .getMinificationFilter ();
+				}
+	
+				return "LINEAR";
+			};
+		})(),
+		getMagnificationFilter: (function ()
 		{
-			var magnificationFilter = magnificationFilters [this .magnificationFilter_ .getValue ()];
-		
-			if (magnificationFilter !== undefined)
-				return magnificationFilter;
+			var magnificationFilters = new Map ([
+				["AVG_PIXEL",     "LINEAR"],
+				["NEAREST_PIXEL", "NEAREST"],
+				["NICEST",        "LINEAR"],
+				["FASTEST",       "NEAREST"],
+			]);
 
-			// DEFAULT
-			return this .getBrowser () .getDefaultTextureProperties () .getMagnificationFilter ();
-		},
+			return function ()
+			{
+				var magnificationFilter = magnificationFilters .get (this .magnificationFilter_ .getValue ());
+			
+				if (magnificationFilter !== undefined)
+					return magnificationFilter;
+	
+				// DEFAULT
+				return this .getBrowser () .getDefaultTextureProperties () .getMagnificationFilter ();
+			};
+		})(),
+		getTextureCompression: (function ()
+		{
+			var textureCompressions = new Map ([
+				["DEFAULT", "RGBA"],
+				["NICEST",  "RGBA"],
+				["FASTEST", "RGBA"],
+				["LOW",     "RGBA"],
+				["MEDIUM",  "RGBA"],
+				["HIGH",    "RGBA"],
+			]);
+
+			return function ()
+			{
+				var
+					browser            = this .getBrowser (),
+					gl                 = browser .getContext (),
+					compressedTexture  = browser .getExtension ("WEBGL_compressed_texture_etc"), // TODO: find suitable compression.
+					textureCompression = compressedTexture ? compressedTexture [textureCompressions .get (this .textureCompression_ .getValue ())] : undefined;
+
+				if (textureCompression !== undefined)
+					return textureCompression;
+
+				// DEFAULT
+				return gl .RGBA;
+			};
+		})(),
 	});
 
 	return TextureProperties;

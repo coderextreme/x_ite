@@ -65,7 +65,7 @@ define ([
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DSoundNode, 
+          X3DSoundNode,
           X3DCast,
           TraverseType,
           X3DConstants,
@@ -194,17 +194,17 @@ function (Fields,
 				{
 					if (type !== TraverseType .DISPLAY)
 						return;
-		
+
 					if (! this .sourceNode)
 						return;
-		
+
 					if (! this .sourceNode .isActive_ .getValue () || this .sourceNode .isPaused_ .getValue ())
 						return;
-		
+
 					this .setTraversed (true);
-	
+
 					var modelViewMatrix = renderObject .getModelViewMatrix () .get ();
-	
+
 					this .getEllipsoidParameter (modelViewMatrix,
 					                             Math .max (this .maxBack_  .getValue (), 0),
 					                             Math .max (this .maxFront_ .getValue (), 0),
@@ -230,8 +230,6 @@ function (Fields,
 								intensity = Algorithm .clamp (this .intensity_ .getValue (), 0, 1),
 								volume    = intensity * d;
 
-							//console .log (d);
-
 							this .sourceNode .setVolume (volume);
 						}
 					}
@@ -255,13 +253,13 @@ function (Fields,
 				location        = new Vector3 (0, 0, 0),
 				sphereMatrix    = new Matrix4 (),
 				invSphereMatrix = new Matrix4 (),
-				translation     = new Vector3 (0, 0, 0),
 				rotation        = new Rotation4 (),
 				scale           = new Vector3 (1, 1, 1),
 				sphere          = new Sphere3 (1, Vector3 .Zero),
+				normal          = new Vector3 (0, 0, 0),
 				line            = new Line3 (Vector3 .Zero, Vector3 .zAxis),
-				intersection1   = new Vector3 (0, 0, 0),
-				intersection2   = new Vector3 (0, 0, 0);
+				enterPoint      = new Vector3 (0, 0, 0),
+				exitPoint       = new Vector3 (0, 0, 0);
 
 			return function (modelViewMatrix, back, front, value)
 			{
@@ -270,39 +268,43 @@ function (Fields,
 				 *
 				 * The ellipsoid is transformed to a sphere for easier calculation and then the viewer position is
 				 * transformed into this coordinate system. The radius and distance can then be obtained.
-				 * 
+				 *
 				 * throws Error
 				 */
+
+				if (back == 0 || front == 0)
+				{
+					sphereMatrix .multVecMatrix (value .intersection .assign (this .location_ .getValue ()));
+					value .distance = 1;
+					return;
+				}
 
 				var
 					a = (back + front) / 2,
 					e = a - back,
 					b = Math .sqrt (a * a - e * e);
-				
+
 				location .set (0, 0, e);
 				scale    .set (b, b, a);
-
 				rotation .setFromToVec (Vector3 .zAxis, this .direction_ .getValue ());
-				sphereMatrix .assign (modelViewMatrix);
-				sphereMatrix .translate (this .location_ .getValue ());
-				sphereMatrix .rotate (rotation);
-				sphereMatrix .translate (location);
-				sphereMatrix .scale (scale);
 
-				invSphereMatrix .assign (sphereMatrix);
-				invSphereMatrix .inverse ();
+				sphereMatrix
+					.assign (modelViewMatrix)
+					.translate (this .location_ .getValue ())
+					.rotate (rotation)
+					.translate (location)
+					.scale (scale);
+
+				invSphereMatrix .assign (sphereMatrix) .inverse ();
 
 				var viewer = invSphereMatrix .origin;
 				location .negate () .divVec (scale);
 
-				line .set (viewer, location .subtract (viewer) .normalize ());
-				sphere .intersectsLine (line, intersection1, intersection2);
+				normal .assign (location) .subtract (viewer) .normalize ();
+				line .set (viewer, normal);
+				sphere .intersectsLine (line, enterPoint, exitPoint);
 
-				if (viewer .distance (intersection1) < viewer .distance (intersection2))
-					value .intersection .assign (sphereMatrix .multVecMatrix (intersection1));
-				else
-					value .intersection .assign (sphereMatrix .multVecMatrix (intersection2));
-
+				value .intersection .assign (sphereMatrix .multVecMatrix (enterPoint));
 				value .distance = viewer .abs ();
 			};
 		})(),
@@ -310,5 +312,3 @@ function (Fields,
 
 	return Sound;
 });
-
-

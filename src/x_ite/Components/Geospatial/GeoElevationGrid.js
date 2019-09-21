@@ -140,25 +140,25 @@ function (Fields,
 		{
 			if (this .colorNode)
 			{
-				this .colorNode .removeInterest ("requestRebuild",    this);
-				this .colorNode .removeInterest ("set_transparent__", this);
+				this .colorNode .removeInterest ("requestRebuild", this);
+				this .colorNode .transparent_ .removeInterest ("set_transparent__", this);
 			}
 
 			this .colorNode = X3DCast (X3DConstants .X3DColorNode, this .color_);
 
 			if (this .colorNode)
 			{
-				this .colorNode .addInterest ("requestRebuild",    this);
-				this .colorNode .addInterest ("set_transparent__", this);
+				this .colorNode .addInterest ("requestRebuild", this);
+				this .colorNode .transparent_ .addInterest ("set_transparent__", this);
 
 				this .set_transparent__ ();
 			}
 			else
-				this .transparent_ = false;
+				this .setTransparent (false);
 		},
 		set_transparent__: function ()
 		{
-			this .transparent_ = this .colorNode .isTransparent ();
+			this .setTransparent (this .colorNode .getTransparent ());
 		},
 		set_texCoord__: function ()
 		{
@@ -170,7 +170,7 @@ function (Fields,
 			if (this .texCoordNode)
 				this .texCoordNode .addInterest ("requestRebuild", this);
 
-			this .setCurrentTexCoord (this .texCoordNode);
+			this .setTextureCoordinate (this .texCoordNode);
 		},
 		set_normal__: function ()
 		{

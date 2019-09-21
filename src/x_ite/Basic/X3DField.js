@@ -209,19 +209,20 @@ function ($,
 		{
 			if (this .hasOwnProperty ("_references"))
 			{
-				for (var reference of this ._references .values ())
+				this ._references .forEach (function (reference)
 				{
 					switch (this .getAccessType () & reference .getAccessType ())
 					{
 						case X3DConstants .inputOnly:
 						case X3DConstants .outputOnly:
-							continue;
+							break;
 						case X3DConstants .initializeOnly:
 						case X3DConstants .inputOutput:
 							this .set (reference .getValue (), reference .length);
-							continue;
+							break;
 					}
-				}
+				},
+				this);
 			}
 		},
 		addFieldInterest: function (field)
@@ -311,7 +312,7 @@ function ($,
 		{
 			if (this ._routeCallbacks .size)
 			{
-				(new Map (this ._routeCallbacks)) .forEach (function (routeCallback)
+				this ._routeCallbacks .forEach (function (routeCallback)
 				{
 					routeCallback ();
 				});
@@ -358,7 +359,7 @@ function ($,
 
 			if (this ._fieldCallbacks .size)
 			{
-				(new Map (this ._fieldCallbacks)) .forEach (function (fieldCallback)
+				this ._fieldCallbacks .forEach (function (fieldCallback)
 				{
 					fieldCallback (this .valueOf ());
 				},

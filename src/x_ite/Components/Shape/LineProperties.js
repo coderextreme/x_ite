@@ -57,7 +57,7 @@ define ([
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DAppearanceChildNode, 
+          X3DAppearanceChildNode,
           X3DConstants)
 {
 "use strict";
@@ -94,21 +94,43 @@ function (Fields,
 		{
 			X3DAppearanceChildNode .prototype .initialize .call (this);
 
+			this .applied_              .addInterest ("set_applied__",              this);
 			this .linewidthScaleFactor_ .addInterest ("set_linewidthScaleFactor__", this);
 
+			this .set_applied__ ();
 			this .set_linewidthScaleFactor__ ();
 		},
-		getLinewidthScaleFactor: function ()
+		set_applied__: function ()
 		{
-			return this .linewidthScaleFactor;
+			this .applied = this .applied_ .getValue ();
 		},
 		set_linewidthScaleFactor__: function ()
 		{
 			this .linewidthScaleFactor = Math .max (1, this .linewidthScaleFactor_ .getValue ());
 		},
+		setShaderUniforms: function (gl, shaderObject)
+		{
+			if (this .applied)
+			{
+				var
+					browser = shaderObject .getBrowser (),
+					texture = browser .getLinetype (this .linetype_ .getValue ());
+
+				gl .lineWidth (this .linewidthScaleFactor);
+				gl .uniform1i (shaderObject .x3d_LinePropertiesApplied,              true);
+				gl .uniform1f (shaderObject .x3d_LinePropertiesLinewidthScaleFactor, this .linewidthScaleFactor);
+
+				gl .activeTexture (gl .TEXTURE0 + browser .getLinetypeUnit ());
+				gl .bindTexture (gl .TEXTURE_2D, texture .getTexture ());
+			}
+			else
+			{
+				gl .lineWidth (1);
+				gl .uniform1i (shaderObject .x3d_LinePropertiesApplied,              false);
+				gl .uniform1f (shaderObject .x3d_LinePropertiesLinewidthScaleFactor, 1);
+			}
+		},
 	});
 
 	return LineProperties;
 });
-
-

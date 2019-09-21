@@ -52,30 +52,34 @@ define ([
 	"x_ite/Basic/X3DFieldDefinition",
 	"x_ite/Basic/FieldDefinitionArray",
 	"x_ite/Components/EnvironmentalSensor/X3DEnvironmentalSensorNode",
+	"x_ite/Bits/TraverseType",
 	"x_ite/Bits/X3DConstants",
 	"x_ite/Bits/X3DCast",
 	"standard/Math/Numbers/Vector3",
 	"standard/Math/Numbers/Rotation4",
+	"standard/Math/Numbers/Matrix4",
 	"standard/Math/Geometry/Box3",
+	"standard/Utility/ObjectCache",
 ],
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
           X3DEnvironmentalSensorNode, 
+          TraverseType,
           X3DConstants,
           X3DCast,
           Vector3,
           Rotation4,
-          Box3)
+          Matrix4,
+          Box3,
+          ObjectCache)
 {
 "use strict";
 
 	var
-		targetBox   = new Box3 (),
-		position    = new Vector3 (0, 0, 0),
-		orientation = new Rotation4 (0, 0, 1, 0),
-		infinity    = new Vector3 (-1, -1, -1);
-	
+		ModelMatrixCache = ObjectCache (Matrix4),
+		TargetBBoxCache  = ObjectCache (Box3);
+
 	function TransformSensor (executionContext)
 	{
 		X3DEnvironmentalSensorNode .call (this, executionContext);
@@ -84,8 +88,12 @@ function (Fields,
 
 		this .position_changed_ .setUnit ("length");
 
+		this .setZeroTest (true);
+
 		this .bbox             = new Box3 ();
 		this .targetObjectNode = null;
+		this .modelMatrices    = [ ];
+		this .targetBBoxes     = [ ];
 	}
 
 	TransformSensor .prototype = Object .assign (Object .create (X3DEnvironmentalSensorNode .prototype),
@@ -121,10 +129,10 @@ function (Fields,
 		
 			this .isLive () .addInterest ("set_enabled__", this);
 
-			this .enabled_      .addInterest ("set_enabled__", this);
-			this .size_         .addInterest ("set_enabled__", this);
-			this .size_         .addInterest ("set_bbox__", this);
-			this .center_       .addInterest ("set_bbox__", this);
+			this .enabled_      .addInterest ("set_enabled__",      this);
+			this .size_         .addInterest ("set_enabled__",      this);
+			this .size_         .addInterest ("set_bbox__",         this);
+			this .center_       .addInterest ("set_bbox__",         this);
 			this .targetObject_ .addInterest ("set_targetObject__", this);
 
 			this .set_bbox__ ();
@@ -136,12 +144,18 @@ function (Fields,
 		{
 			if (this .isLive () .getValue () && this .targetObjectNode && this .enabled_ .getValue () && ! this .size_. getValue () .equals (Vector3 .Zero))
 			{
-				this .getBrowser () .sensorEvents () .addInterest ("update", this);
+				this .setPickableObject (true);
+				this .getBrowser () .addTransformSensor (this);
+				this .targetObjectNode .addTransformSensor (this);
 			}
 			else
 			{
-				this .getBrowser () .sensorEvents () .removeInterest ("update", this);
-					
+				this .setPickableObject (false);
+				this .getBrowser () .removeTransformSensor (this);
+
+				if (this .targetObjectNode)
+					this .targetObjectNode .removeTransformSensor (this);
+
 				if (this .isActive_ .getValue ())
 				{
 					this .isActive_ = false;
@@ -155,44 +169,117 @@ function (Fields,
 		},
 		set_targetObject__: function ()
 		{
-			this .targetObjectNode = X3DCast (X3DConstants .X3DBoundedObject, this .targetObject_);
-		
+			this .targetObjectNode = null;
+
+			try
+			{
+				var
+					node = this .targetObject_ .getValue () .getInnerNode (),
+					type = node .getType ();
+	
+				for (var t = type .length - 1; t >= 0; -- t)
+				{
+					switch (type [t])
+					{
+						case X3DConstants .X3DGroupingNode:
+						case X3DConstants .X3DShapeNode:
+						{
+							this .targetObjectNode = node;
+							break;
+						}
+						default:
+							continue;
+					}
+				}
+			}
+			catch (error)
+			{ }
+
 			this .set_enabled__ ();
 		},
-		update: function ()
+		traverse: function (type, renderObject)
 		{
-			this .targetObjectNode .getBBox (targetBox);
-		
-			if (this .size_. getValue () .equals (infinity) || this .bbox .intersectsBox (targetBox))
+			// TransformSensor nodes are sorted out and only traversed during PICKING, except if is child of a LOD or Switch node.
+
+			if (type !== TraverseType .PICKING)
+				return;
+
+			if (this .getPickableObject ())
+				this .modelMatrices .push (ModelMatrixCache .pop () .assign (renderObject .getModelViewMatrix () .get ()));
+		},
+		collect: function (targetBBox)
+		{
+			this .targetBBoxes .push (TargetBBoxCache .pop () .assign (targetBBox));
+		},
+		process: (function ()
+		{
+			var
+				bbox        = new Box3 (),
+				position    = new Vector3 (0, 0, 0),
+				orientation = new Rotation4 (0, 0, 1, 0),
+				infinity    = new Vector3 (-1, -1, -1);
+
+			return function ()
 			{
-				targetBox .getMatrix () .get (position, orientation);
-		
-				if (this .isActive_ .getValue ())
+				var
+					modelMatrices = this .modelMatrices,
+					targetBBoxes  = this .targetBBoxes,
+					active        = false;
+
+				for (var m = 0, mLength = modelMatrices .length; m < mLength; ++ m)
 				{
-					if (! this .position_changed_ .getValue () .equals (position))
-						this .position_changed_ = position;
-	
-					if (! this .orientation_changed_ .getValue () .equals (orientation))
+					var modelMatrix = modelMatrices [m];
+
+					bbox .assign (this .bbox) .multRight (modelMatrix);
+
+					for (var t = 0, tLength = targetBBoxes .length; t < tLength; ++ t)
+					{
+						var targetBBox = targetBBoxes [t];
+
+						if (this .size_ .getValue () .equals (infinity) || bbox .intersectsBox (targetBBox))
+						{
+							active = true;
+
+							targetBBox .multRight (modelMatrix .inverse ()) .getMatrix () .get (position, orientation);
+						}
+
+						TargetBBoxCache .push (targetBBox);
+					}
+
+					ModelMatrixCache .push (modelMatrix);
+				}
+
+				if (active)
+				{
+					if (this .isActive_ .getValue ())
+					{
+						if (! this .position_changed_ .getValue () .equals (position))
+							this .position_changed_ = position;
+		
+						if (! this .orientation_changed_ .getValue () .equals (orientation))
+							this .orientation_changed_ = orientation;
+					}
+					else
+					{
+						this .isActive_            = true;
+						this .enterTime_           = this .getBrowser () .getCurrentTime ();
+						this .position_changed_    = position;
 						this .orientation_changed_ = orientation;
+					}
 				}
 				else
 				{
-					this .isActive_  = true;
-					this .enterTime_ = this .getBrowser () .getCurrentTime ();
+					if (this .isActive_ .getValue ())
+					{
+						this .isActive_ = false;
+						this .exitTime_ = this .getBrowser () .getCurrentTime ();
+					}
+				}
 
-					this .position_changed_         = position;
-					this .orientation_changed_      = orientation;
-				}
-			}
-			else
-			{
-				if (this .isActive_ .getValue ())
-				{
-					this .isActive_ = false;
-					this .exitTime_ = this .getBrowser () .getCurrentTime ();
-				}
-			}
-		},
+				this .modelMatrices .length = 0;
+				this .targetBBoxes  .length = 0;
+			};
+		})(),
 	});
 
 	return TransformSensor;

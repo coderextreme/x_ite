@@ -57,13 +57,10 @@ define ([
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DComposedGeometryNode, 
+          X3DComposedGeometryNode,
           X3DConstants)
 {
 "use strict";
-
-	// Define two triangles.
-	var indexMap = [0, 1, 2,   0, 2, 3];
 
 	function IndexedQuadSet (executionContext)
 	{
@@ -77,11 +74,12 @@ function (Fields,
 		constructor: IndexedQuadSet,
 		fieldDefinitions: new FieldDefinitionArray ([
 			new X3DFieldDefinition (X3DConstants .inputOutput,    "metadata",        new Fields .SFNode ()),
+			new X3DFieldDefinition (X3DConstants .inputOnly,      "set_index",       new Fields .MFInt32 ()),
 			new X3DFieldDefinition (X3DConstants .initializeOnly, "solid",           new Fields .SFBool (true)),
 			new X3DFieldDefinition (X3DConstants .initializeOnly, "ccw",             new Fields .SFBool (true)),
 			new X3DFieldDefinition (X3DConstants .initializeOnly, "colorPerVertex",  new Fields .SFBool (true)),
 			new X3DFieldDefinition (X3DConstants .initializeOnly, "normalPerVertex", new Fields .SFBool (true)),
-			new X3DFieldDefinition (X3DConstants .inputOutput,    "index",           new Fields .MFInt32 ()),
+			new X3DFieldDefinition (X3DConstants .initializeOnly, "index",           new Fields .MFInt32 ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput,    "attrib",          new Fields .MFNode ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput,    "fogCoord",        new Fields .SFNode ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput,    "color",           new Fields .SFNode ()),
@@ -101,12 +99,24 @@ function (Fields,
 		{
 			return "geometry";
 		},
-		getTriangleIndex: function (i)
+		initialize: function ()
 		{
-			var mod = i % 6;
+			X3DComposedGeometryNode .prototype .initialize .call (this);
 
-			return (i - mod) / 6 * 4 + indexMap [mod];
+			this .set_index_ .addFieldInterest (this .index_);
 		},
+		getTriangleIndex: (function ()
+		{
+			// Define two triangles.
+			var indexMap = [0, 1, 2,   0, 2, 3];
+
+			return function (i)
+			{
+				var mod = i % 6;
+
+				return (i - mod) / 6 * 4 + indexMap [mod];
+			};
+		})(),
 		getPolygonIndex: function (i)
 		{
 			return this .index_ [i];
@@ -123,5 +133,3 @@ function (Fields,
 
 	return IndexedQuadSet;
 });
-
-

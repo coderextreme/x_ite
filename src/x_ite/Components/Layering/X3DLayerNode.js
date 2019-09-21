@@ -60,6 +60,7 @@ define ([
 	"x_ite/Bits/TraverseType",
 	"x_ite/Bits/X3DConstants",
 	"standard/Math/Geometry/Camera",
+	"standard/Math/Geometry/Box3",
 	"standard/Math/Numbers/Vector3",
 	"standard/Math/Numbers/Matrix4",
 ],
@@ -75,6 +76,7 @@ function (X3DNode,
           TraverseType,
           X3DConstants,
           Camera,
+          Box3,
           Vector3,
           Matrix4)
 {
@@ -232,6 +234,10 @@ function (X3DNode,
 		{
 			return this .groupNode .getBBox (bbox);
 		},
+		lookAt: function (factor, straighten)
+		{
+			this .getViewpoint () .lookAtBBox (this .getBBox (new Box3 ()), factor, straighten);
+		},
 		set_viewport__: function ()
 		{
 			this .currentViewport = X3DCast (X3DConstants .X3DViewportNode, this .viewport_);
@@ -280,6 +286,9 @@ function (X3DNode,
 					break;
 				case TraverseType .CAMERA:
 					this .camera (type, renderObject);
+					break;
+				case TraverseType .PICKING:
+					this .picking (type, renderObject);
 					break;
 				case TraverseType .COLLISION:
 					this .collision (type, renderObject);
@@ -340,6 +349,16 @@ function (X3DNode,
 
 			this .getModelViewMatrix () .pop ();
 		},
+		picking: function (type, renderObject)
+		{
+			this .getModelViewMatrix () .pushMatrix (Matrix4 .Identity);
+	
+			this .currentViewport .push (this);
+			this .groupNode .traverse (type, renderObject);
+			this .currentViewport .pop (this);
+
+			this .getModelViewMatrix () .pop ();
+		},
 		collision: function (type, renderObject)
 		{
 			var navigationInfo = this .getNavigationInfo ();
@@ -361,7 +380,7 @@ function (X3DNode,
 	
 			// Render
 			this .currentViewport .push (this);
-			renderObject .render (type, this .groupNode);
+			renderObject .render (type, this .groupNode .traverse, this .groupNode);
 			this .currentViewport .pop (this);
 
 			this .getModelViewMatrix  () .pop ()
@@ -374,7 +393,7 @@ function (X3DNode,
 			this .getModelViewMatrix () .pushMatrix (this .getInverseCameraSpaceMatrix () .get ());
 
 			this .currentViewport .push (this);
-			renderObject .render (type, this .groupNode);
+			renderObject .render (type, this .groupNode .traverse, this .groupNode);
 			this .currentViewport .pop (this);
 
 			this .getModelViewMatrix () .pop ()

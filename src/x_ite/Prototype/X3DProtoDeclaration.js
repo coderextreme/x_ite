@@ -103,37 +103,106 @@ function ($,
 
 			this .loadState_ = X3DConstants .COMPLETE_STATE;
 		},
-		getSpecificationVersion: function ()
-		{
-			return this .getExecutionContext () .getSpecificationVersion ();
-		},
-		getEncoding: function ()
-		{
-			return this .getExecutionContext () .getEncoding ();
-		},
-		getURL: function ()
-		{
-			return this .getExecutionContext () .getURL ();
-		},
 		getProtoDeclaration: function ()
 		{
+			if (arguments .length)
+				return X3DExecutionContext .prototype .getProtoDeclaration .apply (this, arguments);
+
 			return this;
 		},
 		checkLoadState: function ()
 		{
 			return this .loadState_ .getValue ();
 		},
-		fromUnit: function (category, value)
-		{
-			return this .getExecutionContext () .fromUnit (category, value);
-		},
-		toUnit: function (category, value)
-		{
-			return this .getExecutionContext () .toUnit (category, value);
-		},
 		hasUserDefinedFields: function ()
 		{
 			return true;
+		},
+		toStream: function (stream)
+		{
+			stream .string += Object .prototype .toString .call (this);
+		},
+		toVRMLStream: function (stream)
+		{
+			var generator = Generator .Get (stream);
+
+			stream .string += generator .Indent ();
+			stream .string += "PROTO";
+			stream .string += " ";
+			stream .string += this .getName ();
+			stream .string += " ";
+			stream .string += "[";
+
+			generator .EnterScope ();
+
+			var
+				fieldTypeLength   = 0,
+				accessTypeLength  = 0,
+				userDefinedFields = this .getUserDefinedFields ();
+
+			if (userDefinedFields .size === 0)
+			{
+				stream .string += " ";
+			}
+			else
+			{
+				userDefinedFields .forEach (function (field)
+				{
+					fieldTypeLength  = Math .max (fieldTypeLength, field .getTypeName () .length);
+					accessTypeLength = Math .max (accessTypeLength, generator .AccessType (field .getAccessType ()) .length);
+				});
+
+				stream .string += "\n";
+
+				generator .IncIndent ();
+
+				userDefinedFields .forEach (function (field)
+				{
+					this .toVRMLStreamUserDefinedField (stream, field, fieldTypeLength, accessTypeLength);
+					stream .string += "\n";
+				},
+				this);
+
+				generator .DecIndent ();
+
+				stream .string += generator .Indent ();
+			}
+
+			generator .LeaveScope ();
+
+			stream .string += "]";
+			stream .string += "\n";
+
+			stream .string += generator .Indent ();
+			stream .string += "{";
+			stream .string += "\n";
+
+			generator .IncIndent ();
+
+			X3DExecutionContext .prototype .toVRMLStream .call (this, stream);
+
+			generator .DecIndent ();
+
+			stream .string += generator .Indent ();
+			stream .string += "}";
+		},
+		toVRMLStreamUserDefinedField: function (stream, field, fieldTypeLength, accessTypeLength)
+		{
+			var generator = Generator .Get (stream);
+
+			stream .string += generator .Indent ();
+			stream .string += generator .PadRight (generator .AccessType (field .getAccessType ()), accessTypeLength);
+			stream .string += " ";
+			stream .string += generator .PadRight (field .getTypeName (), fieldTypeLength);
+			stream .string += " ";
+			stream .string += field .getName ();
+
+			if (field .isInitializable ())
+			{
+				stream .string += " ";
+
+				field .toVRMLStream (stream);
+			}
 		},
 		toXMLStream: function (stream)
 		{
@@ -163,7 +232,7 @@ function ($,
 
 				generator .IncIndent ();
 
-				for (var field of userDefinedFields .values ())
+				userDefinedFields .forEach (function (field)
 				{
 					stream .string += generator .Indent ();
 					stream .string += "<field";
@@ -222,7 +291,7 @@ function ($,
 							}
 						}
 					}
-				}
+				});
 		
 				generator .DecIndent ();
 

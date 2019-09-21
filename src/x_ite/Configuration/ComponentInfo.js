@@ -73,6 +73,16 @@ function (Fields,
 	Object .assign (ComponentInfo .prototype,
 	{
 		constructor: ComponentInfo,
+		toVRMLStream: function (stream)
+		{
+			stream .string += "COMPONENT";
+			stream .string += " ";
+			stream .string += this .name;
+			stream .string += " ";
+			stream .string += ":";
+			stream .string += " ";
+			stream .string += this .level;
+		},
 		toXMLStream: function (stream)
 		{
 			var generator = Generator .Get (stream);

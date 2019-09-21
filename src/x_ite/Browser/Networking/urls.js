@@ -67,20 +67,33 @@ function (URI,
 		{
 			if (file)
 			{
-				var min = DEBUG ? "" : ".min";
+				if (getScriptURL () .match (/\.min\.js$/))
+					file += ".min";
 
-				return this .scriptUrl .transform ("components/" + file + min + ".js") .toString ();
+				return this .scriptUrl .transform ("assets/components/" + file + ".js") .toString ();
 			}
 
 			return "http://create3000.de/x_ite";
 		},
+		getShaderUrl: function (file)
+		{
+			return this .scriptUrl .transform ("assets/shaders/" + file) .toString ();
+		},
 		getFontsUrl: function (file)
 		{
-			return this .scriptUrl .transform ("fonts/" + file) .toString ();
+			return this .scriptUrl .transform ("assets/fonts/" + file) .toString ();
+		},
+		getLinetypeUrl: function (index)
+		{
+			return this .scriptUrl .transform ("assets/linetype/" + index + ".png") .toString ();
+		},
+		getHatchingUrl: function (index)
+		{
+			return this .scriptUrl .transform ("assets/hatching/" + index + ".png") .toString ();
 		},
 		getFallbackUrl: function (url)
 		{
-			return "http://cors.create3000.de/" + url;
+			return "http://cors.create3000.de/?url=" + url;
 		},
 		getFallbackExpression: function ()
 		{

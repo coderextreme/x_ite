@@ -88,13 +88,14 @@ function ($,
 
 	function X3DBrowser (element)
 	{
+		//this .loadTime = performance .now () / 1000;
+
 		X3DBrowserContext .call (this, element);
 
-		this .currentSpeed         = 0;
-		this .currentFrameRate     = 60;
-		this .description_         = "";
-		this .components           = { };
-		this .browserCallbacks     = new Map ();
+		this .currentSpeed     = 0;
+		this .currentFrameRate = 60;
+		this .components       = { };
+		this .browserCallbacks = new Map ();
 
 		this .replaceWorld (this .createScene ());
 	};
@@ -116,14 +117,9 @@ function ($,
 		},
 		initialize: function ()
 		{
-			X3DBrowserContext .prototype .initialize .call (this);
+			//console .log (performance .now () / 1000 - this .loadTime);
 
-			this .getLoadSensor () .isLoaded_ .addInterest ("set_loaded__", this);
-		},
-		set_loaded__: function (loaded)
-		{
-			this .getLoadSensor () .isLoaded_ .removeInterest ("set_loaded__", this);
-			this .getLoadSensor () .enabled_ = false;
+			X3DBrowserContext .prototype .initialize .call (this);
 
 			var urlCharacters = this .getElement () .attr ("src");
 
@@ -148,21 +144,23 @@ function ($,
 			// Print welcome message.
 
 			this .print ("Welcome to " + this .name + " X3D Browser " + this .version + ":\n" +
-			             "        Current Graphics Renderer\n" +
-			             "                Name: " + this .getVendor () + " " + this .getWebGLVersion () + "\n" +
-			             "                Shading language: " + this .getShadingLanguageVersion () + "\n" +
-			             "        Rendering Properties\n" +
-			             "                Antialiased: " + this .getAntialiased () + "\n" +
-			             "                Depth size: " + this .getDepthSize () + " bits\n" +
-			             "                Color depth: " + this .getColorDepth () + " bits\n" +
-			             "                Max clip planes: 6\n" +
-			             "                Max lights: 8\n" +
-			             "                Texture units: " + this .getMaxTextureUnits () + " / " + this .getMaxCombinedTextureUnits () + "\n" +
-			             "                Max texture size: " + this .getMaxTextureSize () + " × " + this .getMaxTextureSize () + " pixel\n" +
-			             "                Texture memory: " + this .getTextureMemory () + "\n" +
-			             "                Max vertex uniform vectors: " + this .getMaxVertexUniformVectors () + "\n" +
-			             "                Max fragment uniform vectors: " + this .getMaxFragmentUniformVectors () + "\n" +
-			             "                Max vertex attribs: " + this .getMaxVertexAttribs () + "\n");
+			             "   Current Graphics Renderer\n" +
+			             "      Name: " + this .getVendor () + " " + this .getRenderer () + "\n" +
+			             "      WebGL version: " + this .getWebGLVersion () + "\n" +
+			             "      Shading language: " + this .getShadingLanguageVersion () + "\n" +
+			             "   Rendering Properties\n" +
+			             "      Antialiased: " + this .getAntialiased () + "\n" +
+			             "      Depth size: " + this .getDepthSize () + " bits\n" +
+			             "      Color depth: " + this .getColorDepth () + " bits\n" +
+			             "      Max clip planes: " + this .getMaxClipPlanes () + "\n" +
+			             "      Max lights: " + this .getMaxLights () + "\n" +
+			             "      Max textures: " + this .getMaxTextures () + "\n" +
+			             "      Texture units: " + this .getMaxCombinedTextureUnits () + "\n" +
+			             "      Max texture size: " + this .getMaxTextureSize () + " × " + this .getMaxTextureSize () + " pixel\n" +
+			             "      Texture memory: " + this .getTextureMemory () + "\n" +
+			             "      Max vertex uniform vectors: " + this .getMaxVertexUniformVectors () + "\n" +
+			             "      Max fragment uniform vectors: " + this .getMaxFragmentUniformVectors () + "\n" +
+			             "      Max vertex attribs: " + this .getMaxVertexAttribs () + "\n");
 		},
 		getName: function ()
 		{
@@ -213,9 +211,17 @@ function ($,
 		{
 			return SupportedNodes .getType (typeName);
 		},
-		createScene: function ()
+		createScene: function (profile, component1 /*, ...*/)
 		{
 		   var scene = new Scene (this);
+
+			if (arguments .length)
+			{
+				scene .setProfile (profile);
+
+				for (var i = 1, length = arguments .length; i < length; ++ i)
+					scene .addComponent (arguments [i]);
+			}
 
 			scene .setup ();
 
@@ -309,11 +315,7 @@ function ($,
 		},
 		createVrmlFromString: function (vrmlSyntax)
 		{
-		   var rootNodes = new Fields .MFNode ();
-
-			rootNodes .setValue (this .createX3DFromString (vrmlSyntax) .rootNodes);
-
-			return rootNodes;
+			return this .createX3DFromString (vrmlSyntax) .rootNodes;
 		},
 		createX3DFromString: function (x3dSyntax)
 		{
@@ -489,56 +491,107 @@ function ($,
 		{
 			if (this .browserCallbacks .size)
 			{
-				(new Map (this .browserCallbacks)) .forEach (function (browserCallback)
+				this .browserCallbacks .forEach (function (browserCallback)
 				{
-					browserCallback .call (null, browserEvent);
+					browserCallback (browserEvent);
 				});
 			}
 		},
-		importJS: function (jsobj) {
-			var
-				currentScene = this .currentScene,
-				external     = this .isExternal (),
-				scene        = this .createScene ();
-
-			new JSONParser (scene) .parseJavaScript (jsobj);
-
-			if (! external)
-			{
-				scene .setExecutionContext (currentScene);
-				currentScene .isLive () .addInterest (scene, "setLive");
-						
-				if (currentScene .isLive () .getValue ())
-					scene .setLive (true);
-			}
-
-			scene .setup ();
-
-			return scene;
-		},
-		importDocument: function (dom)
+		importDocument: function (dom, success, error)
 		{
-			if (! dom) return;
-			
+			if (! dom)
+				return;
+
 			var
+				scene        = this .createScene (),
 				currentScene = this .currentScene,
-				external     = this .isExternal (),
-				scene        = this .createScene ();
+				external     = this .isExternal ();
 
-			new XMLParser (scene) .parseIntoScene (dom);
-
-			if (! external)
+			if (success)
 			{
-				scene .setExecutionContext (currentScene);
-				currentScene .isLive () .addInterest ("setLive", scene);
-						
-				if (currentScene .isLive () .getValue ())
-					scene .setLive (true);
+				new XMLParser (scene) .parseIntoScene (dom,
+				function ()
+				{
+					if (! external)
+					{
+						scene .setExecutionContext (currentScene);
+						currentScene .isLive () .addInterest ("setLive", scene);
+								
+						if (currentScene .isLive () .getValue ())
+							scene .setLive (true);
+					}
+
+					success (scene);
+				},
+				function (message)
+				{
+					if (error)
+						error (message);
+				});
 			}
+			else
+			{
+				new XMLParser (scene) .parseIntoScene (dom);
 
-			scene .setup ();
+				if (! external)
+				{
+					scene .setExecutionContext (currentScene);
+					currentScene .isLive () .addInterest ("setLive", scene);
+							
+					if (currentScene .isLive () .getValue ())
+						scene .setLive (true);
+				}
 
-			return scene;
+				return scene;
+			}
+		},
+		importJS: function (jsobj, success, error)
+		{
+			if (! jsobj)
+				return;
+
+			var
+				scene        = this .createScene (),
+				currentScene = this .currentScene,
+				external     = this .isExternal ();
+
+			if (success)
+			{
+				new JSONParser (scene) .parseJavaScript (jsobj,
+				function ()
+				{
+					if (! external)
+					{
+						scene .setExecutionContext (currentScene);
+						currentScene .isLive () .addInterest ("setLive", scene);
+								
+						if (currentScene .isLive () .getValue ())
+							scene .setLive (true);
+					}
+
+					success (scene);
+				},
+				function (message)
+				{
+					if (error)
+						error (message);
+				});
+			}
+			else
+			{
+				new JSONParser (scene) .parseJavaScript (jsobj);
+
+				if (! external)
+				{
+					scene .setExecutionContext (currentScene);
+					currentScene .isLive () .addInterest ("setLive", scene);
+							
+					if (currentScene .isLive () .getValue ())
+						scene .setLive (true);
+				}
+
+				return scene;
+			}
 		},
 		getBrowserProperty: function (name)
 		{
@@ -556,25 +609,27 @@ function ($,
 		{
 			return this .getRenderingProperties () .getField (name) .getValue ();
 		},
-		firstViewpoint: function ()
+		firstViewpoint: function (layer)
 		{
-			var activeLayer = this .getActiveLayer ();
+			if (! layer)
+				layer = this .getActiveLayer ();
 		
-			if (activeLayer)
+			if (layer)
 			{
-				var viewpoints = activeLayer .getUserViewpoints ();
+				var viewpoints = layer .getUserViewpoints ();
 
 				if (viewpoints .length)
 					this .bindViewpoint (viewpoints [0]);
 			}
 		},
-		previousViewpoint: function ()
+		previousViewpoint: function (layer)
 		{
-			var activeLayer = this .getActiveLayer ();
-
-			if (activeLayer)
+			if (! layer)
+				layer = this .getActiveLayer ();
+		
+			if (layer)
 			{
-				var viewpoints = activeLayer .getUserViewpoints ();
+				var viewpoints = layer .getUserViewpoints ();
 
 				if (viewpoints .length === 0)
 					return;
@@ -601,13 +656,14 @@ function ($,
 					this .bindViewpoint (viewpoints [viewpoints .length - 1]);
 			}
 		},
-		nextViewpoint: function ()
+		nextViewpoint: function (layer)
 		{
-			var activeLayer = this .getActiveLayer ();
-
-			if (activeLayer)
+			if (! layer)
+				layer = this .getActiveLayer ();
+		
+			if (layer)
 			{
-				var viewpoints = activeLayer .getUserViewpoints ();
+				var viewpoints = layer .getUserViewpoints ();
 
 				if (viewpoints .length === 0)
 					return;
@@ -634,13 +690,14 @@ function ($,
 					this .bindViewpoint (viewpoints [0]);
 			}
 		},
-		lastViewpoint: function ()
+		lastViewpoint: function (layer)
 		{
-			var activeLayer = this .getActiveLayer ();
-
-			if (activeLayer)
+			if (! layer)
+				layer = this .getActiveLayer ();
+		
+			if (layer)
 			{
-				var viewpoints = activeLayer .getUserViewpoints ();
+				var viewpoints = layer .getUserViewpoints ();
 
 				if (viewpoints .length)
 					this .bindViewpoint (viewpoints [viewpoints .length - 1]);
@@ -744,10 +801,12 @@ function ($,
 
 	Object .defineProperty (X3DBrowser .prototype, "description",
 	{
-		get: function () { return this .description_; },
+		get: function ()
+		{
+			return this .getNotification () .string_ .getValue ();
+		},
 		set: function (value)
 		{
-			this .description_                = value;
 			this .getNotification () .string_ = value;
 		},
 		enumerable: true,

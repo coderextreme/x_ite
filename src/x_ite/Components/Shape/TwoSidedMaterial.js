@@ -69,10 +69,6 @@ function (Fields,
 		X3DMaterialNode .call (this, executionContext);
 
 		this .addType (X3DConstants .TwoSidedMaterial);
-			
-		this .addChildObjects ("transparent", new Fields .SFBool ());
-
-		this .transparent_ .setAccessType (X3DConstants .outputOnly);
 
 		this .diffuseColor  = new Float32Array (3);
 		this .specularColor = new Float32Array (3);
@@ -118,19 +114,21 @@ function (Fields,
 		{
 			X3DMaterialNode . prototype .initialize .call (this);
 
+			this .separateBackColor_ .addInterest ("set_transparent__", this);
+
 			this .ambientIntensity_ .addInterest ("set_ambientIntensity__", this);
-			this .diffuseColor_     .addInterest ("set_diffuseColor__", this);
-			this .specularColor_    .addInterest ("set_specularColor__", this);
-			this .emissiveColor_    .addInterest ("set_emissiveColor__", this);
-			this .shininess_        .addInterest ("set_shininess__", this);
-			this .transparency_     .addInterest ("set_transparency__", this);
+			this .diffuseColor_     .addInterest ("set_diffuseColor__",     this);
+			this .specularColor_    .addInterest ("set_specularColor__",    this);
+			this .emissiveColor_    .addInterest ("set_emissiveColor__",    this);
+			this .shininess_        .addInterest ("set_shininess__",        this);
+			this .transparency_     .addInterest ("set_transparency__",     this);
 	
 			this .backAmbientIntensity_ .addInterest ("set_backAmbientIntensity__", this);
-			this .backDiffuseColor_     .addInterest ("set_backDiffuseColor__", this);
-			this .backSpecularColor_    .addInterest ("set_backSpecularColor__", this);
-			this .backEmissiveColor_    .addInterest ("set_backEmissiveColor__", this);
-			this .backShininess_        .addInterest ("set_backShininess__", this);
-			this .backTransparency_     .addInterest ("set_backTransparency__", this);
+			this .backDiffuseColor_     .addInterest ("set_backDiffuseColor__",     this);
+			this .backSpecularColor_    .addInterest ("set_backSpecularColor__",    this);
+			this .backEmissiveColor_    .addInterest ("set_backEmissiveColor__",    this);
+			this .backShininess_        .addInterest ("set_backShininess__",        this);
+			this .backTransparency_     .addInterest ("set_backTransparency__",     this);
 	
 			this .set_ambientIntensity__ ();
 			this .set_diffuseColor__ ();
@@ -257,10 +255,7 @@ function (Fields,
 		},
 		set_transparent__: function ()
 		{
-			var transparent = this .transparency_ .getValue () || this .backTransparency_ .getValue ();
-
-			if (transparent != this .transparent_ .getValue ())
-				this .transparent_ = transparent;
+			this .setTransparent (Boolean (this .transparency_ .getValue () || (this .separateBackColor_ .getValue () && this .backTransparency_ .getValue ())));
 		},
 		setShaderUniforms: function (gl, shaderObject)
 		{

@@ -105,6 +105,9 @@ function ($,
 
 			this .image_ .addInterest ("set_image__", this);
 
+			this .canvas1 = $("<canvas></canvas>");
+			this .canvas2 = $("<canvas></canvas>");
+
 			this .set_image__ ();
 		},
 		checkLoadState: function ()
@@ -121,7 +124,7 @@ function ($,
 					{
 						var pixel = array [i];
 
-						data [index] =
+						data [index]     =
 						data [index + 1] =
 						data [index + 2] = pixel & 255;
 						data [index + 3] = 255;
@@ -135,7 +138,7 @@ function ($,
 					{
 						var pixel = array [i];
 
-						data [index] =
+						data [index]     =
 						data [index + 1] =
 						data [index + 2] = (pixel >>> 8) & 255;
 						data [index + 3] = pixel & 255;
@@ -176,16 +179,17 @@ function ($,
 		set_image__: function ()
 		{
 			var
+				gl          = this .getBrowser () .getContext (),
 				width       = this .image_ .width,
 				height      = this .image_ .height,
 				comp        = this .image_ .comp,
 				array       = this .image_ .array,
 				transparent = ! (comp % 2),
 				data        = null;
-		
+
 			if (width > 0 && height > 0 && comp > 0 && comp < 5)
 			{
-				if (Algorithm .isPowerOfTwo (width) && Algorithm .isPowerOfTwo (height))
+				if (gl .getVersion () >= 2 || (Algorithm .isPowerOfTwo (width) && Algorithm .isPowerOfTwo (height)))
 				{
 					data = new Uint8Array (width * height * 4);
 
@@ -209,8 +213,8 @@ function ($,
 				else
 				{
 					var
-						canvas1   = $("<canvas></canvas>") [0],
-						canvas2   = $("<canvas></canvas>") [0],
+						canvas1   = this .canvas1 [0],
+						canvas2   = this .canvas2 [0],
 						cx1       = canvas1 .getContext("2d"),
 						cx2       = canvas2 .getContext("2d"),
 						imageData = cx1 .createImageData (width, height);
@@ -226,7 +230,8 @@ function ($,
 
 					canvas2 .width  = width;
 					canvas2 .height = height;
-					
+
+					cx2 .clearRect (0, 0, width, height);
 					cx2 .drawImage (canvas1, 0, 0, canvas1 .width, canvas1 .height, 0, 0, width, height);
 	
 					data = cx2 .getImageData (0, 0, width, height) .data;

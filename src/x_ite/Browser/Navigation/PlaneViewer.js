@@ -49,12 +49,20 @@
 
 define ([
 	"jquery",
+	"x_ite/Fields",
+	"x_ite/Basic/X3DFieldDefinition",
+	"x_ite/Basic/FieldDefinitionArray",
+	"x_ite/Bits/X3DConstants",
 	"x_ite/Browser/Navigation/X3DViewer",
 	"x_ite/Components/Navigation/Viewpoint",
 	"standard/Math/Numbers/Vector3",
 	"jquery-mousewheel",
 ],
 function ($,
+          Fields,
+          X3DFieldDefinition,
+          FieldDefinitionArray,
+          X3DConstants,
           X3DViewer,
           Viewpoint,
           Vector3)
@@ -80,6 +88,9 @@ function ($,
 	PlaneViewer .prototype = Object .assign (Object .create (X3DViewer .prototype),
 	{
 		constructor: PlaneViewer,
+		fieldDefinitions: new FieldDefinitionArray ([
+			new X3DFieldDefinition (X3DConstants .outputOnly, "isActive", new Fields .SFBool ()),
+		]),
 		initialize: function ()
 		{
 			X3DViewer .prototype .initialize .call (this);
@@ -124,6 +135,8 @@ function ($,
 					this .getBrowser () .setCursor ("MOVE");
 
 					this .getPointOnCenterPlane (x, y, this .fromPoint);
+
+					this .isActive_ = true;
 					break;
 				}
 			}
@@ -144,6 +157,8 @@ function ($,
 			this .getBrowser () .getElement () .bind ("mousemove.PlaneViewer", this .mousemove .bind (this));
 
 			this .getBrowser () .setCursor ("DEFAULT");
+
+			this .isActive_ = false;
 		},
 		mousemove: function (event)
 		{
@@ -196,9 +211,10 @@ function ($,
 
 			viewpoint .transitionStop ();
 
-			if (event .deltaY > 0)      // Move backwards.
+			if (event .deltaY > 0) // Move backwards.
+			{
 				viewpoint .fieldOfViewScale_ = Math .max (0.00001, viewpoint .fieldOfViewScale_ .getValue () * (1 - SCROLL_FACTOR));
-
+			}
 			else if (event .deltaY < 0) // Move forwards.
 			{
 				viewpoint .fieldOfViewScale_ = viewpoint .fieldOfViewScale_ .getValue () * (1 + SCROLL_FACTOR);

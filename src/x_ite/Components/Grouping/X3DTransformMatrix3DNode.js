@@ -84,6 +84,10 @@ function (X3DGroupingNode,
 
 			return bbox .multRight (this .matrix);
 		},
+		getSubBBox: function (bbox)
+		{
+			return X3DGroupingNode .prototype .getBBox .call (this, bbox);
+		},
 		setMatrix: function (matrix)
 		{
 			if (matrix .equals (Matrix4 .Identity))
@@ -93,7 +97,7 @@ function (X3DGroupingNode,
 			}
 			else
 			{
-			   this .matrix .assign (matrix);
+				this .matrix .assign (matrix);
 				this .traverse = this .getTraverse ();
 			}
 		},

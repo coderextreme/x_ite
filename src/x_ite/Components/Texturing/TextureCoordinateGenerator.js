@@ -53,12 +53,14 @@ define ([
 	"x_ite/Basic/FieldDefinitionArray",
 	"x_ite/Components/Texturing/X3DTextureCoordinateNode",
 	"x_ite/Bits/X3DConstants",
+	"x_ite/Browser/Texturing/TextureCoordinateGeneratorModeType",
 ],
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
           X3DTextureCoordinateNode, 
-          X3DConstants)
+          X3DConstants,
+          ModeType)
 {
 "use strict";
 
@@ -67,6 +69,9 @@ function (Fields,
 		X3DTextureCoordinateNode .call (this, executionContext);
 
 		this .addType (X3DConstants .TextureCoordinateGenerator);
+
+		this .mode      = ModeType .SPHERE;
+		this .parameter = new Float32Array (6);
 	}
 
 	TextureCoordinateGenerator .prototype = Object .assign (Object .create (X3DTextureCoordinateNode .prototype),
@@ -92,6 +97,64 @@ function (Fields,
 		getTexCoord: function (array)
 		{
 			return array;
+		},
+		initialize: function ()
+		{
+			X3DTextureCoordinateNode .prototype .initialize .call (this);
+
+			this .mode_      .addInterest ("set_mode__",      this);
+			this .parameter_ .addInterest ("set_parameter__", this);
+
+			this .set_mode__ ();
+			this .set_parameter__ ();
+		},
+		set_mode__: (function ()
+		{
+			var modes = new Map ([
+				["SPHERE",                      ModeType .SPHERE],
+				["CAMERASPACENORMAL",           ModeType .CAMERASPACENORMAL],
+				["CAMERASPACEPOSITION",         ModeType .CAMERASPACEPOSITION],
+				["CAMERASPACEREFLECTIONVECTOR", ModeType .CAMERASPACEREFLECTIONVECTOR],
+				["SPHERE-LOCAL",                ModeType .SPHERE_LOCAL],
+				["COORD",                       ModeType .COORD],
+				["COORD-EYE",                   ModeType .COORD_EYE],
+				["NOISE",                       ModeType .NOISE],
+				["NOISE-EYE",                   ModeType .NOISE_EYE],
+				["SPHERE-REFLECT",              ModeType .SPHERE_REFLECT],
+				["SPHERE-REFLECT-LOCAL",        ModeType .SPHERE_REFLECT_LOCAL],
+			]);
+
+			return function ()
+			{
+				this .mode = modes .get (this .mode_ .getValue ());
+
+				if (this .mode === undefined)
+					this .mode = ModeType .SPHERE;
+			};
+		})(),
+		set_parameter__: function ()
+		{
+			for (var i = 0, length = Math .min (this .parameter .length, this .parameter_ .length); i < length; ++ i)
+				this .parameter [i] = this .parameter_ [i];
+
+			this .parameter .fill (0, length);
+		},
+		get1Point: function (index, vector)
+		{
+			return vector;
+		},
+		addTexCoordToChannel: function (index, array)
+		{
+			array .push (0, 0, 0, 1);
+		},
+		getTexCoord: function (array)
+		{
+			return arrray;
+		},
+		setShaderUniformsToChannel: function (gl, shaderObject, channel)
+		{
+			gl .uniform1i  (shaderObject .x3d_TextureCoordinateGeneratorMode [channel],      this .mode);
+			gl .uniform1fv (shaderObject .x3d_TextureCoordinateGeneratorParameter [channel], this .parameter);
 		},
 	});
 

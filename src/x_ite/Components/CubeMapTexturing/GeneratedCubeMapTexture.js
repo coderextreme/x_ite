@@ -159,7 +159,7 @@ function (Fields,
 
 				var
 					gl          = this .getBrowser () .getContext (),
-               defaultData = new Uint8Array (size * size * 4);
+					defaultData = new Uint8Array (size * size * 4);
 	
 				gl .bindTexture (this .getTarget (), this .getTexture ());
 	
@@ -215,11 +215,9 @@ function (Fields,
 				headlight          = navigationInfo .headlight_ .getValue (),
 				nearValue          = navigationInfo .getNearValue (),
 				farValue           = navigationInfo .getFarValue (viewpoint),
-				projectionMatrix   = Camera .perspective (Algorithm .radians (90.0), nearValue, farValue, 1, 1, this .projectionMatrix),
-				transparent        = background .isTransparent ();
+				projectionMatrix   = Camera .perspective (Algorithm .radians (90.0), nearValue, farValue, 1, 1, this .projectionMatrix);
 
-			if (transparent !== this .transparent_ .getValue ())
-				this .transparent_ = transparent;
+			this .setTransparent (background .getTransparent ());
 
 			this .frameBuffer .bind ();
 

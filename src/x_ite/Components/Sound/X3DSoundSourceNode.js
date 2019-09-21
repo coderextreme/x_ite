@@ -48,12 +48,14 @@
 
 
 define ([
+	"x_ite/Fields",
 	"x_ite/Components/Core/X3DChildNode",
 	"x_ite/Components/Time/X3DTimeDependentNode",
 	"x_ite/Bits/X3DConstants",
 	"standard/Math/Algorithm",
 ],
-function (X3DChildNode,
+function (Fields,
+          X3DChildNode,
           X3DTimeDependentNode,
           X3DConstants,
           Algorithm)
@@ -66,6 +68,8 @@ function (X3DChildNode,
 		X3DTimeDependentNode .call (this, executionContext);
 
 		this .addType (X3DConstants .X3DSoundSourceNode);
+
+		this .addChildObjects ("enabled", new Fields .SFBool (true));
 
 		this .volume = 0;
 		this .media  = null;
@@ -107,7 +111,7 @@ function (X3DChildNode,
 			}
 
 			this .media = value;
-	
+
 			if (value)
 			{
 				var media = value [0];
@@ -115,12 +119,21 @@ function (X3DChildNode,
 				this .setVolume (0);
 				this .duration_changed_ = media .duration;
 
+				this .resetElapsedTime ();
+
 				if (this .isActive_ .getValue ())
 				{
 					if (this .isPaused_ .getValue ())
+					{
 						this .set_pause ();
+					}
 					else
-						this .set_start ();
+					{
+						if (this .getLiveState ())
+							this .set_start ();
+						else
+							this .set_pause ();
+					}
 				}
 				else
 				{
@@ -206,7 +219,6 @@ function (X3DChildNode,
 					// The event order below is very important.
 
 					this .elapsedTime_ = this .getElapsedTime ();
-					this .cycleTime_   = this .getBrowser () .getCurrentTime ();
 				}
 				else
 				{
@@ -218,10 +230,10 @@ function (X3DChildNode,
 		{
 			this .set_ended ();
 
-			this .elapsedTime_ = this .getElapsedTime ();
+			if (this .media)
+				this .elapsedTime_ = this .getElapsedTime ();
 		},
 	});
 
 	return X3DSoundSourceNode;
 });
-

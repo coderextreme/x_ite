@@ -55,6 +55,7 @@ define ([
 	"x_ite/Components/Networking/X3DUrlObject",
 	"x_ite/Components/Grouping/X3DBoundedObject",
 	"x_ite/Components/Grouping/Group",
+	"x_ite/Bits/TraverseType",
 	"x_ite/Bits/X3DConstants",
 	"x_ite/InputOutput/FileLoader",
 ],
@@ -65,6 +66,7 @@ function (Fields,
           X3DUrlObject,
           X3DBoundedObject,
           Group,
+          TraverseType,
           X3DConstants,
           FileLoader)
 {
@@ -80,10 +82,8 @@ function (Fields,
 		
 		this .addChildObjects ("buffer", new Fields .SFTime ());
 
-		this .scene    = this .getBrowser () .getDefaultScene ();
-		this .group    = new Group (executionContext);
-		this .getBBox  = this .group .getBBox  .bind (this .group);
-		this .traverse = this .group .traverse  .bind (this .group);
+		this .scene = this .getBrowser () .getDefaultScene ();
+		this .group = new Group (executionContext);
 
 		this .group .addParent (this);
 	}
@@ -122,13 +122,19 @@ function (Fields,
 
 			this .group .setPrivate (true);
 			this .group .setup ();
-			this .group .isCameraObject_ .addFieldInterest (this .isCameraObject_);
+
+			this .group .isCameraObject_   .addFieldInterest (this .isCameraObject_);
+			this .group .isPickableObject_ .addFieldInterest (this .isPickableObject_);
 
 			this .load_   .addInterest ("set_load__",   this);
 			this .url_    .addInterest ("set_url__",    this);
 			this .buffer_ .addInterest ("set_buffer__", this);
 
 			this .set_url__ ();
+		},
+		getBBox: function (bbox)
+		{
+			return this .group .getBBox (bbox);
 		},
 		set_live__: function ()
 		{
@@ -212,7 +218,7 @@ function (Fields,
 		setInternalScene: function (scene)
 		{
 			this .scene .setLive (false);
-			this .scene .rootNodes .removeInterest ("setValue", this .group .children_);
+			this .scene .rootNodes .removeFieldInterest (this .group .children_);
 
 			// Set new scene.
 
@@ -221,7 +227,7 @@ function (Fields,
 			this .scene .setPrivate (this .getExecutionContext () .getPrivate ());
 			this .scene .setup ();
 
-			this .scene .rootNodes .addInterest ("setValue", this .group .children_);
+			this .scene .rootNodes .addFieldInterest (this .group .children_);
 			this .group .children_ = this .scene .rootNodes;
 
 			this .set_live__ ();
@@ -235,6 +241,30 @@ function (Fields,
 			///  nodes (due to performance reasons).
 
 			return this .scene;
+		},
+		traverse: function (type, renderObject)
+		{
+			switch (type)
+			{
+				case TraverseType .PICKING:
+				{
+					var
+						browser          = renderObject .getBrowser (),
+						pickingHierarchy = browser .getPickingHierarchy ();
+
+					pickingHierarchy .push (this);
+
+					this .group .traverse (type, renderObject);
+
+					pickingHierarchy .pop ();
+					return;
+				}
+				default:
+				{
+					this .group .traverse (type, renderObject);
+					return;
+				}
+			}
 		},
 	});
 

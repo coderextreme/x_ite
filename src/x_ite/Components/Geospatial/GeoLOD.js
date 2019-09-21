@@ -90,6 +90,7 @@ function (Fields,
 
 		this .range_ .setUnit ("length");
 
+		this .unload           = false;
 		this .rootGroup        = new Group (this .getBrowser () .getPrivateScene ());
 		this .rootInline       = new Inline (executionContext);
 		this .child1Inline     = new Inline (executionContext);
@@ -180,7 +181,7 @@ function (Fields,
 		},
 		getBBox: function (bbox) 
 		{
-			if (this .bboxSize_ .getValue () .equals (this .defaultBBoxSize))
+			if (this .bboxSize_ .getValue () .equals (this .getDefaultBBoxSize ()))
 			{
 				var level = this .level_changed_ .getValue ();
 
@@ -225,73 +226,72 @@ function (Fields,
 				this .childrenLoaded = false;
 			}
 		},
-		set_childLoadState__: (function ()
+		set_childLoadState__: function ()
 		{
-			var nodes = new Fields .MFNode ();
+			if (this .level_changed_ .getValue () !== 1)
+				return;
+	
+			var loaded = 0;
+	
+			if (this .child1Inline .checkLoadState () === X3DConstants .COMPLETE_STATE ||
+			    this .child1Inline .checkLoadState () === X3DConstants .FAILED_STATE)
+				++ loaded;
 
-			return function ()
+			if (this .child2Inline .checkLoadState () === X3DConstants .COMPLETE_STATE ||
+			    this .child2Inline .checkLoadState () === X3DConstants .FAILED_STATE)
+				++ loaded;
+
+			if (this .child3Inline .checkLoadState () === X3DConstants .COMPLETE_STATE ||
+			    this .child3Inline .checkLoadState () === X3DConstants .FAILED_STATE)
+				++ loaded;
+
+			if (this .child4Inline .checkLoadState () === X3DConstants .COMPLETE_STATE ||
+			    this .child4Inline .checkLoadState () === X3DConstants .FAILED_STATE)
+				++ loaded;
+	
+			if (loaded === 4)
 			{
-				if (this .level_changed_ .getValue () !== 1)
-					return;
+				this .childrenLoaded = true;
 	
-				var loaded = 0;
+				var children = this .children_;
+
+				children .length = 0;
+
+				var rootNodes = this .child1Inline .getInternalScene () .getRootNodes ();
 	
-				if (this .child1Inline .checkLoadState () === X3DConstants .COMPLETE_STATE)
-				{
-					var rootNodes = this .child1Inline .getInternalScene () .getRootNodes ();
+				for (var i = 0, length = rootNodes .length; i < length; ++ i)
+					children .push (rootNodes [i]);
 	
-					for (var i = 0, length = rootNodes .length; i < length; ++ i)
-						nodes .push (rootNodes [i]);
+				var rootNodes = this .child2Inline .getInternalScene () .getRootNodes ();
 	
-					++ loaded;
-				}
-				else if (this .child1Inline .checkLoadState () === X3DConstants .FAILED_STATE)
-					++ loaded;
-		
-				if (this .child2Inline .checkLoadState () === X3DConstants .COMPLETE_STATE)
-				{
-					var rootNodes = this .child2Inline .getInternalScene () .getRootNodes ();
+				for (var i = 0, length = rootNodes .length; i < length; ++ i)
+					children .push (rootNodes [i]);
 	
-					for (var i = 0, length = rootNodes .length; i < length; ++ i)
-						nodes .push (rootNodes [i]);
+				var rootNodes = this .child3Inline .getInternalScene () .getRootNodes ();
 	
-					++ loaded;
-				}
-				else if (this .child2Inline .checkLoadState () === X3DConstants .FAILED_STATE)
-					++ loaded;
-		
-				if (this .child3Inline .checkLoadState () === X3DConstants .COMPLETE_STATE)
-				{
-					var rootNodes = this .child3Inline .getInternalScene () .getRootNodes ();
+				for (var i = 0, length = rootNodes .length; i < length; ++ i)
+					children .push (rootNodes [i]);
 	
-					for (var i = 0, length = rootNodes .length; i < length; ++ i)
-						nodes .push (rootNodes [i]);
+				var rootNodes = this .child4Inline .getInternalScene () .getRootNodes ();
 	
-					++ loaded;
-				}
-				else if (this .child3Inline .checkLoadState () === X3DConstants .FAILED_STATE)
-					++ loaded;
-		
-				if (this .child4Inline .checkLoadState () === X3DConstants .COMPLETE_STATE)
-				{
-					var rootNodes = this .child4Inline .getInternalScene () .getRootNodes ();
-	
-					for (var i = 0, length = rootNodes .length; i < length; ++ i)
-						nodes .push (rootNodes [i]);
-	
-					++ loaded;
-				}
-				else if (this .child4Inline .checkLoadState () === X3DConstants .FAILED_STATE)
-					++ loaded;
-	
-				if (loaded === 4)
-				{
-					this .childrenLoaded = true;
-	
-					this .children_ .assign (nodes);
-				}
-			};
-		})(),
+				for (var i = 0, length = rootNodes .length; i < length; ++ i)
+					children .push (rootNodes [i]);
+			}
+		},
+		set_childCameraObject__: function ()
+		{
+			this .setCameraObject (this .child1Inline .getCameraObject () ||
+			                       this .child2Inline .getCameraObject () ||
+			                       this .child3Inline .getCameraObject () ||
+			                       this .child4Inline .getCameraObject ());
+		},
+		set_childPickableObject__: function ()
+		{
+			this .setPickableObject (this .child1Inline .getPickableObject () ||
+			                         this .child2Inline .getPickableObject () ||
+			                         this .child3Inline .getPickableObject () ||
+			                         this .child4Inline .getPickableObject ());
+		},
 		getLevel: function (modelViewMatrix)
 		{
 			var distance = this .getDistance (modelViewMatrix);
@@ -309,50 +309,132 @@ function (Fields,
 		},
 		traverse: function (type, renderObject)
 		{
-			if (type == TraverseType .DISPLAY)
+			switch (type)
 			{
-				var level = this .getLevel (this .modelViewMatrix .assign (renderObject .getModelViewMatrix () .get ()));
-			
-				if (level !== this .level_changed_ .getValue ())
+				case TraverseType .PICKING:
 				{
-					this .level_changed_ = level;
-			
-					switch (level)
+					var
+						browser          = renderObject .getBrowser (),
+						pickingHierarchy = browser .getPickingHierarchy ();
+
+					pickingHierarchy .push (this);
+
+					this .traverseChildren (type, renderObject);
+
+					pickingHierarchy .pop ();
+					return;
+				}
+				case TraverseType .DISPLAY:
+				{
+					var level = this .getLevel (this .modelViewMatrix .assign (renderObject .getModelViewMatrix () .get ()));
+				
+					if (level !== this .level_changed_ .getValue ())
 					{
-						case 0:
+						this .level_changed_ = level;
+				
+						switch (level)
 						{
-							if (this .rootNode_ .length)
+							case 0:
 							{
-								this .children_      = this .rootNode_;
-								this .childrenLoaded = false;
-							}
-							else
-							{
-								if (this .rootInline .checkLoadState () == X3DConstants .COMPLETE_STATE)
+								this .child1Inline .isCameraObject_   .removeInterest ("set_childCameraObject__",   this);
+								this .child2Inline .isCameraObject_   .removeInterest ("set_childCameraObject__",   this);
+								this .child3Inline .isCameraObject_   .removeInterest ("set_childCameraObject__",   this);
+								this .child4Inline .isCameraObject_   .removeInterest ("set_childCameraObject__",   this);
+								this .child1Inline .isPickableObject_ .removeInterest ("set_childPickableObject__", this);
+								this .child2Inline .isPickableObject_ .removeInterest ("set_childPickableObject__", this);
+								this .child3Inline .isPickableObject_ .removeInterest ("set_childPickableObject__", this);
+								this .child4Inline .isPickableObject_ .removeInterest ("set_childPickableObject__", this);
+	
+								if (this .rootNode_ .length)
 								{
-									this .children_      = this .rootInline .getInternalScene () .getRootNodes ();
+									this .rootGroup .isCameraObject_   .addFieldInterest (this .isCameraObject_);
+									this .rootGroup .isPickableObject_ .addFieldInterest (this .isPickableObject_);
+	
+									this .setCameraObject   (this .rootGroup .getCameraObject ());
+									this .setPickableObject (this .rootGroup .getPickableObject ());
+	
+									this .children_      = this .rootNode_;
 									this .childrenLoaded = false;
 								}
+								else
+								{
+									if (this .rootInline .checkLoadState () == X3DConstants .COMPLETE_STATE)
+									{
+										this .rootInline .isCameraObject_   .addFieldInterest (this .isCameraObject_);
+										this .rootInline .isPickableObject_ .addFieldInterest (this .isPickableObject_);
+	
+										this .setCameraObject   (this .rootInline .getCameraObject ());
+										this .setPickableObject (this .rootInline .getPickableObject ());
+	
+										this .children_      = this .rootInline .getInternalScene () .getRootNodes ();
+										this .childrenLoaded = false;
+									}
+								}
+
+								if (this .unload)
+								{
+									this .child1Inline .load_ = false;
+									this .child2Inline .load_ = false;
+									this .child3Inline .load_ = false;
+									this .child4Inline .load_ = false;
+								}
+
+								break;
 							}
-			
-							this .child1Inline .load_ = false;
-							this .child2Inline .load_ = false;
-							this .child3Inline .load_ = false;
-							this .child4Inline .load_ = false;
-							break;
-						}
-						case 1:
-						{
-							this .child1Inline .load_ = true;
-							this .child2Inline .load_ = true;
-							this .child3Inline .load_ = true;
-							this .child4Inline .load_ = true;
-							break;
+							case 1:
+							{
+								if (this .rootNode_ .length)
+								{
+									this .rootGroup .isCameraObject_   .removeFieldInterest (this .isCameraObject_);
+									this .rootGroup .isPickableObject_ .removeFieldInterest (this .isPickableObject_);
+								}
+								else
+								{
+									this .rootInline .isCameraObject_   .removeFieldInterest (this .isCameraObject_);
+									this .rootInline .isPickableObject_ .removeFieldInterest (this .isPickableObject_);
+								}
+	
+								this .child1Inline .isCameraObject_   .addInterest ("set_childCameraObject__",   this);
+								this .child2Inline .isCameraObject_   .addInterest ("set_childCameraObject__",   this);
+								this .child3Inline .isCameraObject_   .addInterest ("set_childCameraObject__",   this);
+								this .child4Inline .isCameraObject_   .addInterest ("set_childCameraObject__",   this);
+								this .child1Inline .isPickableObject_ .addInterest ("set_childPickableObject__", this);
+								this .child2Inline .isPickableObject_ .addInterest ("set_childPickableObject__", this);
+								this .child3Inline .isPickableObject_ .addInterest ("set_childPickableObject__", this);
+								this .child4Inline .isPickableObject_ .addInterest ("set_childPickableObject__", this);
+	
+								this .set_childCameraObject__ ();
+								this .set_childPickableObject__ ();
+
+								if (this .child1Inline .load_ .getValue ())
+								{
+									this .set_childLoadState__ ();
+								}
+								else
+								{
+									this .child1Inline .load_ = true;
+									this .child2Inline .load_ = true;
+									this .child3Inline .load_ = true;
+									this .child4Inline .load_ = true;
+								}
+
+								break;
+							}
 						}
 					}
+
+					this .traverseChildren (type, renderObject);
+					return;
+				}
+				default:
+				{
+					this .traverseChildren (type, renderObject);
+					return;
 				}
 			}
-
+		},
+		traverseChildren: function (type, renderObject)
+		{
 			switch (this .childrenLoaded ? this .level_changed_ .getValue () : 0)
 			{
 				case 0:

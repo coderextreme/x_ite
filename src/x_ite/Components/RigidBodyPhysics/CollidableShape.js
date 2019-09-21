@@ -54,8 +54,9 @@ define ([
 	"x_ite/Components/RigidBodyPhysics/X3DNBodyCollidableNode",
 	"x_ite/Bits/X3DConstants",
 	"x_ite/Bits/X3DCast",
+	"x_ite/Bits/TraverseType",
 	"standard/Math/Numbers/Vector3",
-	"lib/ammojs/ammo",
+	"lib/ammojs/Ammo",
 ],
 function (Fields,
           X3DFieldDefinition,
@@ -63,6 +64,7 @@ function (Fields,
           X3DNBodyCollidableNode, 
           X3DConstants,
           X3DCast,
+          TraverseType,
           Vector3,
           Ammo)
 {
@@ -74,6 +76,7 @@ function (Fields,
 
 		this .addType (X3DConstants .CollidableShape);
 
+		this .convex         = false;
 		this .shapeNode      = null;
 		this .geometryNode   = null;
 		this .collisionShape = null;
@@ -115,7 +118,7 @@ function (Fields,
 		},
 		getBBox: function (bbox)
 		{
-			if (this .bboxSize_ .getValue () .equals (this .defaultBBoxSize))
+			if (this .bboxSize_ .getValue () .equals (this .getDefaultBBoxSize ()))
 			{
 				var boundedObject = X3DCast (X3DConstants .X3DBoundedObject, this .shape_);
 		
@@ -127,29 +130,72 @@ function (Fields,
 		
 			return bbox .set (this .bboxSize_ .getValue (), this .bboxCenter_ .getValue ());
 		},
-		createConcaveGeometry: function ()
+		setConvex: function (value)
 		{
-			var vertices = this .geometryNode .getVertices () .getValue ();
-
-			if (vertices .length === 0)
-				return null;
-
-			this .triangleMesh = new Ammo .btTriangleMesh ();
-
-			for (var i = 0, length = vertices .length; i < length; i += 12)
-			{
-				this .triangleMesh .addTriangle (new Ammo .btVector3 (vertices [i],     vertices [i + 1], vertices [i + 2]),
-				                                 new Ammo .btVector3 (vertices [i + 4], vertices [i + 5], vertices [i + 6]),
-				                                 new Ammo .btVector3 (vertices [i + 8], vertices [i + 9], vertices [i + 10]));	
-			}
-
-			return new Ammo .btBvhTriangleMeshShape (this .triangleMesh, false);
+			this .convex = value;
 		},
+		getConvex: function ()
+		{
+			return this .convex;
+		},
+		createConvexGeometry: (function ()
+		{
+			var p = new Ammo .btVector3 ();
+
+			return function ()
+			{
+				var vertices = this .geometryNode .getVertices () .getValue ();
+	
+				if (vertices .length === 0)
+					return null;
+	
+				var convexHull = new Ammo .btConvexHullShape ();
+	
+				for (var i = 0, length = vertices .length; i < length; i += 4)
+				{
+					p .setValue (vertices [i], vertices [i + 1], vertices [i + 2]);
+					convexHull .addPoint (p, false);
+				}
+
+				convexHull .recalcLocalAabb ();	
+
+				return convexHull;
+			};
+		})(),
+		createConcaveGeometry: (function ()
+		{
+			var
+				p1 = new Ammo .btVector3 (),
+				p2 = new Ammo .btVector3 (),
+				p3 = new Ammo .btVector3 ();
+
+			return function ()
+			{
+				var vertices = this .geometryNode .getVertices () .getValue ();
+	
+				if (vertices .length === 0)
+					return null;
+	
+				this .triangleMesh = new Ammo .btTriangleMesh ();
+	
+				for (var i = 0, length = vertices .length; i < length; i += 12)
+				{
+					p1 .setValue (vertices [i],     vertices [i + 1], vertices [i + 2]);
+					p2 .setValue (vertices [i + 4], vertices [i + 5], vertices [i + 6]);
+					p3 .setValue (vertices [i + 8], vertices [i + 9], vertices [i + 10]);
+
+					this .triangleMesh .addTriangle (p1, p2, p3);	
+				}
+	
+				return new Ammo .btBvhTriangleMeshShape (this .triangleMesh, false);
+			};
+		})(),
 		set_shape__: function ()
 		{
 			if (this .shapeNode)
 			{
-				this .shapeNode .isCameraObject_ .removeFieldInterest (this .isCameraObject_);
+				this .shapeNode .isCameraObject_   .removeFieldInterest (this .isCameraObject_);
+				this .shapeNode .isPickableObject_ .removeFieldInterest (this .isPickableObject_);
 				this .shapeNode .geometry_ .removeInterest ("set_geometry__", this);
 			}
 
@@ -157,16 +203,19 @@ function (Fields,
 
 			if (this .shapeNode)
 			{
-				this .shapeNode .isCameraObject_ .addFieldInterest (this .isCameraObject_);
+				this .shapeNode .isCameraObject_   .addFieldInterest (this .isCameraObject_);
+				this .shapeNode .isPickableObject_ .addFieldInterest (this .isPickableObject_);
 				this .shapeNode .geometry_ .addInterest ("set_geometry__", this);
 
-				this .setCameraObject (this .shapeNode .getCameraObject ());
+				this .setCameraObject   (this .shapeNode .getCameraObject ());
+				this .setPickableObject (this .shapeNode .getPickableObject ());
 
 				delete this .traverse;
 			}
 			else
 			{
-				this .setCameraObject (false);
+				this .setCameraObject   (false);
+				this .setPickableObject (false);
 
 				this .traverse = Function .prototype;
 			}
@@ -188,116 +237,144 @@ function (Fields,
 
 			this .set_collidableGeometry__ ();
 		},
-		set_collidableGeometry__: function ()
+		set_collidableGeometry__: (function ()
 		{
-			this .removeCollidableGeometry ();
-			this .setOffset (0, 0, 0);
+			var
+				localScaling   = new Ammo .btVector3 (),
+				defaultScaling = new Ammo .btVector3 (1, 1, 1);
 
-			if (this .geometryNode && this .enabled_ .getValue ())
+			return function ()
 			{
-				switch (this .geometryNode .getType () [this .geometryNode .getType () .length - 1])
+				var ls = this .getCompoundShape () .getLocalScaling ();
+				localScaling .setValue (ls .x (), ls .y (), ls .z ());
+	
+				this .removeCollidableGeometry ();
+				this .setOffset (0, 0, 0);
+				this .getCompoundShape () .setLocalScaling (defaultScaling);
+	
+				if (this .enabled_ .getValue () && this .geometryNode && this .geometryNode .getGeometryType () > 1)
 				{
-					case X3DConstants .Box:
+					var type = this .geometryNode .getType ();
+	
+					for (var t = type .length - 1; t >= 0; -- t)
 					{
-						var
-							box  = this .geometryNode,
-							size = box .size_ .getValue ();
-
-						this .collisionShape = new Ammo .btBoxShape (new Ammo .btVector3 (size .x / 2, size .y / 2, size .z / 2));
-						break;
-					}
-					case X3DConstants .Cone:
-					{
-						var cone = this .geometryNode;
-		
-						if (cone .side_ .getValue () && cone .bottom_ .getValue ())
-							this .collisionShape = new Ammo .btConeShape (cone .bottomRadius_ .getValue (), cone .height_ .getValue ());
-						else
-							this .collisionShape = this .createConcaveGeometry ();
-
-						break;
-					}
-					case X3DConstants .Cylinder:
-					{
-						var
-							cylinder  = this .geometryNode,
-							radius    = cylinder .radius_ .getValue (),
-							height1_2 = cylinder .height_ .getValue () * 0.5;
-		
-						if (cylinder .side_ .getValue () && cylinder .top_ .getValue () && cylinder .bottom_ .getValue ())
-							this .collisionShape = new Ammo .btCylinderShape (new Ammo .btVector3 (radius, height1_2, radius));
-						else
-							this .collisionShape = this .createConcaveGeometry ();
-
-						break;
-					}
-					case X3DConstants .ElevationGrid:
-					{
-						var elevationGrid = this .geometryNode;
-		
-						if (elevationGrid .xDimension_ .getValue () > 1 && elevationGrid .zDimension_ .getValue () > 1)
+						switch (type [t])
 						{
-							var
-								min         = Number .POSITIVE_INFINITY,
-								max         = Number .NEGATIVE_INFINITY,
-								heightField = this .heightField = Ammo ._malloc (4 * elevationGrid .xDimension_ .getValue () * elevationGrid .zDimension_ .getValue ()),
-								i4          = 0;
-
-							for (var i = 0, length = elevationGrid .height_ .length; i < length; ++ i)
+							case X3DConstants .Box:
 							{
-								var value = elevationGrid .height_ [i];
-
-								min = Math .min (min, value);
-								max = Math .max (max, value);
-
-								Ammo .HEAPF32 [heightField + i4 >> 2] = elevationGrid .height_ [i];
-
-								i4 += 4;
+								var
+									box  = this .geometryNode,
+									size = box .size_ .getValue ();
+		
+								this .collisionShape = new Ammo .btBoxShape (new Ammo .btVector3 (size .x / 2, size .y / 2, size .z / 2));
+								break;
 							}
-
-							this .collisionShape = new Ammo .btHeightfieldTerrainShape (elevationGrid .xDimension_ .getValue (),
-							                                                            elevationGrid .zDimension_ .getValue (),
-							                                                            heightField,
-							                                                            1,
-							                                                            min,
-							                                                            max,
-							                                                            1,
-							                                                            "PHY_FLOAT",
-							                                                            true);
-			
-							this .collisionShape .setLocalScaling (new Ammo .btVector3 (elevationGrid .xSpacing_ .getValue (), 1, elevationGrid .zSpacing_ .getValue ()));
-
-							this .setOffset (elevationGrid .xSpacing_ .getValue () * (elevationGrid .xDimension_ .getValue () - 1) * 0.5,
-							                 (min + max) * 0.5,
-							                 elevationGrid .zSpacing_ .getValue () * (elevationGrid .zDimension_ .getValue () - 1) * 0.5);
+							case X3DConstants .Cone:
+							{
+								var cone = this .geometryNode;
+				
+								if (cone .side_ .getValue () && cone .bottom_ .getValue ())
+									this .collisionShape = new Ammo .btConeShape (cone .bottomRadius_ .getValue (), cone .height_ .getValue ());
+								else
+									this .collisionShape = this .createConcaveGeometry ();
+		
+								break;
+							}
+							case X3DConstants .Cylinder:
+							{
+								var
+									cylinder  = this .geometryNode,
+									radius    = cylinder .radius_ .getValue (),
+									height1_2 = cylinder .height_ .getValue () * 0.5;
+				
+								if (cylinder .side_ .getValue () && cylinder .top_ .getValue () && cylinder .bottom_ .getValue ())
+									this .collisionShape = new Ammo .btCylinderShape (new Ammo .btVector3 (radius, height1_2, radius));
+								else
+									this .collisionShape = this .createConcaveGeometry ();
+		
+								break;
+							}
+							case X3DConstants .ElevationGrid:
+							{
+								var elevationGrid = this .geometryNode;
+				
+								if (elevationGrid .xDimension_ .getValue () > 1 && elevationGrid .zDimension_ .getValue () > 1)
+								{
+									var
+										min         = Number .POSITIVE_INFINITY,
+										max         = Number .NEGATIVE_INFINITY,
+										heightField = this .heightField = Ammo ._malloc (4 * elevationGrid .xDimension_ .getValue () * elevationGrid .zDimension_ .getValue ()),
+										i4          = 0;
+		
+									for (var i = 0, length = elevationGrid .height_ .length; i < length; ++ i)
+									{
+										var value = elevationGrid .height_ [i];
+		
+										min = Math .min (min, value);
+										max = Math .max (max, value);
+		
+										Ammo .HEAPF32 [heightField + i4 >> 2] = elevationGrid .height_ [i];
+		
+										i4 += 4;
+									}
+		
+									this .collisionShape = new Ammo .btHeightfieldTerrainShape (elevationGrid .xDimension_ .getValue (),
+									                                                            elevationGrid .zDimension_ .getValue (),
+									                                                            heightField,
+									                                                            1,
+									                                                            min,
+									                                                            max,
+									                                                            1,
+									                                                            "PHY_FLOAT",
+									                                                            true);
+					
+									this .collisionShape .setLocalScaling (new Ammo .btVector3 (elevationGrid .xSpacing_ .getValue (), 1, elevationGrid .zSpacing_ .getValue ()));
+		
+									this .setOffset (elevationGrid .xSpacing_ .getValue () * (elevationGrid .xDimension_ .getValue () - 1) * 0.5,
+									                 (min + max) * 0.5,
+									                 elevationGrid .zSpacing_ .getValue () * (elevationGrid .zDimension_ .getValue () - 1) * 0.5);
+								}
+				
+								break;
+							}
+							case X3DConstants .Sphere:
+							{
+								var sphere = this .geometryNode;
+				
+								this .collisionShape = new Ammo .btSphereShape (sphere .radius_ .getValue ());
+								break;
+							}
+							case X3DConstants .X3DGeometryNode:
+							{
+								if (this .convex)
+									this .collisionShape = this .createConvexGeometry ();
+								else
+									this .collisionShape = this .createConcaveGeometry ();
+	
+								break;
+							}
+							default:
+							{
+								continue;
+							}
 						}
-		
-						break;
-					}
-					case X3DConstants .Sphere:
-					{
-						var sphere = this .geometryNode;
-		
-						this .collisionShape = new Ammo .btSphereShape (sphere .radius_ .getValue ());
-						break;
-					}
-					default:
-					{
-						this .collisionShape = this .createConcaveGeometry ();
+
 						break;
 					}
 				}
-			}
-			else
-			{
-				this .collisionShape = null;
-			}
+				else
+				{
+					this .collisionShape = null;
+				}
+	
+				if (this .collisionShape)
+					this .getCompoundShape () .addChildShape (this .getLocalTransform (), this .collisionShape);
 
-			if (this .collisionShape)
-				this .getCompoundShape () .addChildShape (this .getLocalTransform (), this .collisionShape);
-		
-			this .addNodeEvent ();
-		},
+				this .getCompoundShape () .setLocalScaling (localScaling);
+
+				this .addNodeEvent ();
+			};
+		})(),
 		removeCollidableGeometry: function ()
 		{
 			if (this .collisionShape)
@@ -321,14 +398,38 @@ function (Fields,
 		},
 		traverse: function (type, renderObject)
 		{
-			var modelViewMatrix = renderObject .getModelViewMatrix ();
-
-			modelViewMatrix .push ();
-			modelViewMatrix .multLeft (this .getMatrix ());
-	
-			this .shapeNode .traverse (type, renderObject);
+			switch (type)
+			{
+				case TraverseType .PICKING:
+				{
+					var
+						browser          = renderObject .getBrowser (),
+						pickingHierarchy = browser .getPickingHierarchy (),
+						modelViewMatrix  = renderObject .getModelViewMatrix ();
 		
-			modelViewMatrix .pop ();
+					pickingHierarchy .push (this);
+					modelViewMatrix .push ();
+					modelViewMatrix .multLeft (this .getMatrix ());
+			
+					this .shapeNode .traverse (type, renderObject);
+				
+					modelViewMatrix .pop ();
+					pickingHierarchy .pop ();
+					break;
+				}
+				default:
+				{
+					var modelViewMatrix = renderObject .getModelViewMatrix ();
+		
+					modelViewMatrix .push ();
+					modelViewMatrix .multLeft (this .getMatrix ());
+			
+					this .shapeNode .traverse (type, renderObject);
+				
+					modelViewMatrix .pop ();
+					break;
+				}
+			}
 		},
 		dispose: function ()
 		{

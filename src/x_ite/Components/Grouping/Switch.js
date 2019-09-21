@@ -52,15 +52,19 @@ define ([
 	"x_ite/Basic/X3DFieldDefinition",
 	"x_ite/Basic/FieldDefinitionArray",
 	"x_ite/Components/Grouping/X3DGroupingNode",
+	"x_ite/Bits/TraverseType",
 	"x_ite/Bits/X3DCast",
 	"x_ite/Bits/X3DConstants",
+	"standard/Math/Geometry/Box3",
 ],
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DGroupingNode, 
+          X3DGroupingNode,
+          TraverseType,
           X3DCast,
-          X3DConstants)
+          X3DConstants,
+          Box3)
 {
 "use strict";
 
@@ -101,14 +105,15 @@ function (Fields,
 		initialize: function ()
 		{
 			X3DGroupingNode .prototype .initialize .call (this);
-			
+
 			this .whichChoice_ .addInterest ("set_whichChoice__", this);
-			
+			this .children_    .addInterest ("set_whichChoice__", this);
+
 			this .set_whichChoice__ ();
 		},
-		getBBox: function (bbox) 
+		getBBox: function (bbox)
 		{
-			if (this .bboxSize_ .getValue () .equals (this .defaultBBoxSize))
+			if (this .bboxSize_ .getValue () .equals (this .getDefaultBBoxSize ()))
 			{
 				var boundedObject = X3DCast (X3DConstants .X3DBoundedObject, this .child);
 
@@ -120,27 +125,73 @@ function (Fields,
 
 			return bbox .set (this .bboxSize_ .getValue (), this .bboxCenter_ .getValue ());
 		},
-		set_whichChoice__: function ()
+		getSubBBox: function (bbox)
 		{
-			this .set_cameraObjects__ ();
+			return this .getBBox (bbox);
 		},
-		set_cameraObjects__: function ()
+		set_whichChoice__: function ()
 		{
 			this .child = this .getChild (this .whichChoice_ .getValue ());
 
+			this .set_cameraObjects__ ();
+			this .set_pickableObjects__ ();
+		},
+		set_cameraObjects__: function ()
+		{
 			if (this .child && this .child .getCameraObject)
 				this .setCameraObject (this .child .getCameraObject ());
 			else
 				this .setCameraObject (false);
 		},
-		traverse: function (type, renderObject)
+		set_pickableObjects__: function ()
 		{
-			if (this .child)
-				this .child .traverse (type, renderObject);
+			if (this .getTransformSensors () .size)
+				this .setPickableObject (true);
+			else if (this .child && this .child .getPickableObject)
+				this .setPickableObject (this .child .getPickableObject ());
+			else
+				this .setPickableObject (false);
 		},
+		traverse: (function ()
+		{
+			var bbox = new Box3 ();
+
+			return function (type, renderObject)
+			{
+				var child = this .child;
+
+				if (child)
+				{
+					if (type === TraverseType .PICKING)
+					{
+						if (this .getTransformSensors () .size)
+						{
+							this .getSubBBox (bbox) .multRight (renderObject .getModelViewMatrix () .get ());
+
+							this .getTransformSensors () .forEach (function (transformSensorNode)
+							{
+								transformSensorNode .collect (bbox);
+							});
+						}
+
+						var
+							browser          = renderObject .getBrowser (),
+							pickingHierarchy = browser .getPickingHierarchy ();
+
+						pickingHierarchy .push (this);
+
+						child .traverse (type, renderObject);
+
+						pickingHierarchy .pop ();
+					}
+					else
+					{
+						child .traverse (type, renderObject);
+					}
+				}
+			};
+		})(),
 	});
 
 	return Switch;
 });
-
-

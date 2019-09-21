@@ -67,7 +67,7 @@ function ($,
           Fields,
           Parser,
           X3DParser,
-          HTMLSupport,   
+          HTMLSupport,
           X3DExternProtoDeclaration,
           X3DProtoDeclaration,
           X3DConstants)
@@ -137,28 +137,122 @@ function ($,
 							this .x3dElement (X3D [i]);
 					}
 					else
-						this .childrenElements (xmlElement);
+					{
+						if (this .success)
+						{
+							require (this .getProviderUrls (),
+							function ()
+							{
+								try
+								{
+									this .childrenElements (xmlElement);
+
+									this .success (this);
+								}
+								catch (error)
+								{
+									if (this .error)
+										this .error (error);
+								}
+							}
+							.bind (this),
+							function (error)
+							{
+								if (this .error)
+									this .error (error);
+							}
+							.bind (this));
+						}
+						else
+						{
+							this .childrenElements (xmlElement);
+						}
+					}
 
 					break;
 				}
 				case "X3D":
+				{
 					this .x3dElement (xmlElement);
 					break;
+				}
 				case "Scene":
 				case "SCENE":
-					this .sceneElement (xmlElement);
+				{
+					if (this .success)
+					{
+						require (this .getProviderUrls (),
+						function ()
+						{
+							try
+							{
+								this .sceneElement (xmlElement);
+
+								this .success (this);
+							}
+							catch (error)
+							{
+								if (this .error)
+									this .error (error);
+							}
+						}
+						.bind (this),
+						function (error)
+						{
+							if (this .error)
+								this .error (error);
+						}
+						.bind (this));
+					}
+					else
+					{
+						this .sceneElement (xmlElement);
+					}
+
 					break;
+				}
 				default:
-					this .childElement (xmlElement);
+				{
+					if (this .success)
+					{
+						require (this .getProviderUrls (),
+						function ()
+						{
+							try
+							{
+								this .childrenElements (xmlElement);
+
+								this .success (this);
+							}
+							catch (error)
+							{
+								if (this .error)
+									this .error (error);
+							}
+						}
+						.bind (this),
+						function (error)
+						{
+							if (this .error)
+								this .error (error);
+						}
+						.bind (this));
+					}
+					else
+					{
+						this .childrenElements (xmlElement);
+					}
+
 					break;
+				}
 			}
 		},
 		x3dElement: function (xmlElement)
 		{
-			// Profile
-
 			try
 			{
+				// Profile
+
 				var
 					profileNameId = xmlElement .getAttribute ("profile"),
 					profile       = this .getBrowser () .getProfile (profileNameId || "Full");
@@ -175,7 +269,7 @@ function ($,
 			var specificationVersion = xmlElement .getAttribute ("version");
 
 			if (specificationVersion)
-				this .getScene () .specificationVersion = specificationVersion;
+				this .getScene () .setSpecificationVersion (specificationVersion);
 
 			// Process child nodes
 
@@ -194,17 +288,19 @@ function ($,
 						for (var i = 0; i < childNodes .length; ++ i)
 							this .x3dElementChildScene (childNodes [i])
 
-						this .success ();
+						this .success (this);
 					}
 					catch (error)
 					{
-						this .error (error);
+						if (this .error)
+							this .error (error);
 					}
 				}
 				.bind (this),
 				function (error)
 				{
-					this .error (error);
+					if (this .error)
+						this .error (error);
 				}
 				.bind (this));
 			}
@@ -237,7 +333,7 @@ function ($,
 		headElement: function (xmlElement)
 		{
 			var childNodes = xmlElement .childNodes;
-	
+
 			for (var i = 0; i < childNodes .length; ++ i)
 				this .headElementChild (childNodes [i]);
 
@@ -274,15 +370,15 @@ function ($,
 				var
 					componentNameIdCharacters = xmlElement .getAttribute ("name"),
 					componentSupportLevel = parseInt (xmlElement .getAttribute ("level"));
-	
+
 				if (componentNameIdCharacters === null)
 					return console .warn ("XML Parser Error: Bad component statement: Expected name attribute.");
-	
+
 				if (componentSupportLevel === null)
 					return console .warn ("XML Parser Error: Bad component statement: Expected level attribute.");
 
 				var component = this .getBrowser () .getComponent (componentNameIdCharacters, componentSupportLevel);
-	
+
 				this .getScene () .addComponent (component);
 			}
 			catch (error)
@@ -315,7 +411,7 @@ function ($,
 				metavalue = xmlElement .getAttribute ("content");
 
 			if (metakey === null)
-				return console .warn ("XML Parser Error: Bad meta statement: Expected name attribute.");	
+				return console .warn ("XML Parser Error: Bad meta statement: Expected name attribute.");
 
 			if (metavalue === null)
 				return console .warn ("XML Parser Error: Bad meta statement: Expected content attribute.");
@@ -344,7 +440,7 @@ function ($,
 				case "#cdata-section":
 					this .cdataNode (xmlElement);
 					return;
-				
+
 				case "ExternProtoDeclare":
 				case "EXTERNPROTODECLARE":
 					this .externProtoDeclareElement (xmlElement);
@@ -401,12 +497,12 @@ function ($,
 
 				if (url === null)
 					return console .warn ("XML Parser Error: Bad ExternProtoDeclare statement: Expected url attribute.");
-				
+
 				this .parser .setInput (url);
 				Parser .prototype .sfstringValues .call (this .parser, this .url);
 
 				var externproto = new X3DExternProtoDeclaration (this .getExecutionContext ());
-							
+
 				this .pushParent (externproto);
 				this .protoInterfaceElement (xmlElement); // parse fields
 				this .popParent ();
@@ -415,7 +511,7 @@ function ($,
 				externproto .url_ = this .url;
 				externproto .setup ();
 
-				this .getExecutionContext () .externprotos .add (name, externproto);	
+				this .getExecutionContext () .externprotos .add (name, externproto);
 			}
 		},
 		protoDeclareElement: function (xmlElement)
@@ -503,39 +599,39 @@ function ($,
 					return;
 
 				var node = this .getParent ();
-	
+
 				if (! (node instanceof X3DBaseNode))
 					return;
 
 				if (! node .hasUserDefinedFields ())
 					return;
-	
+
 				var accessType = AccessType [xmlElement .getAttribute ("accessType")];
-	
+
 				if (accessType === undefined)
 					accessType = X3DConstants .initializeOnly;
-	
+
 				var type = Fields [xmlElement .getAttribute ("type")];
-	
+
 				if (type === undefined)
 					return;
-	
+
 				var name = xmlElement .getAttribute ("name");
-	
+
 				if (! this .id (name))
 					return;
-	
+
 				var field = new type ();
-	
+
 				if (accessType & X3DConstants .initializeOnly)
 				{
 					this .fieldValue (field, xmlElement .getAttribute ("value"));
-	
+
 					this .pushParent (field);
 					this .childrenElements (xmlElement);
 					this .popParent ();
 				}
-	
+
 				node .addUserDefinedField (accessType, name, field);
 			}
 			catch (error)
@@ -623,6 +719,9 @@ function ($,
 				{
 					var node = this .getExecutionContext () .createProto (name, false);
 
+					if (! node)
+						throw new Error ("Unkown proto or externproto type '" + name + "'.");
+
 					//AP: attach node to DOM xmlElement for access from DOM.
 					xmlElement .x3d = node;
 
@@ -684,6 +783,9 @@ function ($,
 
 				var node = this .getExecutionContext () .createNode (xmlElement .nodeName, false);
 
+				if (! node)
+					throw new Error ("Unkown node type '" + xmlElement .nodeName + "', you probably have insufficient component/profile statements.");
+
 				//AP: attach node to DOM xmlElement for access from DOM.
 				xmlElement .x3d = node;
 
@@ -734,6 +836,7 @@ function ($,
 			}
 			catch (error)
 			{
+				console .log (error);
 				console .warn ("XML Parser Error: " + error .message);
 			}
 		},
@@ -915,19 +1018,19 @@ function ($,
 						parent .setSet (true);
 						return;
 				}
-					
+
 				return;
 			}
-				
+
 			// parent is a node.
 
 			try
 			{
 				var containerField = xmlElement .getAttribute ("containerField");
-				
+
 				if (! containerField)
 					containerField = node .getContainerField ();
-				
+
 				var field = parent .getField (containerField);
 
 				switch (field .getType ())
@@ -978,7 +1081,7 @@ function ($,
 		{
 			if (name !== name .toLowerCase())
 				return name ;
-			
+
 			return HTMLSupport .attributeLowerCaseToCamelCase [name] ;
 		},
 	});

@@ -62,37 +62,48 @@ function (Fields,
 {
 "use strict";
 
-	var matrix3 = new Matrix3 ();
-
 	function X3DProgrammableShaderObject (executionContext)
 	{
 		this .addType (X3DConstants .X3DProgrammableShaderObject);
 
-		this .x3d_ClipPlane             = [ ];
-		this .x3d_LightType             = [ ];
-		this .x3d_LightOn               = [ ];
-		this .x3d_LightColor            = [ ];
-		this .x3d_LightIntensity        = [ ];
-		this .x3d_LightAmbientIntensity = [ ];
-		this .x3d_LightAttenuation      = [ ];
-		this .x3d_LightLocation         = [ ];
-		this .x3d_LightDirection        = [ ];
-		this .x3d_LightBeamWidth        = [ ];
-		this .x3d_LightCutOffAngle      = [ ];
-		this .x3d_LightRadius           = [ ];
-		this .x3d_LightMatrix           = [ ];
-		this .x3d_ShadowIntensity       = [ ];
-		this .x3d_ShadowColor           = [ ];
-		this .x3d_ShadowBias            = [ ];
-		this .x3d_ShadowMatrix          = [ ];
-		this .x3d_ShadowMapSize         = [ ];
-		this .x3d_ShadowMap             = [ ];
+		this .x3d_ClipPlane                           = [ ];
+		this .x3d_LightType                           = [ ];
+		this .x3d_LightOn                             = [ ];
+		this .x3d_LightColor                          = [ ];
+		this .x3d_LightIntensity                      = [ ];
+		this .x3d_LightAmbientIntensity               = [ ];
+		this .x3d_LightAttenuation                    = [ ];
+		this .x3d_LightLocation                       = [ ];
+		this .x3d_LightDirection                      = [ ];
+		this .x3d_LightBeamWidth                      = [ ];
+		this .x3d_LightCutOffAngle                    = [ ];
+		this .x3d_LightRadius                         = [ ];
+		this .x3d_LightMatrix                         = [ ];
+		this .x3d_ShadowIntensity                     = [ ];
+		this .x3d_ShadowColor                         = [ ];
+		this .x3d_ShadowBias                          = [ ];
+		this .x3d_ShadowMatrix                        = [ ];
+		this .x3d_ShadowMapSize                       = [ ];
+		this .x3d_ShadowMap                           = [ ];
+		this .x3d_TextureType                         = [ ];
+		this .x3d_Texture2D                           = [ ];
+		this .x3d_Texture3D                           = [ ];
+		this .x3d_CubeMapTexture                      = [ ];
+		this .x3d_MultiTextureMode                    = [ ];
+		this .x3d_MultiTextureAlphaMode               = [ ];
+		this .x3d_MultiTextureSource                  = [ ];
+		this .x3d_MultiTextureFunction                = [ ];
+		this .x3d_TextureCoordinateGeneratorMode      = [ ];
+		this .x3d_TextureCoordinateGeneratorParameter = [ ];
+		this .x3d_TexCoord                            = [ ];
+		this .x3d_TextureMatrix                       = [ ];
 
 		this .numClipPlanes   = 0;
+		this .fogNode         = null;
 		this .numGlobalLights = 0;
 		this .numLights       = 0;
-
-		this .textures = new Map ();
+		this .lightNodes      = [ ];
+		this .textures        = new Map ();
 	}
 
 	X3DProgrammableShaderObject .prototype =
@@ -111,8 +122,7 @@ function (Fields,
 			for (var i = 0, length = this .x3d_MaxClipPlanes; i < length; ++ i)
 				defaultClipPlanes .push (0, 0, -1, 0);
 
-			this .defaultClipPlanesArray = new Float32Array (defaultClipPlanes);
-			this .textureTypeArray       = new Int32Array (this .x3d_MaxTextures);
+			this .defaultClipPlanesArray  = new Float32Array (defaultClipPlanes);
 		},
 		hasUserDefinedFields: function ()
 		{
@@ -120,9 +130,6 @@ function (Fields,
 		},
 		bindAttributeLocations: function (gl, program)
 		{
-			gl .bindAttribLocation (program, 3, "x3d_Color");
-			gl .bindAttribLocation (program, 2, "x3d_TexCoord");
-			gl .bindAttribLocation (program, 1, "x3d_Normal");
 			gl .bindAttribLocation (program, 0, "x3d_Vertex");
 		},
 		getDefaultUniforms: function ()
@@ -130,7 +137,8 @@ function (Fields,
 			// Get uniforms and attributes.
 
 			var
-				gl      = this .getBrowser () .getContext (),
+				browser = this .getBrowser (),
+				gl      = browser .getContext (),
 				program = this .getProgram ();
 
 			this .x3d_LogarithmicFarFactor1_2 = gl .getUniformLocation (program, "x3d_LogarithmicFarFactor1_2");
@@ -147,8 +155,16 @@ function (Fields,
 			this .x3d_FogColor           = this .getUniformLocation (gl, program, "x3d_Fog.color",           "x3d_FogColor");
 			this .x3d_FogVisibilityRange = this .getUniformLocation (gl, program, "x3d_Fog.visibilityRange", "x3d_FogVisibilityRange");
 			this .x3d_FogMatrix          = this .getUniformLocation (gl, program, "x3d_Fog.matrix",          "x3d_FogMatrix");
+			this .x3d_FogCoord           = this .getUniformLocation (gl, program, "x3d_Fog.fogCoord",        "x3d_FogCoord");
 
-			this .x3d_LinewidthScaleFactor = gl .getUniformLocation (program, "x3d_LinewidthScaleFactor");
+			this .x3d_LinePropertiesApplied              = gl .getUniformLocation (program, "x3d_LineProperties.applied");
+			this .x3d_LinePropertiesLinewidthScaleFactor = this .getUniformLocation (gl, program, "x3d_LineProperties.linewidthScaleFactor", "x3d_LinewidthScaleFactor");
+			this .x3d_LinePropertiesLinetype             = gl .getUniformLocation (program, "x3d_LineProperties.linetype");
+
+			this .x3d_FillPropertiesFilled     = gl .getUniformLocation (program, "x3d_FillProperties.filled");
+			this .x3d_FillPropertiesHatched    = gl .getUniformLocation (program, "x3d_FillProperties.hatched");
+			this .x3d_FillPropertiesHatchColor = gl .getUniformLocation (program, "x3d_FillProperties.hatchColor");
+			this .x3d_FillPropertiesHatchStyle = gl .getUniformLocation (program, "x3d_FillProperties.hatchStyle");
 
 			this .x3d_Lighting      = gl .getUniformLocation (program, "x3d_Lighting");
 			this .x3d_ColorMaterial = gl .getUniformLocation (program, "x3d_ColorMaterial");
@@ -192,22 +208,38 @@ function (Fields,
 			this .x3d_BackShininess        = this .getUniformLocation (gl, program, "x3d_BackMaterial.shininess",        "x3d_BackShininess");
 			this .x3d_BackTransparency     = this .getUniformLocation (gl, program, "x3d_BackMaterial.transparency",     "x3d_BackTransparency");
 
-			this .x3d_NumTextures    = gl .getUniformLocation (program, "x3d_NumTextures");
-			this .x3d_TextureType    = gl .getUniformLocation (program, "x3d_TextureType");
-			this .x3d_Texture2D      = this .getUniformLocation (gl, program, "x3d_Texture2D", "x3d_Texture");
-			this .x3d_CubeMapTexture = gl .getUniformLocation (program, "x3d_CubeMapTexture");
+			this .x3d_NumTextures       = gl .getUniformLocation (program, "x3d_NumTextures");
+			this .x3d_MultiTextureColor = gl .getUniformLocation (program, "x3d_MultiTextureColor");
+
+			for (var i = 0; i < this .x3d_MaxTextures; ++ i)
+			{
+				this .x3d_TextureType [i]    = gl .getUniformLocation (program, "x3d_TextureType[" + i + "]");
+				this .x3d_Texture2D [i]      = gl .getUniformLocation (program, "x3d_Texture2D[" + i + "]");
+				this .x3d_Texture3D [i]      = gl .getUniformLocation (program, "x3d_Texture3D[" + i + "]");
+				this .x3d_CubeMapTexture [i] = gl .getUniformLocation (program, "x3d_CubeMapTexture[" + i + "]");
+
+				this .x3d_MultiTextureMode [i]      = gl .getUniformLocation (program, "x3d_MultiTexture[" + i + "].mode");
+				this .x3d_MultiTextureAlphaMode [i] = gl .getUniformLocation (program, "x3d_MultiTexture[" + i + "].alphaMode");
+				this .x3d_MultiTextureSource [i]    = gl .getUniformLocation (program, "x3d_MultiTexture[" + i + "].source");
+				this .x3d_MultiTextureFunction [i]  = gl .getUniformLocation (program, "x3d_MultiTexture[" + i + "].function");
+
+				this .x3d_TextureCoordinateGeneratorMode [i]      = gl .getUniformLocation (program, "x3d_TextureCoordinateGenerator[" + i + "].mode");
+				this .x3d_TextureCoordinateGeneratorParameter [i] = gl .getUniformLocation (program, "x3d_TextureCoordinateGenerator[" + i + "].parameter");
+
+				this .x3d_TextureMatrix [i] = gl .getUniformLocation (program, "x3d_TextureMatrix[" + i + "]");
+				this .x3d_TexCoord [i]      = this .getAttribLocation (gl, program, "x3d_TexCoord" + i, i ? "" : "x3d_TexCoord");
+			}
 
 			this .x3d_Viewport          = gl .getUniformLocation (program, "x3d_Viewport");
 			this .x3d_ProjectionMatrix  = gl .getUniformLocation (program, "x3d_ProjectionMatrix");
 			this .x3d_ModelViewMatrix   = gl .getUniformLocation (program, "x3d_ModelViewMatrix");
 			this .x3d_NormalMatrix      = gl .getUniformLocation (program, "x3d_NormalMatrix");
-			this .x3d_TextureMatrix     = gl .getUniformLocation (program, "x3d_TextureMatrix");
 			this .x3d_CameraSpaceMatrix = gl .getUniformLocation (program, "x3d_CameraSpaceMatrix");
-		
+
+			this .x3d_FogDepth = gl .getAttribLocation (program, "x3d_FogDepth");
 			this .x3d_Color    = gl .getAttribLocation (program, "x3d_Color");
-			this .x3d_TexCoord = gl .getAttribLocation (program, "x3d_TexCoord");
 			this .x3d_Normal   = gl .getAttribLocation (program, "x3d_Normal");
-			this .x3d_Vertex   = gl .getAttribLocation (program, "x3d_Vertex");	
+			this .x3d_Vertex   = gl .getAttribLocation (program, "x3d_Vertex");
 
 			this .x3d_ParticleId          = gl .getUniformLocation (program, "x3d_Particle.id");
 			this .x3d_ParticleLife        = gl .getUniformLocation (program, "x3d_Particle.life");
@@ -215,15 +247,28 @@ function (Fields,
 
 			// Fill special uniforms with default values, textures for units are created in X3DTexturingContext.
 
-			gl .uniform1f  (this .x3d_LinewidthScaleFactor, 1);
-			gl .uniform1iv (this .x3d_TextureType,          new Int32Array ([0]));
-			gl .uniform1iv (this .x3d_Texture2D,            new Int32Array ([2])); // Set texture to active texture unit 2.
-			gl .uniform1iv (this .x3d_CubeMapTexture,       new Int32Array ([4])); // Set cube map texture to active texture unit 3.
-			gl .uniform1iv (gl .getUniformLocation (program, "x3d_ShadowMap"), new Int32Array (this .x3d_MaxLights) .fill (5)); // Set cube map texture to active texture unit 5, the whole uniform must be set at once.
-			
-			gl .uniform1i (this .x3d_NumTextures, 1);
+			gl .uniform1i  (this .x3d_LinePropertiesLinetype,   browser .getLinetypeUnit ());
+			gl .uniform1i  (this .x3d_FillPropertiesHatchStyle, browser .getHatchStyleUnit ());
+			gl .uniform1i  (this .x3d_NumTextures,              0);
+			gl .uniform1iv (this .x3d_Texture2D [0],            browser .getTexture2DUnits ());
+			gl .uniform1iv (this .x3d_CubeMapTexture [0],       browser .getCubeMapTextureUnits ());
+			gl .uniform1iv (this .x3d_ShadowMap [0],            new Int32Array (this .x3d_MaxLights) .fill (browser .getShadowTextureUnit ()));
+
+			if (gl .getVersion () >= 2)
+				gl .uniform1iv (this .x3d_Texture3D [0], browser .getTexture3DUnits ());
 
 			// Return true if valid, otherwise false.
+
+			if (this .x3d_FogDepth < 0)
+			{
+				this .enableFogDepthAttribute  = Function .prototype;
+				this .disableFogDepthAttribute = Function .prototype;
+			}
+			else
+			{
+				delete this .enableFogDepthAttribute;
+				delete this .disableFogDepthAttribute;
+			}
 
 			if (this .x3d_Color < 0)
 			{
@@ -236,15 +281,15 @@ function (Fields,
 				delete this .disableColorAttribute;
 			}
 
-			if (this .x3d_TexCoord < 0)
-			{
-				this .enableTexCoordAttribute  = Function .prototype;
-				this .disableTexCoordAttribute = Function .prototype;
-			}
-			else
+			if (this .x3d_TexCoord .some (function (location) { return location >= 0; }))
 			{
 				delete this .enableTexCoordAttribute;
 				delete this .disableTexCoordAttribute;
+			}
+			else
+			{
+				this .enableTexCoordAttribute  = Function .prototype;
+				this .disableTexCoordAttribute = Function .prototype;
 			}
 
 			if (this .x3d_Normal < 0)
@@ -277,12 +322,40 @@ function (Fields,
 
 			// Look for depreciated location.
 
-			location = gl .getUniformLocation (program, depreciated);
+			if (depreciated)
+			{
+				location = gl .getUniformLocation (program, depreciated);
 
-			if (location)
-				console .error (this .getTypeName (), this .getName (), "Using uniform location name »" + depreciated + "« is depreciated. See http://create3000.de/x_ite/custom-shaders/.");
+				if (location)
+					console .error (this .getTypeName (), this .getName (), "Using uniform location name »" + depreciated + "« is depreciated, use »" + name + "«. See http://create3000.de/x_ite/custom-shaders/.");
 
-			return location;
+				return location;
+			}
+
+			return 0;
+		},
+		getAttribLocation: function (gl, program, name, depreciated)
+		{
+			// Legacy function to get uniform location.
+
+			var location = gl .getAttribLocation (program, name);
+
+			if (location >= 0)
+				return location;
+
+			// Look for depreciated location.
+
+			if (depreciated)
+			{
+				location = gl .getAttribLocation (program, depreciated);
+
+				if (location >= 0)
+					console .error (this .getTypeName (), this .getName (), "Using attribute location name »" + depreciated + "« is depreciated, use »" + name + "«. See http://create3000.de/x_ite/custom-shaders/.");
+
+				return location;
+			}
+
+			return -1;
 		},
 		addShaderFields: function ()
 		{
@@ -293,7 +366,7 @@ function (Fields,
 
 			this .textures .clear ();
 
-			for (var field of userDefinedFields .values ())
+			userDefinedFields .forEach (function (field)
 			{
 				var location = gl .getUniformLocation (program, field .getName ());
 
@@ -398,374 +471,381 @@ function (Fields,
 
 					this .set_field__ (field);
 				}
-			}
+			},
+			this);
 		},
 		removeShaderFields: function ()
 		{
 			var userDefinedFields = this .getUserDefinedFields ();
 
-			for (var field of userDefinedFields .values ())
+			userDefinedFields .forEach (function (field)
 			{
 				field .removeInterest ("set_field__", this);
-			}
+			},
+			this);
 		},
-		set_field__: function (field)
+		set_field__: (function ()
 		{
-			var
-				gl       = this .getBrowser () .getContext (),
-				location = field ._uniformLocation;
+			var matrix3 = new Matrix3 ();
 
-			if (location)
+			return function (field)
 			{
-				switch (field .getType ())
+				var
+					gl       = this .getBrowser () .getContext (),
+					location = field ._uniformLocation;
+
+				if (location)
 				{
-					case X3DConstants .SFBool:
-					case X3DConstants .SFInt32:
+					switch (field .getType ())
 					{
-						gl .uniform1i (location, field .getValue ());
-						return;
-					}
-					case X3DConstants .SFColor:
-					{
-						var value = field .getValue ();
-						gl .uniform3f (location, value .r, value .g, value .b);
-						return;
-					}
-					case X3DConstants .SFColorRGBA:
-					{
-						var value = field .getValue ();
-						gl .uniform4f (location, value .r, value .g, value .b, value .a);
-						return;
-					}
-					case X3DConstants .SFDouble:
-					case X3DConstants .SFFloat:
-					case X3DConstants .SFTime:
-					{
-						gl .uniform1f (location, field .getValue ());
-						return;
-					}
-					case X3DConstants .SFImage:
-					{
-						var
-							array  = location .array,
-							pixels = field .array,
-							length = 3 + pixels .length;
-	
-						if (length !== array .length)
-							array = location .array = new Int32Array (length);
-	
-						array [0] = field .width;
-						array [1] = field .height;
-						array [2] = field .comp;
-	
-						for (var a = 3, p = 0, length = pixels .length; p < length; ++ p, ++ a)
-							array [a] = pixels [p];
-	
-						gl .uniform1iv (location, array);
-						return;
-					}
-					case X3DConstants .SFMatrix3d:
-					case X3DConstants .SFMatrix3f:
-					{
-						location .array .set (field .getValue ());
-	
-						gl .uniformMatrix3fv (location, false, location .array);
-						return;
-					}
-					case X3DConstants .SFMatrix4d:
-					case X3DConstants .SFMatrix4f:
-					{
-						location .array .set (field .getValue ());
-	
-						gl .uniformMatrix4fv (location, false, location .array);
-						return;
-					}
-					case X3DConstants .SFNode:
-					{
-						var texture = X3DCast (X3DConstants .X3DTextureNode, field);
-		
-						if (texture)
+						case X3DConstants .SFBool:
+						case X3DConstants .SFInt32:
 						{
-							this .textures .set (location, { name: field .getName (), texture: texture, textureUnit: undefined } );
+							gl .uniform1i (location, field .getValue ());
 							return;
 						}
-
-						this .textures .delete (location);
-						return;
-					}
-					case X3DConstants .SFRotation:
-					{
-						field .getValue () .getMatrix (location .array);
-
-						gl .uniformMatrix3fv (location, false, location .array);
-						return;
-					}
-					case X3DConstants .SFString:
-					{
-						return;
-					}
-					case X3DConstants .SFVec2d:
-					case X3DConstants .SFVec2f:
-					{
-						var value = field .getValue ();
-						gl .uniform2f (location, value .x, value .y);
-						return;
-					}
-					case X3DConstants .SFVec3d:
-					case X3DConstants .SFVec3f:
-					{
-						var value = field .getValue ();
-						gl .uniform3f (location, value .x, value .y, value .z);
-						return;
-					}
-					case X3DConstants .SFVec4d:
-					case X3DConstants .SFVec4f:
-					{
-						var value = field .getValue ();
-						gl .uniform4f (location, value .x, value .y, value .z, value .w);
-						return;
-					}
-					case X3DConstants .MFBool:
-					case X3DConstants .MFInt32:
-					{
-						var array = location .array;
-
-						for (var i = 0, length = field .length; i < length; ++ i)
-							array [i] = field [i];
-	
-						for (var length = array .length; i < length; ++ i)
-							array [i] = 0;
-	
-						gl .uniform1iv (location, array);
-						return;
-					}
-					case X3DConstants .MFColor:
-					{
-						var array = location .array;
-	
-						for (var i = 0, k = 0, length = field .length; i < length; ++ i)
+						case X3DConstants .SFColor:
 						{
-							var color = field [i];
-	
-							array [k++] = color .r;
-							array [k++] = color .g;
-							array [k++] = color .b;
+							var value = field .getValue ();
+							gl .uniform3f (location, value .r, value .g, value .b);
+							return;
 						}
-	
-						for (var length = array .length; k < length; ++ k)
-							array [k] = 0;
-	
-						gl .uniform3fv (location, array);
-						return;
-					}
-					case X3DConstants .MFColorRGBA:
-					{
-						var array = location .array;
-	
-						for (var i = 0, k = 0, length = field .length; i < length; ++ i)
+						case X3DConstants .SFColorRGBA:
 						{
-							var color = field [i];
-	
-							array [k++] = color .r;
-							array [k++] = color .g;
-							array [k++] = color .b;
-							array [k++] = color .a;
+							var value = field .getValue ();
+							gl .uniform4f (location, value .r, value .g, value .b, value .a);
+							return;
 						}
-	
-						for (var length = array .length; k < length; ++ k)
-							array [k] = 0;
-	
-						gl .uniform4fv (location, array);
-						return;
-					}
-					case X3DConstants .MFDouble:
-					case X3DConstants .MFFloat:
-					case X3DConstants .MFTime:
-					{
-						var array = location .array;
-
-						for (var i = 0, length = field .length; i < length; ++ i)
-							array [i] = field [i];
-	
-						for (var length = array .length; i < length; ++ i)
-							array [i] = 0;
-
-						gl .uniform1fv (location, array);
-						return;
-					}
-					case X3DConstants .MFImage:
-					{
-						var
-							array  = location .array,
-							length = this .getImagesLength (field);
-	
-						if (length !== array .length)
-							array = location .array = new Int32Array (length);
-	
-						for (var i = 0, a = 0, length = field .length; i < length; ++ i)
+						case X3DConstants .SFDouble:
+						case X3DConstants .SFFloat:
+						case X3DConstants .SFTime:
+						{
+							gl .uniform1f (location, field .getValue ());
+							return;
+						}
+						case X3DConstants .SFImage:
 						{
 							var
-								value  = field [i],
-								pixels = value .array;
-	
-							array [a ++] = value .width;
-							array [a ++] = value .height;
-							array [a ++] = value .comp;
-	
-							for (var p = 0, plength = pixels .length; p < plength; ++ p)
-								array [a ++] = pixels [p];
-						}
-	
-						gl .uniform1iv (location, array);
-						return;
-					}
-					case X3DConstants .MFMatrix3d:
-					case X3DConstants .MFMatrix3f:
-					{
-						var array = location .array;
-	
-						for (var i = 0, k = 0, length = field .length; i < length; ++ i)
-						{
-							var matrix = field [i];
-	
-							for (var m = 0; m < 9; ++ m)
-								array [k++] = matrix [m];
-						}
-	
-						for (var length = array .length; k < length; ++ k)
-							array [k] = 0;
-	
-						gl .uniformMatrix3fv (location, false, array);
-						return;
-					}
-					case X3DConstants .MFMatrix4d:
-					case X3DConstants .MFMatrix4f:
-					{
-						var array = location .array;
-	
-						for (var i = 0, k = 0, length = field .length; i < length; ++ i)
-						{
-							var matrix = field [i];
-	
-							for (var m = 0; m < 16; ++ m)
-								array [k++] = matrix [m];
-						}
-	
-						for (var length = array .length; k < length; ++ k)
-							array [k] = 0;
-	
-						gl .uniformMatrix4fv (location, false, array);
-						return;
-					}
-					case X3DConstants .MFNode:
-					{
-						var locations = location .locations;
+								array  = location .array,
+								pixels = field .array,
+								length = 3 + pixels .length;
 
-						for (var i = 0, length = field .length; i < length; ++ i)
+							if (length !== array .length)
+								array = location .array = new Int32Array (length);
+
+							array [0] = field .width;
+							array [1] = field .height;
+							array [2] = field .comp;
+
+							for (var a = 3, p = 0, length = pixels .length; p < length; ++ p, ++ a)
+								array [a] = pixels [p];
+
+							gl .uniform1iv (location, array);
+							return;
+						}
+						case X3DConstants .SFMatrix3d:
+						case X3DConstants .SFMatrix3f:
 						{
-							var texture = X3DCast (X3DConstants .X3DTextureNode, field [i]);
-			
+							location .array .set (field .getValue ());
+
+							gl .uniformMatrix3fv (location, false, location .array);
+							return;
+						}
+						case X3DConstants .SFMatrix4d:
+						case X3DConstants .SFMatrix4f:
+						{
+							location .array .set (field .getValue ());
+
+							gl .uniformMatrix4fv (location, false, location .array);
+							return;
+						}
+						case X3DConstants .SFNode:
+						{
+							var texture = X3DCast (X3DConstants .X3DTextureNode, field);
+
 							if (texture)
 							{
-								this .textures .set (locations [i], { name: field [i] .getName (), texture: texture, textureUnit: undefined } );
-								continue;
+								this .textures .set (location, { name: field .getName (), texture: texture, textureUnit: undefined } );
+								return;
 							}
-						}
 
-						return;
-					}
-					case X3DConstants .MFRotation:
-					{
-						var array = location .array;
+							this .textures .delete (location);
+							return;
+						}
+						case X3DConstants .SFRotation:
+						{
+							field .getValue () .getMatrix (location .array);
 
-						for (var i = 0, k = 0, length = field .length; i < length; ++ i)
-						{
-							var matrix = field [i] .getValue () .getMatrix (matrix3);
-	
-							array [k++] = matrix [0];
-							array [k++] = matrix [1];
-							array [k++] = matrix [2];
-							array [k++] = matrix [3];
-							array [k++] = matrix [4];
-							array [k++] = matrix [5];
-							array [k++] = matrix [6];
-							array [k++] = matrix [7];
-							array [k++] = matrix [8];
+							gl .uniformMatrix3fv (location, false, location .array);
+							return;
 						}
-	
-						for (var length = array .length; k < length; ++ k)
-							array [k] = 0;
-	
-						gl .uniformMatrix3fv (location, false, array);
-						return;
-					}
-					case X3DConstants .MFString:
-					{
-						return;
-					}
-					case X3DConstants .MFVec2d:
-					case X3DConstants .MFVec2f:
-					{
-						var array = location .array;
-	
-						for (var i = 0, k = 0, length = field .length; i < length; ++ i)
+						case X3DConstants .SFString:
 						{
-							var vector = field [i];
-	
-							array [k++] = vector .x;
-							array [k++] = vector .y;
+							return;
 						}
-	
-						for (var length = array .length; k < length; ++ k)
-							array [k] = 0;
+						case X3DConstants .SFVec2d:
+						case X3DConstants .SFVec2f:
+						{
+							var value = field .getValue ();
+							gl .uniform2f (location, value .x, value .y);
+							return;
+						}
+						case X3DConstants .SFVec3d:
+						case X3DConstants .SFVec3f:
+						{
+							var value = field .getValue ();
+							gl .uniform3f (location, value .x, value .y, value .z);
+							return;
+						}
+						case X3DConstants .SFVec4d:
+						case X3DConstants .SFVec4f:
+						{
+							var value = field .getValue ();
+							gl .uniform4f (location, value .x, value .y, value .z, value .w);
+							return;
+						}
+						case X3DConstants .MFBool:
+						case X3DConstants .MFInt32:
+						{
+							var array = location .array;
 
-						gl .uniform2fv (location, array);
-						return;
-					}
-					case X3DConstants .MFVec3d:
-					case X3DConstants .MFVec3f:
-					{
-						var array = location .array;
-	
-						for (var i = 0, k = 0, length = field .length; i < length; ++ i)
-						{
-							var vector = field [i];
-	
-							array [k++] = vector .x;
-							array [k++] = vector .y;
-							array [k++] = vector .z;
+							for (var i = 0, length = field .length; i < length; ++ i)
+								array [i] = field [i];
+
+							for (var length = array .length; i < length; ++ i)
+								array [i] = 0;
+
+							gl .uniform1iv (location, array);
+							return;
 						}
-	
-						for (var length = array .length; k < length; ++ k)
-							array [k] = 0;
-	
-						gl .uniform3fv (location, array);
-						return;
-					}
-					case X3DConstants .MFVec4d:
-					case X3DConstants .MFVec4f:
-					{
-						var array = location .array;
-	
-						for (var i = 0, k = 0, length = field .length; i < length; ++ i)
+						case X3DConstants .MFColor:
 						{
-							var vector = field [i];
-	
-							array [k++] = vector .x;
-							array [k++] = vector .y;
-							array [k++] = vector .z;
-							array [k++] = vector .w;
+							var array = location .array;
+
+							for (var i = 0, k = 0, length = field .length; i < length; ++ i)
+							{
+								var color = field [i];
+
+								array [k++] = color .r;
+								array [k++] = color .g;
+								array [k++] = color .b;
+							}
+
+							for (var length = array .length; k < length; ++ k)
+								array [k] = 0;
+
+							gl .uniform3fv (location, array);
+							return;
 						}
-	
-						for (var length = array .length; k < length; ++ k)
-							array [k] = 0;
-	
-						gl .uniform4fv (location, array);
-						return;
+						case X3DConstants .MFColorRGBA:
+						{
+							var array = location .array;
+
+							for (var i = 0, k = 0, length = field .length; i < length; ++ i)
+							{
+								var color = field [i];
+
+								array [k++] = color .r;
+								array [k++] = color .g;
+								array [k++] = color .b;
+								array [k++] = color .a;
+							}
+
+							for (var length = array .length; k < length; ++ k)
+								array [k] = 0;
+
+							gl .uniform4fv (location, array);
+							return;
+						}
+						case X3DConstants .MFDouble:
+						case X3DConstants .MFFloat:
+						case X3DConstants .MFTime:
+						{
+							var array = location .array;
+
+							for (var i = 0, length = field .length; i < length; ++ i)
+								array [i] = field [i];
+
+							for (var length = array .length; i < length; ++ i)
+								array [i] = 0;
+
+							gl .uniform1fv (location, array);
+							return;
+						}
+						case X3DConstants .MFImage:
+						{
+							var
+								array  = location .array,
+								length = this .getImagesLength (field);
+
+							if (length !== array .length)
+								array = location .array = new Int32Array (length);
+
+							for (var i = 0, a = 0, length = field .length; i < length; ++ i)
+							{
+								var
+									value  = field [i],
+									pixels = value .array;
+
+								array [a ++] = value .width;
+								array [a ++] = value .height;
+								array [a ++] = value .comp;
+
+								for (var p = 0, plength = pixels .length; p < plength; ++ p)
+									array [a ++] = pixels [p];
+							}
+
+							gl .uniform1iv (location, array);
+							return;
+						}
+						case X3DConstants .MFMatrix3d:
+						case X3DConstants .MFMatrix3f:
+						{
+							var array = location .array;
+
+							for (var i = 0, k = 0, length = field .length; i < length; ++ i)
+							{
+								var matrix = field [i];
+
+								for (var m = 0; m < 9; ++ m)
+									array [k++] = matrix [m];
+							}
+
+							for (var length = array .length; k < length; ++ k)
+								array [k] = 0;
+
+							gl .uniformMatrix3fv (location, false, array);
+							return;
+						}
+						case X3DConstants .MFMatrix4d:
+						case X3DConstants .MFMatrix4f:
+						{
+							var array = location .array;
+
+							for (var i = 0, k = 0, length = field .length; i < length; ++ i)
+							{
+								var matrix = field [i];
+
+								for (var m = 0; m < 16; ++ m)
+									array [k++] = matrix [m];
+							}
+
+							for (var length = array .length; k < length; ++ k)
+								array [k] = 0;
+
+							gl .uniformMatrix4fv (location, false, array);
+							return;
+						}
+						case X3DConstants .MFNode:
+						{
+							var locations = location .locations;
+
+							for (var i = 0, length = field .length; i < length; ++ i)
+							{
+								var texture = X3DCast (X3DConstants .X3DTextureNode, field [i]);
+
+								if (texture)
+								{
+									this .textures .set (locations [i], { name: field [i] .getName (), texture: texture, textureUnit: undefined } );
+									continue;
+								}
+							}
+
+							return;
+						}
+						case X3DConstants .MFRotation:
+						{
+							var array = location .array;
+
+							for (var i = 0, k = 0, length = field .length; i < length; ++ i)
+							{
+								var matrix = field [i] .getValue () .getMatrix (matrix3);
+
+								array [k++] = matrix [0];
+								array [k++] = matrix [1];
+								array [k++] = matrix [2];
+								array [k++] = matrix [3];
+								array [k++] = matrix [4];
+								array [k++] = matrix [5];
+								array [k++] = matrix [6];
+								array [k++] = matrix [7];
+								array [k++] = matrix [8];
+							}
+
+							for (var length = array .length; k < length; ++ k)
+								array [k] = 0;
+
+							gl .uniformMatrix3fv (location, false, array);
+							return;
+						}
+						case X3DConstants .MFString:
+						{
+							return;
+						}
+						case X3DConstants .MFVec2d:
+						case X3DConstants .MFVec2f:
+						{
+							var array = location .array;
+
+							for (var i = 0, k = 0, length = field .length; i < length; ++ i)
+							{
+								var vector = field [i];
+
+								array [k++] = vector .x;
+								array [k++] = vector .y;
+							}
+
+							for (var length = array .length; k < length; ++ k)
+								array [k] = 0;
+
+							gl .uniform2fv (location, array);
+							return;
+						}
+						case X3DConstants .MFVec3d:
+						case X3DConstants .MFVec3f:
+						{
+							var array = location .array;
+
+							for (var i = 0, k = 0, length = field .length; i < length; ++ i)
+							{
+								var vector = field [i];
+
+								array [k++] = vector .x;
+								array [k++] = vector .y;
+								array [k++] = vector .z;
+							}
+
+							for (var length = array .length; k < length; ++ k)
+								array [k] = 0;
+
+							gl .uniform3fv (location, array);
+							return;
+						}
+						case X3DConstants .MFVec4d:
+						case X3DConstants .MFVec4f:
+						{
+							var array = location .array;
+
+							for (var i = 0, k = 0, length = field .length; i < length; ++ i)
+							{
+								var vector = field [i];
+
+								array [k++] = vector .x;
+								array [k++] = vector .y;
+								array [k++] = vector .z;
+								array [k++] = vector .w;
+							}
+
+							for (var length = array .length; k < length; ++ k)
+								array [k] = 0;
+
+							gl .uniform4fv (location, array);
+							return;
+						}
 					}
 				}
-			}
-		},
+			};
+		})(),
 		getImagesLength: function (field)
 		{
 			var
@@ -791,12 +871,31 @@ function (Fields,
 
 			return i;
 		},
+		hasFog: function (fogNode)
+		{
+			if (this .fogNode === fogNode)
+				return true;
+
+			this .fogNode = fogNode;
+
+			return false;
+		},
+		hasLight: function (i, lightNode)
+		{
+			if (this .lightNodes [i] === lightNode)
+				return true;
+
+			this .lightNodes [i] = lightNode;
+
+			return false;
+		},
 		setShaderObjects: function (gl, shaderObjects)
 		{
 			// Clip planes and local lights
 
-			this .numClipPlanes = 0;
-			this .numLights     = 0;
+			this .numClipPlanes      = 0;
+			this .numLights          = 0;
+			this .lightNodes .length = 0;
 
 			gl .uniform4fv (this .x3d_ClipPlanes, this .defaultClipPlanesArray);
 
@@ -805,11 +904,6 @@ function (Fields,
 
 			gl .uniform1i (this .x3d_NumClipPlanes, Math .min (this .numClipPlanes, this .x3d_MaxClipPlanes));
 			gl .uniform1i (this .x3d_NumLights,     Math .min (this .numLights,     this .x3d_MaxLights));
-
-			// Legacy before 4.1.4
-
-			if (this .numLights < this .x3d_MaxLights)
-				gl .uniform1i (this .x3d_LightType [this .numLights], 0);
 		},
 		setGlobalUniforms: function (gl, renderObject, cameraSpaceMatrixArray, projectionMatrixArray, viewportArray)
 		{
@@ -824,33 +918,41 @@ function (Fields,
 			gl .uniformMatrix4fv (this .x3d_ProjectionMatrix,  false, projectionMatrixArray);
 			gl .uniformMatrix4fv (this .x3d_CameraSpaceMatrix, false, cameraSpaceMatrixArray);
 
+			// Fog
+
+			this .fogNode = null;
+
 			// Set global lights
 
-			this .numGlobalLights = globalLights .length;
-			this .numLights       = 0;
+			this .numGlobalLights    = globalLights .length;
+			this .numLights          = 0;
+			this .lightNodes .length = 0;
 
 			for (var i = 0, length = globalLights .length; i < length; ++ i)
 				globalLights [i] .setShaderUniforms (gl, this);
 
 			// Logarithmic depth buffer support.
 
-			var viewpoint      = renderObject .getViewpoint ();
-			var navigationInfo = renderObject .getNavigationInfo ();
+			var
+				viewpoint      = renderObject .getViewpoint (),
+				navigationInfo = renderObject .getNavigationInfo ();
 
 			if (viewpoint instanceof OrthoViewpoint)
 				gl .uniform1f (this .x3d_LogarithmicFarFactor1_2, -1);
 			else
-				gl .uniform1f (this .x3d_LogarithmicFarFactor1_2, 1 / Math .log2 (navigationInfo .getFarValue (viewpoint) + 1));		
+				gl .uniform1f (this .x3d_LogarithmicFarFactor1_2, 1 / Math .log2 (navigationInfo .getFarValue (viewpoint) + 1));
 		},
 		setLocalUniforms: function (gl, context)
 		{
 			var
-				linePropertiesNode   = context .linePropertiesNode,
-				materialNode         = context .materialNode,
-				textureNode          = context .textureNode,
-				textureTransformNode = context .textureTransformNode,
-				modelViewMatrix      = context .modelViewMatrix,
-				shaderObjects        = context .shaderObjects;
+				linePropertiesNode    = context .linePropertiesNode,
+				fillPropertiesNode    = context .fillPropertiesNode,
+				materialNode          = context .materialNode,
+				textureNode           = context .textureNode,
+				textureTransformNode  = context .textureTransformNode,
+				textureCoordinateNode = context .textureCoordinateNode,
+				modelViewMatrix       = context .modelViewMatrix,
+				shaderObjects         = context .shaderObjects;
 
 			// Geometry type
 
@@ -869,30 +971,16 @@ function (Fields,
 			gl .uniform1i (this .x3d_NumClipPlanes, Math .min (this .numClipPlanes, this .x3d_MaxClipPlanes));
 			gl .uniform1i (this .x3d_NumLights,     Math .min (this .numLights,     this .x3d_MaxLights));
 
-			// Legacy before 4.1.4
-
-			if (this .numLights < this .x3d_MaxLights)
-				gl .uniform1i (this .x3d_LightType [this .numLights], 0);
-
 			// Fog, there is always one
 
 			context .fogNode .setShaderUniforms (gl, this);
+			gl .uniform1i (this .x3d_FogCoord, context .fogCoords);
 
-			// LineProperties
-
-			if (linePropertiesNode && linePropertiesNode .applied_ .getValue ())
-			{
-				var linewidthScaleFactor = linePropertiesNode .getLinewidthScaleFactor ();
-
-				gl .lineWidth (linewidthScaleFactor);
-				gl .uniform1f (this .x3d_LinewidthScaleFactor, linewidthScaleFactor);
-			}
+			if (context .geometryType < 2)
+				linePropertiesNode .setShaderUniforms (gl, this);
 			else
-			{
-				gl .lineWidth (1);
-				gl .uniform1f (this .x3d_LinewidthScaleFactor, 1);
-			}
-	
+				fillPropertiesNode .setShaderUniforms (gl, this);
+
 			// Material
 
 			gl .uniform1i (this .x3d_ColorMaterial, context .colorMaterial);
@@ -921,17 +1009,18 @@ function (Fields,
 
 			if (textureNode)
 			{
-				textureNode .setShaderUniforms (gl, this, 0);
-				textureTransformNode .setShaderUniforms (gl, this);
+				textureNode           .setShaderUniforms (gl, this);
+				textureTransformNode  .setShaderUniforms (gl, this);
+				textureCoordinateNode .setShaderUniforms (gl, this);
 			}
 			else
 			{
-				this .textureTypeArray [0] = 0;
-				gl .uniform1iv (this .x3d_TextureType, this .textureTypeArray);
+				gl .uniform1i (this .x3d_NumTextures, 0);
 
 				if (this .getCustom ())
 				{
-					textureTransformNode .setShaderUniforms (gl, this);
+					textureTransformNode  .setShaderUniforms (gl, this);
+					textureCoordinateNode .setShaderUniforms (gl, this);
 				}
 			}
 
@@ -968,26 +1057,24 @@ function (Fields,
 			//console .log (this .getName ());
 			//console .log (browser .getCombinedTextureUnits () .length);
 
-			for (let item of this .textures)
+			this .textures .forEach (function (object, location)
 			{
 				var
-					location = item [0],
-					object   = item [1],
-					name     = object .name,
-					texture  = object .texture;
+					name    = object .name,
+					texture = object .texture;
 
 				if (! browser .getCombinedTextureUnits () .length)
 				{
 					console .warn ("Not enough combined texture units for uniform variable '" + name + "' available.");
-					continue;
+					return;
 				}
 
 				var textureUnit = object .textureUnit = browser .getCombinedTextureUnits () .pop ();
-	
+
 				gl .uniform1i (location, textureUnit);
 				gl .activeTexture (gl .TEXTURE0 + textureUnit);
 				gl .bindTexture (texture .getTarget (), texture .getTexture ());
-			}
+			});
 
 			gl .activeTexture (gl .TEXTURE0);
 		},
@@ -995,29 +1082,27 @@ function (Fields,
 		{
 			var browser = this .getBrowser ();
 
-			for (let item of this .textures)
+			this .textures .forEach (function (object)
 			{
-				var
-					object      = item [1],
-					textureUnit = object .textureUnit;
+				var textureUnit = object .textureUnit;
 
 				if (textureUnit !== undefined)
 					browser .getCombinedTextureUnits () .push (textureUnit);
 
 				object .textureUnit = undefined;
-			}		
+			});
 
 			//console .log (browser .getCombinedTextureUnits () .length);
 		},
 		enableFloatAttrib: function (gl, name, buffer, components)
 		{
 			var location = gl. getAttribLocation (this .getProgram (), name);
-		
+
 			if (location === -1)
 				return;
-		
+
 			gl .enableVertexAttribArray (location);
-		
+
 			gl .bindBuffer (gl .ARRAY_BUFFER, buffer);
 			gl .vertexAttribPointer (location, components, gl .FLOAT, false, 0, 0);
 		},
@@ -1089,6 +1174,16 @@ function (Fields,
 			gl .disableVertexAttribArray (location + 2);
 			gl .disableVertexAttribArray (location + 3);
 		},
+		enableFogDepthAttribute: function (gl, fogDepthBuffer)
+		{
+			gl .enableVertexAttribArray (this .x3d_FogDepth);
+			gl .bindBuffer (gl .ARRAY_BUFFER, fogDepthBuffer);
+			gl .vertexAttribPointer (this .x3d_FogDepth, 1, gl .FLOAT, false, 0, 0);
+		},
+		disableFogDepthAttribute: function (gl)
+		{
+			gl .disableVertexAttribArray (this .x3d_FogDepth);
+		},
 		enableColorAttribute: function (gl, colorBuffer)
 		{
 			gl .enableVertexAttribArray (this .x3d_Color);
@@ -1099,15 +1194,33 @@ function (Fields,
 		{
 			gl .disableVertexAttribArray (this .x3d_Color);
 		},
-		enableTexCoordAttribute: function (gl, texCoordBuffers)
+		enableTexCoordAttribute: function (gl, texCoordBuffers, d)
 		{
-			gl .enableVertexAttribArray (this .x3d_TexCoord);
-			gl .bindBuffer (gl .ARRAY_BUFFER, texCoordBuffers [0]);
-			gl .vertexAttribPointer (this .x3d_TexCoord, 4, gl .FLOAT, false, 0, 0);
+			var length = Math .min (this .x3d_MaxTextures, texCoordBuffers .length);
+
+			for (var i = 0; i < length; ++ i)
+			{
+				var x3d_TexCoord = this .x3d_TexCoord [i];
+
+				if (x3d_TexCoord === -1)
+					continue;
+
+				gl .enableVertexAttribArray (x3d_TexCoord);
+				gl .bindBuffer (gl .ARRAY_BUFFER, texCoordBuffers [i]);
+				gl .vertexAttribPointer (x3d_TexCoord, 4, gl .FLOAT, false, 0, 0);
+			}
 		},
 		disableTexCoordAttribute: function (gl)
 		{
-			gl .disableVertexAttribArray (this .x3d_TexCoord);
+			for (var i = 0, length = this .x3d_MaxTextures; i < length; ++ i)
+			{
+				var x3d_TexCoord = this .x3d_TexCoord [i];
+
+				if (x3d_TexCoord === -1)
+					continue;
+
+				gl .disableVertexAttribArray (x3d_TexCoord);
+			}
 		},
 		enableNormalAttribute: function (gl, normalBuffer)
 		{
@@ -1223,5 +1336,3 @@ function (Fields,
 
 	return X3DProgrammableShaderObject;
 });
-
-

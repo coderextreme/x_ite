@@ -52,13 +52,23 @@ define ([
 	"x_ite/Basic/X3DFieldDefinition",
 	"x_ite/Basic/FieldDefinitionArray",
 	"x_ite/Components/Picking/X3DPickSensorNode",
+	"x_ite/Bits/X3DCast",
 	"x_ite/Bits/X3DConstants",
+	"x_ite/Browser/Picking/IntersectionType",
+	"x_ite/Browser/Picking/VolumePicker",
+	"standard/Math/Numbers/Vector3",
+	"standard/Math/Geometry/Box3",
 ],
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
           X3DPickSensorNode, 
-          X3DConstants)
+          X3DCast,
+          X3DConstants,
+          IntersectionType,
+          VolumePicker,
+          Vector3,
+          Box3)
 {
 "use strict";
 
@@ -67,6 +77,9 @@ function (Fields,
 		X3DPickSensorNode .call (this, executionContext);
 
 		this .addType (X3DConstants .VolumePickSensor);
+
+		this .pickingGeometryNode = null;
+		this .picker              = new VolumePicker ();
 	}
 
 	VolumePickSensor .prototype = Object .assign (Object .create (X3DPickSensorNode .prototype),
@@ -75,13 +88,14 @@ function (Fields,
 		fieldDefinitions: new FieldDefinitionArray ([
 			new X3DFieldDefinition (X3DConstants .inputOutput,    "metadata",         new Fields .SFNode ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput,    "enabled",          new Fields .SFBool (true)),
-			new X3DFieldDefinition (X3DConstants .outputOnly,     "isActive",         new Fields .SFBool ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput,    "objectType",       new Fields .MFString ("ALL")),
+			new X3DFieldDefinition (X3DConstants .inputOutput,    "matchCriterion",   new Fields .SFString ("MATCH_ANY")),
+			new X3DFieldDefinition (X3DConstants .initializeOnly, "intersectionType", new Fields .SFString ("BOUNDS")),
+			new X3DFieldDefinition (X3DConstants .initializeOnly, "sortOrder",        new Fields .SFString ("CLOSEST")),
+			new X3DFieldDefinition (X3DConstants .outputOnly,     "isActive",         new Fields .SFBool ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput,    "pickingGeometry",  new Fields .SFNode ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput,    "pickTarget",       new Fields .MFNode ()),
 			new X3DFieldDefinition (X3DConstants .outputOnly,     "pickedGeometry",   new Fields .MFNode ()),
-			new X3DFieldDefinition (X3DConstants .initializeOnly, "intersectionType", new Fields .SFString ("BOUNDS")),
-			new X3DFieldDefinition (X3DConstants .initializeOnly, "sortOrder",        new Fields .SFString ("CLOSEST")),
 		]),
 		getTypeName: function ()
 		{
@@ -95,6 +109,138 @@ function (Fields,
 		{
 			return "children";
 		},
+		initialize: function ()
+		{
+			X3DPickSensorNode .prototype .initialize .call (this);
+			
+			this .pickingGeometry_ .addInterest ("set_pickingGeometry__", this);
+
+			this .set_pickingGeometry__ ();
+		},
+		set_pickingGeometry__: function ()
+		{
+			this .pickingGeometryNode = X3DCast (X3DConstants .X3DGeometryNode, this .pickingGeometry_);
+		},
+		process: (function ()
+		{
+			var
+				pickingBBox   = new Box3 (),
+				targetBBox    = new Box3 (),
+				pickingCenter = new Vector3 (0, 0, 0),
+				targetCenter  = new Vector3 (0, 0, 0);
+
+			return function ()
+			{
+				if (this .pickingGeometryNode)
+				{
+					var
+						modelMatrices = this .getModelMatrices (),
+						targets       = this .getTargets ();
+		
+					switch (this .getIntersectionType ())
+					{
+						case IntersectionType .BOUNDS:
+						{
+							// Intersect bboxes.
+	
+							for (var m = 0, mLength = modelMatrices .length; m < mLength; ++ m)
+							{
+								var modelMatrix = modelMatrices [m];
+
+								pickingBBox .assign (this .pickingGeometryNode .getBBox ()) .multRight (modelMatrix);
+				
+								for (var t = 0, tLength = targets .size; t < tLength; ++ t)
+								{
+									var target = targets [t];
+
+									targetBBox .assign (target .geometryNode .getBBox ()) .multRight (target .modelMatrix);
+	
+									if (pickingBBox .intersectsBox (targetBBox))
+									{
+										pickingCenter .assign (pickingBBox .center);
+										targetCenter  .assign (targetBBox .center);
+
+										target .intersected = true;
+										target .distance    = pickingCenter .distance (targetCenter);
+									}
+								}
+							}
+		
+							// Send events.
+	
+							var
+								pickedGeometries = this .getPickedGeometries (),
+								active           = Boolean (pickedGeometries .length);
+
+							pickedGeometries .remove (0, pickedGeometries .length, null);
+
+							if (active !== this .isActive_ .getValue ())
+								this .isActive_ = active;
+	
+							if (! this .pickedGeometry_ .equals (pickedGeometries))
+								this .pickedGeometry_ = pickedGeometries;
+	
+							break;
+						}
+						case IntersectionType .GEOMETRY:
+						{
+							// Intersect geometry.
+	
+							var picker = this .picker;
+
+							for (var m = 0, mLength = modelMatrices .length; m < mLength; ++ m)
+							{
+								var
+									modelMatrix  = modelMatrices [m],
+									pickingShape = this .getPickShape (this .pickingGeometryNode);
+
+								pickingBBox .assign (this .pickingGeometryNode .getBBox ()) .multRight (modelMatrix);
+
+								picker .setChildShape1 (modelMatrix, pickingShape .getCompoundShape ());
+
+								for (var t = 0, tLength = targets .size; t < tLength; ++ t)
+								{
+									var
+										target      = targets [t],
+										targetShape = this .getPickShape (target .geometryNode);
+
+									targetBBox .assign (target .geometryNode .getBBox ()) .multRight (target .modelMatrix);
+
+									picker .setChildShape2 (target .modelMatrix, targetShape .getCompoundShape ());
+	
+									if (picker .contactTest ())
+									{
+										pickingCenter .assign (pickingBBox .center);
+										targetCenter  .assign (targetBBox .center);
+
+										target .intersected = true;
+										target .distance    = pickingCenter .distance (targetCenter);
+									}
+								}
+							}
+		
+							// Send events.
+	
+							var
+								pickedGeometries = this .getPickedGeometries (),
+								active           = Boolean (pickedGeometries .length);
+
+							pickedGeometries .remove (0, pickedGeometries .length, null);
+
+							if (active !== this .isActive_ .getValue ())
+								this .isActive_ = active;
+	
+							if (! this .pickedGeometry_ .equals (pickedGeometries))
+								this .pickedGeometry_ = pickedGeometries;
+	
+							break;
+						}
+					}
+				}
+
+				X3DPickSensorNode .prototype .process .call (this);
+			};
+		})(),
 	});
 
 	return VolumePickSensor;

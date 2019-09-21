@@ -60,18 +60,20 @@ function (X3DConstants)
 		this .indent                = "";
 		this .indentChar            = "  ";
 		this .executionContextStack = [ null ];
-		this .importedNodesIndex    = { };
-		this .exportedNodesIndex    = { };
-		this .nodes                 = { };
-		this .names                 = { };
-		this .namesByNode           = { };
-		this .importedNames         = { };
-		this .routeNodes            = { };
+		this .importedNodesIndex    = new Map ();
+		this .exportedNodesIndex    = new Map ();
+		this .nodes                 = new Set ();
+		this .names                 = new Map ();
+		this .namesByNode           = new Map ();
+		this .importedNames         = new Map ();
+		this .routeNodes            = new Set ();
 		this .level                 = 0;
 		this .newName               = 0;
 		this .containerFields       = [ ];
 		this .units                 = true;
 		this .unitCategories        = [ ];
+
+		this .names .set (null, new Map ());
 	}
 
 	Generator .prototype =
@@ -89,15 +91,25 @@ function (X3DConstants)
 		{
 			this .indent = this .indent .substr (0, this .indent .length - this .indentChar .length);
 		},
+		PadRight: function (string, pad)
+		{
+			for (var i = 0, length = pad - string .length; i < length; ++ i)
+				string += " ";
+
+			return string;
+		},
 		PushExecutionContext: function (executionContext)
 		{
 			this .executionContextStack .push (executionContext);
 
-			if (! this .importedNodesIndex [executionContext .getId ()])
-				this .importedNodesIndex [executionContext .getId ()] = { };
+			if (! this .names .has (executionContext))
+				this .names .set (executionContext, new Map ());
 
-			if (! this .exportedNodesIndex [executionContext .getId ()])
-				this .exportedNodesIndex [executionContext .getId ()] = { };
+			if (! this .importedNodesIndex .has (executionContext))
+				this .importedNodesIndex .set (executionContext, new Set ());
+
+			if (! this .exportedNodesIndex .has (executionContext))
+				this .exportedNodesIndex .set (executionContext, new Set ());
 		},
 		PopExecutionContext: function ()
 		{
@@ -106,8 +118,8 @@ function (X3DConstants)
 			if (this .ExecutionContext ())
 				return;
 
-			this .importedNodesIndex = { };
-			this .exportedNodesIndex = { };
+			this .importedNodesIndex .clear ();
+			this .exportedNodesIndex .clear ();
 		},
 		ExecutionContext: function ()
 		{
@@ -117,53 +129,59 @@ function (X3DConstants)
 		{
 			if (this .level === 0)
 				this .newName = 0;
-		
+
 			++ this .level;
 		},
 		LeaveScope: function ()
 		{
 			-- this .level;
-		
+
 			if (this .level === 0)
 			{
-				this .nodes         = { };
-				this .names         = { };
-				this .namesByNode   = { };
-				this .importedNames = { };
-				this .importedNodes = { };
+				this .nodes         .clear ();
+				this .namesByNode   .clear ();
+				this .importedNames .clear ();
 			}
 		},
 		ExportedNodes: function (exportedNodes)
 		{
-		},
-		ImportedNodes: function (importedNodes)
-		{
-			var index = this .importedNodesIndex [this .ExecutionContext () .getId ()];
+			var index = this .exportedNodesIndex .get (this .ExecutionContext ());
 
-			for (var importedName in importedNodes)
+			exportedNodes .forEach (function (exportedNode)
 			{
 				try
 				{
-					index [importedNodes [importedName] .getInlineNode () .getId ()] = true;
+					index .add (exportedNode .getLocalNode ())
 				}
 				catch (error)
 				{ }
-			}
+			});
+		},
+		ImportedNodes: function (importedNodes)
+		{
+			var index = this .importedNodesIndex .get (this .ExecutionContext ());
+
+			importedNodes .forEach (function (importedNode)
+			{
+				try
+				{
+					index .add (importedNode .getInlineNode ());
+				}
+				catch (error)
+				{ }
+			});
 		},
 		AddImportedNode: function (exportedNode, importedName)
 		{
-			this .importedNames [exportedNode .getId ()] = importedName;
+			this .importedNames .set (exportedNode, importedName);
 		},
 		AddRouteNode: function (routeNode)
 		{
-			this .routeNodes [routeNode .getId ()] = true;
+			this .routeNodes .add (routeNode);
 		},
 		ExistsRouteNode: function (routeNode)
 		{
-			if (this .routeNodes [routeNode .getId ()])
-				return true;
-	
-			return false;
+			return this .routeNodes .has (routeNode);
 		},
 		IsSharedNode: function (baseNode)
 		{
@@ -171,22 +189,24 @@ function (X3DConstants)
 		},
 		AddNode: function (baseNode)
 		{
-			this .nodes [baseNode .getId ()] = true;
+			this .nodes .add (baseNode);
 
 			this .AddRouteNode (baseNode);
 		},
 		ExistsNode: function (baseNode)
 		{
-			return this .nodes [baseNode .getId ()] !== undefined;
+			return this .nodes .has (baseNode);
 		},
 		Name: function (baseNode)
 		{
 			// Is the node already in index
 
-			var name = this .namesByNode [baseNode .getId ()];
+			var name = this .namesByNode .get (baseNode);
 
 			if (name !== undefined)
 				return name;
+
+			var names = this .names .get (this .ExecutionContext ());
 
 			// The node has no name
 
@@ -195,27 +215,27 @@ function (X3DConstants)
 				if (this .NeedsName (baseNode))
 				{
 					var name = this .UniqueName ();
-		
-					this .names [name]                     = baseNode;
-					this .namesByNode [baseNode .getId ()] = name;
+
+					names .set (name, baseNode);
+					this .namesByNode .set (baseNode, name);
 
 					return name;
 				}
-		
+
 				// The node doesn't need a name
 
 				return baseNode .getName ();
 			}
-		
+
 			// The node has a name
-		 	
+
 			var _TrailingNumbers = /(_\d+$)/;
 
 			var name      = baseNode .getName ();
 			var hasNumber = name .match (_TrailingNumbers) !== null;
-		
+
 			name = name .replace (_TrailingNumbers, "");
-		
+
 			if (name .length === 0)
 			{
 				if (this .NeedsName (baseNode))
@@ -230,7 +250,7 @@ function (X3DConstants)
 					i       = 0,
 					newName = hasNumber ? name + '_' + (++ i) : name;
 
-				while (this .names [newName] !== undefined)
+				while (names .has (newName))
 				{
 					newName = name + '_' + (++ i);
 				}
@@ -238,8 +258,8 @@ function (X3DConstants)
 				name = newName;
 			}
 
-			this .names [name]                     = baseNode;
-			this .namesByNode [baseNode .getId ()] = name;
+			names .set (name, baseNode);
+			this .namesByNode .set (baseNode, name);
 
 			return name;
 		},
@@ -253,19 +273,19 @@ function (X3DConstants)
 
 			var
 				executionContext = baseNode .getExecutionContext (),
-				index            = this .importedNodesIndex [executionContext .getId ()];
+				index            = this .importedNodesIndex .get (executionContext);
 
 			if (index)
 			{
-				if (index [baseNode .getId ()])
+				if (index .has (baseNode))
 					return true;
 			}
 
-			var index = this .exportedNodesIndex [executionContext .getId ()];
+			var index = this .exportedNodesIndex .get (executionContext);
 
 			if (index)
 			{
-				if (index [baseNode .getId ()])
+				if (index .has (baseNode))
 					return true;
 			}
 
@@ -273,11 +293,13 @@ function (X3DConstants)
 		},
 		UniqueName: function ()
 		{
+			var names = this .names .get (this .ExecutionContext ());
+
 			for (; ;)
 			{
 				var name = '_' + (++ this .newName);
-		
-				if (this .names [name] !== undefined)
+
+				if (names .has (name))
 					continue;
 
 				return name;
@@ -285,7 +307,7 @@ function (X3DConstants)
 		},
 		LocalName: function (baseNode)
 		{
-			var importedName = this .importedNames [baseNode .getId ()];
+			var importedName = this .importedNames .get (baseNode);
 
 			if (importedName !== undefined)
 				return importedName;
@@ -354,7 +376,7 @@ function (X3DConstants)
 			if (this .units)
 			{
 				var executionContext = this .ExecutionContext ();
-			
+
 				if (executionContext)
 					return executionContext .toUnit (category, value);
 			}

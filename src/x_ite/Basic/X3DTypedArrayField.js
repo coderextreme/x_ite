@@ -156,11 +156,19 @@ function (X3DArrayField,
 		},
 		has: function (target, key)
 		{
-			return key in target .getValue ();
+			if (Number .isInteger (+key))
+				return key < target ._length;
+
+			return key in target;
 		},
 		enumerate: function (target)
 		{
-			return Object .keys (target .getValue ()) [Symbol.iterator] ();
+			var indices = [ ];
+
+			for (var i = 0, length = target ._length; i < length; ++ i)
+				array .push (i);
+
+			return indices [Symbol .iterator] ();
 		},
 	};
 
@@ -326,14 +334,14 @@ function (X3DArrayField,
 		{
 			var
 				target = this ._target,
-				array  = target .getValue ();
+				length = target ._length;
 
-			if (array .length)
+			if (length)
 			{
 				var
+					array      = target .getValue (),
 					components = target .getComponents (),
 					valueType  = target .getValueType (),
-					length     = target ._length,
 					newLength  = length - 1;
 
 				if (components === 1)
@@ -398,14 +406,14 @@ function (X3DArrayField,
 		{
 			var
 				target = this ._target,
-				array  = target .getValue ();
+				length = target ._length;
 
-			if (array .length)
+			if (length)
 			{
 				var
+					array      = target .getValue (),
 					components = target .getComponents (),
 					valueType  = target .getValueType (),
-					length     = target ._length,
 					newLength  = length - 1;
 
 				if (components === 1)
@@ -712,6 +720,10 @@ function (X3DArrayField,
 					break;
 				}
 			}
+		},
+		toVRMLStream: function (stream)
+		{
+			this .toStream (stream);
 		},
 		toXMLStream: function (stream)
 		{

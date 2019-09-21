@@ -110,10 +110,7 @@ function (SFBool,
 
 	function MFNode (value)
 	{
-		if (this instanceof MFNode)
-			return X3DObjectArrayField .call (this, arguments);
-		
-		return X3DObjectArrayField .call (Object .create (MFNode .prototype), arguments);
+		return X3DObjectArrayField .call (this, arguments);
 	}
 
 	MFNode .prototype = Object .assign (Object .create (X3DObjectArrayField .prototype),
@@ -161,35 +158,147 @@ function (SFBool,
 
 			return copy;
 		},
-		addClones: function (count)
+		addCloneCount: function (count)
 		{
 			var array = this .getValue ();
 
 			this ._cloneCount += count;
 
 			for (var i = 0, length = array .length; i < length; ++ i)
-				array [i] .addClones (count);
+				array [i] .addCloneCount (count);
 		},
-		removeClones: function (count)
+		removeCloneCount: function (count)
 		{
 			var array = this .getValue ();
 
 			this ._cloneCount += count;
 
 			for (var i = 0, length = array .length; i < length; ++ i)
-				array [i] .removeClones (count);
+				array [i] .removeCloneCount (count);
 		},
 		addChildObject: function (value)
 		{
 			X3DObjectArrayField .prototype .addChildObject .call (this, value);
 
-			value .addClones (this ._cloneCount);
+			value .addCloneCount (this ._cloneCount);
 		},
 		removeChildObject: function (value)
 		{
 			X3DObjectArrayField .prototype .removeChildObject .call (this, value);
 
-			value .removeClones (this ._cloneCount);
+			value .removeCloneCount (this ._cloneCount);
+		},
+		toStream: function (stream)
+		{
+			var
+				target    = this ._target,
+				array     = target .getValue (),
+				generator = Generator .Get (stream);
+
+			switch (array .length)
+			{
+				case 0:
+				{
+					stream .string += "[ ]";
+					break;
+				}
+				case 1:
+				{
+					generator .PushUnitCategory (target .getUnit ());
+
+					array [0] .toStream (stream);
+
+					generator .PopUnitCategory ();
+					break;
+				}
+				default:
+				{
+					generator .PushUnitCategory (target .getUnit ());
+
+					stream .string += "[\n";
+					generator .IncIndent ();
+
+					for (var i = 0, length = array .length; i < length; ++ i)
+					{
+						stream .string += generator .Indent ();
+						array [i] .toStream (stream);
+						stream .string += "\n";
+					}
+
+					generator .DecIndent ();
+					stream .string += generator .Indent ();
+					stream .string += "]";
+
+					generator .PopUnitCategory ();
+					break;
+				}
+			}
+		},
+		toVRMLString: function ()
+		{
+			this .addCloneCount (1);
+
+			var string = X3DObjectArrayField .prototype .toVRMLString .call (this);
+
+			this .removeCloneCount (1);
+
+			return string;
+		},
+		toVRMLStream: function (stream)
+		{
+			var
+				target    = this ._target,
+				array     = target .getValue (),
+				generator = Generator .Get (stream);
+
+			switch (array .length)
+			{
+				case 0:
+				{
+					stream .string += "[ ]";
+					break;
+				}
+				case 1:
+				{
+					generator .EnterScope ();
+
+					array [0] .toVRMLStream (stream);
+
+					generator .LeaveScope ();
+					break;
+				}
+				default:
+				{
+					generator .EnterScope ();
+
+					stream .string += "[\n";
+					generator .IncIndent ();
+
+					for (var i = 0, length = array .length; i < length; ++ i)
+					{
+						stream .string += generator .Indent ();
+						array [i] .toVRMLStream (stream);
+						stream .string += "\n";
+					}
+
+					generator .DecIndent ();
+					stream .string += generator .Indent ();
+					stream .string += "]";
+
+					generator .LeaveScope ();
+					break;
+				}
+			}
+		},
+		toXMLString: function ()
+		{
+			this .addCloneCount (1);
+
+			var string = X3DObjectArrayField .prototype .toXMLString .call (this);
+
+			this .removeCloneCount (1);
+
+			return string;
 		},
 		toXMLStream: function (stream)
 		{
@@ -238,10 +347,7 @@ function (SFBool,
 
 	function MFString (value)
 	{
-		if (this instanceof MFString)
-			return X3DObjectArrayField .call (this, arguments);
-		
-		return X3DObjectArrayField .call (Object .create (MFString .prototype), arguments);
+		return X3DObjectArrayField .call (this, arguments);
 	}
 
 	MFString .prototype = Object .assign (Object .create (X3DObjectArrayField .prototype),
@@ -293,15 +399,12 @@ function (SFBool,
 			}
 		},
 	});
-	
+
 	function ArrayTemplate (TypeName, Type, SingleType, ValueType, ArrayType, Components)
 	{
 		function ArrayField (value)
 		{
-			if (this instanceof ArrayField)
-				return X3DObjectArrayField .call (this, arguments);
-			
-			return X3DObjectArrayField .call (Object .create (ArrayField .prototype), arguments);
+			return X3DObjectArrayField .call (this, arguments);
 		}
 
 		ArrayField .prototype = Object .assign (Object .create (X3DObjectArrayField .prototype),
@@ -340,10 +443,7 @@ function (SFBool,
 	{
 		function ArrayField (value)
 		{
-			if (this instanceof ArrayField)
-				return X3DTypedArrayField .call (this, arguments);
-
-			return X3DTypedArrayField .call (Object .create (ArrayField .prototype), arguments);
+			return X3DTypedArrayField .call (this, arguments);
 		}
 
 		ArrayField .prototype = Object .assign (Object .create (X3DTypedArrayField .prototype),

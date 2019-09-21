@@ -100,7 +100,6 @@ function (Fields,
 		this .invLightSpaceProjectionMatrix = new Matrix4 ();
 		this .shadowMatrix                  = new Matrix4 ();
 		this .shadowMatrixArray             = new Float32Array (16);
-		this .invGroupMatrix                = new Matrix4 ();
 		this .rotation                      = new Rotation4 ();
 		this .textureUnit                   = 0;
 	}
@@ -138,13 +137,11 @@ function (Fields,
 
 						gl .activeTexture (gl .TEXTURE0 + this .textureUnit);
 
-						if (browser .getExtension ("WEBGL_depth_texture"))
+						if (gl .getVersion () >= 2 || browser .getExtension ("WEBGL_depth_texture"))
 							gl .bindTexture (gl .TEXTURE_2D, this .shadowBuffer .getDepthTexture ());
 						else
 							gl .bindTexture (gl .TEXTURE_2D, this .shadowBuffer .getColorTexture ());
 
-						gl .texParameteri (gl .TEXTURE_2D, gl .TEXTURE_MIN_FILTER, gl .LINEAR);
-						gl .texParameteri (gl .TEXTURE_2D, gl .TEXTURE_MAG_FILTER, gl .LINEAR);
 						gl .activeTexture (gl .TEXTURE0);
 					}
 					else
@@ -179,17 +176,15 @@ function (Fields,
 					lightBBox        = groupBBox .multRight (invLightSpaceMatrix),                              // Group bbox from the perspective of the light.
 					shadowMapSize    = lightNode .getShadowMapSize (),
 					viewport         = this .viewport .set (0, 0, shadowMapSize, shadowMapSize),
-					projectionMatrix = Camera .orthoBox (lightBBox, this .projectionMatrix),
-					invGroupMatrix   = this .invGroupMatrix .assign (this .groupNode .getMatrix ()) .inverse ();
+					projectionMatrix = Camera .orthoBox (lightBBox, this .projectionMatrix);
 
 				this .shadowBuffer .bind ();
 
 				renderObject .getViewVolumes      () .push (this .viewVolume .set (projectionMatrix, viewport, viewport));
 				renderObject .getProjectionMatrix () .pushMatrix (projectionMatrix);
 				renderObject .getModelViewMatrix  () .pushMatrix (invLightSpaceMatrix);
-				renderObject .getModelViewMatrix  () .multLeft (invGroupMatrix);
 
-				renderObject .render (TraverseType .DEPTH, this .groupNode);
+				renderObject .render (TraverseType .DEPTH, X3DGroupingNode .prototype .traverse, this .groupNode);
 
 				renderObject .getModelViewMatrix  () .pop ();
 				renderObject .getProjectionMatrix () .pop ();
@@ -217,12 +212,15 @@ function (Fields,
 		},
 		setShaderUniforms: function (gl, shaderObject)
 		{
+			var i = shaderObject .numLights ++;
+
+			if (shaderObject .hasLight (i, this))
+				return;
+
 			var
-				lightNode   = this .lightNode,
-				color       = lightNode .getColor (),
-				direction   = this .direction,
-				shadowColor = lightNode .getShadowColor (),
-				i           = shaderObject .numLights ++;
+				lightNode = this .lightNode,
+				color     = lightNode .getColor (),
+				direction = this .direction;
 
 			gl .uniform1i (shaderObject .x3d_LightType [i],             1);
 			gl .uniform3f (shaderObject .x3d_LightColor [i],            color .r, color .g, color .b);
@@ -232,12 +230,19 @@ function (Fields,
 
 			if (this .textureUnit)
 			{
+				var shadowColor = lightNode .getShadowColor ();
+
 				gl .uniform3f        (shaderObject .x3d_ShadowColor [i],         shadowColor .r, shadowColor .g, shadowColor .b);
 				gl .uniform1f        (shaderObject .x3d_ShadowIntensity [i],     lightNode .getShadowIntensity ());
 				gl .uniform1f        (shaderObject .x3d_ShadowBias [i],          lightNode .getShadowBias ());
 				gl .uniformMatrix4fv (shaderObject .x3d_ShadowMatrix [i], false, this .shadowMatrixArray);
 				gl .uniform1i        (shaderObject .x3d_ShadowMapSize [i],       lightNode .getShadowMapSize ());
 				gl .uniform1i        (shaderObject .x3d_ShadowMap [i],           this .textureUnit);
+			}
+			else
+			{
+				// Must be set to zero in case of multiple lights.
+				gl .uniform1f (shaderObject .x3d_ShadowIntensity [i], 0);			
 			}
 		},
 		dispose: function ()

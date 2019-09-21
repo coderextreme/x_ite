@@ -84,6 +84,10 @@ define (function ()
 		{
 			return this .executionContexts .length > 1;
 		},
+		addRootNode: function (node)
+		{
+			this .getExecutionContext () .rootNodes .push (node);
+		},
 		getProviderUrls: (function ()
 		{
 			var componentsUrl = /\.js$/;
@@ -91,8 +95,10 @@ define (function ()
 			return function ()
 			{
 				var
-					profileComponents = this .getScene () .getProfile () .components,
-					components        = this .getScene () .getComponents (),
+					scene             = this .getScene (),
+					profile           = scene .getProfile () ? scene .getProfile () : scene .getBrowser () .getProfile ("Full"),
+					profileComponents = profile .components,
+					components        = scene .getComponents (),
 					providerUrls      = new Set ();
 
 				for (var i = 0, length = profileComponents .length; i < length; ++ i)
@@ -114,10 +120,6 @@ define (function ()
 				return Array .from (providerUrls);
 			};
 		})(),
-		addRootNode: function (node)
-		{
-			this .getExecutionContext () .rootNodes .push (node);
-		},
 		setUnits: function (generator)
 		{
 			if ((typeof arguments [0]) == "boolean")

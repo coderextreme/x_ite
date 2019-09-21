@@ -65,7 +65,7 @@ define (function ()
 			if (value !== undefined)
 				return value;
 
-			return target .index [key];
+			return target .index .get (key);
 		},
 		set: function (target, key, value)
 		{
@@ -73,18 +73,26 @@ define (function ()
 		},
 		has: function (target, key)
 		{
-			return key in target .array || key in target .index;
+			if (Number .isInteger (+key))
+				return key < target .array .length;
+
+			return key in target;
 		},
 		enumerate: function (target)
 		{
-			return Object .keys (target .array) [Symbol.iterator] ();
+			var indices = [ ];
+
+			for (var i = 0, length = target .array .length; i < length; ++ i)
+				array .push (i);
+
+			return indices [Symbol .iterator] ();
 		},
 	};
 
 	function X3DInfoArray ()
 	{
 		this .array = [ ];
-		this .index = { };
+		this .index = new Map ();
 
 		return new Proxy (this, handler);
 	}
@@ -95,31 +103,47 @@ define (function ()
 		add: function (key, value)
 		{
 			this .array .push (value);
-			this .index [key] = value;
+			this .index .set (key, value);
 		},
 		get: function (key)
 		{
-			return this .index [key];
+			return this .index .get (key);
 		},
 		getValue: function ()
 		{
 			return this .array;
 		},
-		toXMLStream: function (stream)
+		toVRMLStream: function (stream)
 		{
-			var array = this .array;
-
-			for (var i = 0, length = array .length; i < length; ++ i)
+			this .array .forEach (function (value)
 			{
 				try
 				{
-					array [i] .toXMLStream (stream);
+					value .toVRMLStream (stream);
 	
 					stream .string += "\n";
 				}
 				catch (error)
-				{ }
-			}
+				{
+					console .log (error);
+				}
+			});
+		},
+		toXMLStream: function (stream)
+		{
+			this .array .forEach (function (value)
+			{
+				try
+				{
+					value .toXMLStream (stream);
+	
+					stream .string += "\n";
+				}
+				catch (error)
+				{
+					console .log (error);
+				}
+			});
 		},
 	});
 

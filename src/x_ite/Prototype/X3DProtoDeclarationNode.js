@@ -48,15 +48,15 @@
 
 
 define ([
-	"x_ite/Fields",
 	"x_ite/Components/Core/X3DNode",
 	"x_ite/Components/Core/X3DPrototypeInstance",
 	"x_ite/Bits/X3DConstants",
+	"x_ite/Fields/SFNodeCache",
 ],
-function (Fields,
-          X3DNode,
+function (X3DNode,
           X3DPrototypeInstance,
-          X3DConstants)
+          X3DConstants,
+          SFNodeCache)
 {
 "use strict";
 
@@ -74,14 +74,18 @@ function (Fields,
 		},
 		createInstance: function (executionContext, setup)
 		{
-			var instance = new X3DPrototypeInstance (executionContext, this);
-			
 			if (setup === false)
-				return instance;
-
-			instance .setup ();
-
-			return new Fields .SFNode (instance);
+			{
+				return new X3DPrototypeInstance (executionContext, this);
+			}
+			else
+			{
+				var instance = new X3DPrototypeInstance (executionContext, this);
+	
+				instance .setup ();
+	
+				return SFNodeCache .add (instance);
+			}
 		},
 		newInstance: function ()
 		{

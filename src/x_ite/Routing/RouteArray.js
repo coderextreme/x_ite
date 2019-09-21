@@ -66,6 +66,22 @@ define (function ()
 		{
 			return false;
 		},
+		has: function (target, key)
+		{
+			if (Number .isInteger (+key))
+				return key < target .array .length;
+
+			return key in target;
+		},
+		enumerate: function (target)
+		{
+			var indices = [ ];
+
+			for (var i = 0, length = target .array .length; i < length; ++ i)
+				array .push (i);
+
+			return indices [Symbol .iterator] ();
+		},
 	};
 
 	function RouteArray ()
@@ -82,21 +98,37 @@ define (function ()
 		{
 			return this .array;
 		},
-		toXMLStream: function (stream)
+		toVRMLStream: function (stream)
 		{
-			var array = this .array;
-
-			for (var i = 0, length = array .length; i < length; ++ i)
+			this .array .forEach (function (route)
 			{
 				try
 				{
-					array [i] .toXMLStream (stream);
+					route .toVRMLStream (stream);
 	
 					stream .string += "\n";
 				}
 				catch (error)
-				{ }
-			}
+				{
+					console .log (error);
+				}
+			});
+		},
+		toXMLStream: function (stream)
+		{
+			this .array .forEach (function (route)
+			{
+				try
+				{
+					route .toXMLStream (stream);
+	
+					stream .string += "\n";
+				}
+				catch (error)
+				{
+					console .log (error);
+				}
+			});
 		},
 	});
 

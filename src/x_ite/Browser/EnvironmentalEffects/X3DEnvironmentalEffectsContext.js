@@ -51,28 +51,36 @@ define ([
 	"x_ite/Components/Shaders/ComposedShader",
 	"x_ite/Components/Shaders/ShaderPart",
 	"x_ite/Components/Texturing/TextureProperties",
-	"text!x_ite/Browser/Shaders/Background.vs",
-	"text!x_ite/Browser/Shaders/Background.fs",
 ],
 function (ComposedShader,
           ShaderPart,
-          TextureProperties,
-          vertexShaderText,
-          fragmentShaderText)
+          TextureProperties)
 {
 "use strict";
 	
 	function X3DEnvironmentalEffectsContext ()
 	{
-		this .backgroundTextureProperties = new TextureProperties (this .getPrivateScene ());
-		this .localFogs                   = [ ];
+		this .localFogs = [ ];
 	}
 
 	X3DEnvironmentalEffectsContext .prototype =
 	{
-		initialize: function ()
+		initialize: function () { },
+		getBackgroundSphereShader: function ()
 		{
-			this .backgroundSphereShader = this .createShader ("BackgroundSphereShader", vertexShaderText, fragmentShaderText);
+			if (this .backgroundSphereShader)
+				return this .backgroundSphereShader;
+
+			this .backgroundSphereShader = this .createShader ("BackgroundSphereShader", "Background", false);
+
+			return this .backgroundSphereShader;
+		},
+		getBackgroundTextureProperties: function ()
+		{
+			if (this .backgroundTextureProperties)
+				return this .backgroundTextureProperties;
+
+			this .backgroundTextureProperties = new TextureProperties (this .getPrivateScene ());
 
 			this .backgroundTextureProperties .boundaryModeS_       = "CLAMP_TO_EDGE";
 			this .backgroundTextureProperties .boundaryModeT_       = "CLAMP_TO_EDGE";
@@ -80,13 +88,7 @@ function (ComposedShader,
 			this .backgroundTextureProperties .minificationFilter_  = "NICEST";
 			this .backgroundTextureProperties .magnificationFilter_ = "NICEST";
 			this .backgroundTextureProperties .setup ();
-		},
-		getBackgroundSphereShader: function ()
-		{
-			return this .backgroundSphereShader;
-		},
-		getBackgroundTextureProperties: function ()
-		{
+
 			return this .backgroundTextureProperties;
 		},
 		getLocalFogs: function ()

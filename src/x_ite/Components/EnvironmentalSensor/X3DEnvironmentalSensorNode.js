@@ -71,6 +71,7 @@ function (Fields,
 		this .size_   .setUnit ("length");
 		this .center_ .setUnit ("length");
 
+		this .zeroTest         = false;
 		this .currentTraversed = true;
 	}
 
@@ -91,7 +92,7 @@ function (Fields,
 		},
 		set_live__: function ()
 		{
-			if (this .isLive () .getValue () && this .traversed_ .getValue () && this .enabled_ .getValue () && ! this .size_. getValue () .equals (Vector3 .Zero))
+			if (this .traversed_ .getValue () && this .isLive () .getValue () && this .enabled_ .getValue () && ! (this .zeroTest && this .size_. getValue () .equals (Vector3 .Zero)))
 			{
 				this .getBrowser () .sensorEvents () .addInterest ("update", this);
 			}
@@ -105,6 +106,14 @@ function (Fields,
 					this .exitTime_ = this .getBrowser () .getCurrentTime ();
 				}
 			}
+		},
+		setZeroTest: function (value)
+		{
+			this .zeroTest = value;
+		},
+		getZeroTest: function ()
+		{
+			return this .zeroTest;
 		},
 		setTraversed: function (value)
 		{

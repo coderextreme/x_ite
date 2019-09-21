@@ -53,12 +53,14 @@ define ([
 	"x_ite/Basic/FieldDefinitionArray",
 	"x_ite/Components/RigidBodyPhysics/X3DNBodyCollisionSpaceNode",
 	"x_ite/Bits/X3DConstants",
+	"x_ite/Bits/X3DCast",
 ],
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
           X3DNBodyCollisionSpaceNode, 
-          X3DConstants)
+          X3DConstants,
+          X3DCast)
 {
 "use strict";
 
@@ -67,6 +69,9 @@ function (Fields,
 		X3DNBodyCollisionSpaceNode .call (this, executionContext);
 
 		this .addType (X3DConstants .CollisionSpace);
+
+		this .collidableNodes     = [ ];
+		this .collisionSpaceNodes = [ ];
 	}
 
 	CollisionSpace .prototype = Object .assign (Object .create (X3DNBodyCollisionSpaceNode .prototype),
@@ -91,6 +96,71 @@ function (Fields,
 		getContainerField: function ()
 		{
 			return "children";
+		},
+		initialize: function ()
+		{
+			X3DNBodyCollisionSpaceNode .prototype .initialize .call (this);
+
+			this .collidables_ .addInterest ("set_collidables__", this);
+
+			this .set_collidables__ ();
+		},
+		getCollidables: function ()
+		{
+			return this .collidableNodes;
+		},
+		set_collidables__: function ()
+		{
+			var collisionSpaceNodes = this .collisionSpaceNodes;
+
+			for (var i = 0, length = collisionSpaceNodes .length; i < length; ++ i)
+				collisionSpaceNodes [i] .removeInterest ("collect", this);
+
+			collisionSpaceNodes .length = 0;
+
+			for (var i = 0, length = this .collidables_ .length; i < length; ++ i)
+			{
+				var collisionSpaceNode = X3DCast (X3DConstants .X3DNBodyCollisionSpaceNode, this .collidables_ [i]);
+
+				if (collisionSpaceNode)
+				{
+					collisionSpaceNode .addInterest ("collect", this);
+
+					collisionSpaceNodes .push (collisionSpaceNode);
+				}
+			}
+	
+			this .collect ();
+		},
+		collect: function ()
+		{
+			var
+				collidableNodes     = this .collidableNodes,
+				collisionSpaceNodes = this .collisionSpaceNodes;
+
+			collidableNodes     .length = 0;
+			collisionSpaceNodes .length = 0;
+
+			for (var i = 0, length = this .collidables_ .length; i < length; ++ i)
+			{
+				var collidableNode = X3DCast (X3DConstants .X3DNBodyCollidableNode, this .collidables_ [i]);
+
+				if (collidableNode)
+				{
+					collidableNodes .push (collidableNode);
+					continue;
+				}
+
+				var collisionSpaceNode = X3DCast (X3DConstants .X3DNBodyCollisionSpaceNode, this .collidables_ [i]);
+
+				if (collisionSpaceNode)
+				{
+					Array .prototype .push .apply (collidableNodes, collisionSpaceNode .getCollidables ());
+					continue;
+				}
+			}
+
+			this .addNodeEvent ();
 		},
 	});
 

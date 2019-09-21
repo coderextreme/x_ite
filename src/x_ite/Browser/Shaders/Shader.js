@@ -48,60 +48,32 @@
 
 
 define ([
-	"text!x_ite/Browser/Shaders/Include/Shadow.h",
-	"text!x_ite/Browser/Shaders/Include/Pack.h",
-	"text!x_ite/Browser/Shaders/Types.h",
-	"x_ite/DEBUG",
+	"x_ite/Browser/Shaders/ShaderSource",
+	"text!assets/shaders/Types.h",
+	"x_ite/Browser/Texturing/MultiTextureModeType",
+	"x_ite/Browser/Texturing/MultiTextureSourceType",
+	"x_ite/Browser/Texturing/MultiTextureFunctionType",
+	"x_ite/Browser/Texturing/TextureCoordinateGeneratorModeType",
 ],
-function (Shadow,
-          Pack,
+function (ShaderSource,
           Types,
-          DEBUG)
+          MultiTextureModeType,
+          MultiTextureSourceType,
+          MultiTextureFunctionType,
+          TextureCoordinateGeneratorModeType)
 {
 "use strict";
 
-	var includes = {
-		Shadow: Shadow,
-		Pack: Pack,
-	};
-
-	var include = /^#pragma\s+X3D\s+include\s+".*?([^\/]+).h"\s*$/;
-
 	var Shader =
 	{
-		getSource: function (source)
+		getShaderSource: function (browser, name, source, shadow)
 		{
-			var
-				lines = source .split ("\n"),
-				match = null;
+			var gl = browser .getContext ();
 
-			source = "#line 1\n";
-
-			for (var i = 0, length = lines .length; i < length; ++ i)
-			{
-				var line = lines [i];
-
-				if (match = line .match (include))
-				{
-					source += this .getSource (includes [match [1]]);
-					source += "\n";
-					source += "#line " + (i + 1) + "\n";
-				}
-				else
-				{
-					source += line;
-					source += "\n";
-				}
-			}
-
-			return source;
-		},
-		getShaderSource: function (browser, source)
-		{
-			var source = this .getSource (source);
+			source = ShaderSource .get (gl, source);
 
 			var
-				COMMENTS     = "\\s+|/\\*[\\s\\S]*?\\*/|//.*?\\n",
+				COMMENTS     = "\\s+|/\\*[^]*?\\*/|//.*?\\n",
 				LINE         = "#line\\s+.*?\\n",
 				IF           = "#if\\s+.*?\\n",
 				ELIF         = "#elif\\s+.*?\\n",
@@ -115,14 +87,18 @@ function (Shadow,
 				PREPROCESSOR =  LINE + "|" + IF + "|" + ELIF + "|" + IFDEF + "|" + IFNDEF + "|" + ELSE + "|" + ENDIF + "|" + DEFINE + "|" + UNDEF + "|" + PRAGMA,
 				VERSION      = "#version\\s+.*?\\n",
 				EXTENSION    = "#extension\\s+.*?\\n",
-				ANY          = "[\\s\\S]*";
+				ANY          = "[^]*";
 
 			var
-				GLSL  = new RegExp ("^((?:" + COMMENTS + "|" + PREPROCESSOR + ")*(?:" + VERSION + ")?(?:" + COMMENTS + "|" + PREPROCESSOR + "|" + EXTENSION + ")*)(" + ANY + ")$"),
+				GLSL  = new RegExp ("^((?:" + VERSION + ")?)((?:" + COMMENTS + "|" + PREPROCESSOR + "|" + EXTENSION + ")*)(" + ANY + ")$"),
 				match = source .match (GLSL);
 
 			if (! match)
 				return source;
+
+			var
+				lines1 = (match [1] .match (/\n/g) || []) .length,
+				lines2 = (match [1] .match (/\n/g) || []) .length;
 
 			var constants = "";
 
@@ -131,15 +107,25 @@ function (Shadow,
 			if (browser .getRenderingProperty ("LogarithmicDepthBuffer"))
 				constants += "#define X3D_LOGARITHMIC_DEPTH_BUFFER\n";
 
-			if (browser .getExtension ("WEBGL_depth_texture"))
+			if (gl .getVersion () >= 2 || browser .getExtension ("WEBGL_depth_texture"))
 				constants += "#define X3D_DEPTH_TEXTURE\n";
+
+			if (browser .getMultiTexturing ())
+				constants += "#define X3D_MULTI_TEXTURING\n";
+
+			if (shadow)
+				constants += "#define X3D_SHADOWS\n";
+
+			constants += "#line " + (lines1 + 1) + "\n";
 
 			var definitions = "";
 
-			definitions += "#define x3d_GeometryPoints  0\n";
-			definitions += "#define x3d_GeometryLines   1\n";
-			definitions += "#define x3d_Geometry2D      2\n";
-			definitions += "#define x3d_Geometry3D      3\n";
+			definitions += "#define x3d_None 0\n";
+
+			definitions += "#define x3d_Points      0\n";
+			definitions += "#define x3d_Lines       1\n";
+			definitions += "#define x3d_Geometry2D  2\n";
+			definitions += "#define x3d_Geometry3D  3\n";
 
 			definitions += "#define x3d_MaxClipPlanes  " + browser .getMaxClipPlanes () + "\n";
 
@@ -158,18 +144,60 @@ function (Shadow,
 			definitions += "#define x3d_TextureType3D              3\n";
 			definitions += "#define x3d_TextureTypeCubeMapTexture  4\n";
 
+			definitions += "#define x3d_Replace                   " + MultiTextureModeType .REPLACE                   + "\n";
+			definitions += "#define x3d_Modulate                  " + MultiTextureModeType .MODULATE                  + "\n";
+			definitions += "#define x3d_Modulate2X                " + MultiTextureModeType .MODULATE2X                + "\n";
+			definitions += "#define x3d_Modulate4X                " + MultiTextureModeType .MODULATE4X                + "\n";
+			definitions += "#define x3d_Add                       " + MultiTextureModeType .ADD                       + "\n";
+			definitions += "#define x3d_AddSigned                 " + MultiTextureModeType .ADDSIGNED                 + "\n";
+			definitions += "#define x3d_AddSigned2X               " + MultiTextureModeType .ADDSIGNED2X               + "\n";
+			definitions += "#define x3d_AddSmooth                 " + MultiTextureModeType .ADDSMOOTH                 + "\n";
+			definitions += "#define x3d_Subtract                  " + MultiTextureModeType .SUBTRACT                  + "\n";
+			definitions += "#define x3d_BlendDiffuseAlpha         " + MultiTextureModeType .BLENDDIFFUSEALPHA         + "\n";
+			definitions += "#define x3d_BlendTextureAlpha         " + MultiTextureModeType .BLENDTEXTUREALPHA         + "\n";
+			definitions += "#define x3d_BlendFactorAlpha          " + MultiTextureModeType .BLENDFACTORALPHA          + "\n";
+			definitions += "#define x3d_BlendCurrentAlpha         " + MultiTextureModeType .BLENDCURRENTALPHA         + "\n";
+			definitions += "#define x3d_ModulateAlphaAddColor     " + MultiTextureModeType .MODULATEALPHA_ADDCOLOR    + "\n";
+			definitions += "#define x3d_ModulateInvAlphaAddColor  " + MultiTextureModeType .MODULATEINVALPHA_ADDCOLOR + "\n";
+			definitions += "#define x3d_ModulateInvColorAddAlpha  " + MultiTextureModeType .MODULATEINVCOLOR_ADDALPHA + "\n";
+			definitions += "#define x3d_DotProduct3               " + MultiTextureModeType .DOTPRODUCT3               + "\n";
+			definitions += "#define x3d_SelectArg1                " + MultiTextureModeType .SELECTARG1                + "\n";
+			definitions += "#define x3d_SelectArg2                " + MultiTextureModeType .SELECTARG2                + "\n";
+			definitions += "#define x3d_Off                       " + MultiTextureModeType .OFF                       + "\n";
+
+			definitions += "#define x3d_Diffuse  " + MultiTextureSourceType .DIFFUSE  + "\n";
+			definitions += "#define x3d_Specular " + MultiTextureSourceType .SPECULAR + "\n";
+			definitions += "#define x3d_Factor   " + MultiTextureSourceType .FACTOR   + "\n";
+
+			definitions += "#define x3d_Complement     " + MultiTextureFunctionType .COMPLEMENT     + "\n";
+			definitions += "#define x3d_AlphaReplicate " + MultiTextureFunctionType .ALPHAREPLICATE + "\n";
+
+			definitions += "#define x3d_Sphere                      " + TextureCoordinateGeneratorModeType .SPHERE                      + "\n";
+			definitions += "#define x3d_CameraSpaceNormal           " + TextureCoordinateGeneratorModeType .CAMERASPACENORMAL           + "\n";
+			definitions += "#define x3d_CameraSpacePosition         " + TextureCoordinateGeneratorModeType .CAMERASPACEPOSITION         + "\n";
+			definitions += "#define x3d_CameraSpaceReflectionVector " + TextureCoordinateGeneratorModeType .CAMERASPACEREFLECTIONVECTOR + "\n";
+			definitions += "#define x3d_SphereLocal                 " + TextureCoordinateGeneratorModeType .SPHERE_LOCAL                + "\n";
+			definitions += "#define x3d_Coord                       " + TextureCoordinateGeneratorModeType .COORD                       + "\n";
+			definitions += "#define x3d_CoordEye                    " + TextureCoordinateGeneratorModeType .COORD_EYE                   + "\n";
+			definitions += "#define x3d_Noise                       " + TextureCoordinateGeneratorModeType .NOISE                       + "\n";
+			definitions += "#define x3d_NoiseEye                    " + TextureCoordinateGeneratorModeType .NOISE_EYE                   + "\n";
+			definitions += "#define x3d_SphereReflect               " + TextureCoordinateGeneratorModeType .SPHERE_REFLECT              + "\n";
+			definitions += "#define x3d_SphereReflectLocal          " + TextureCoordinateGeneratorModeType .SPHERE_REFLECT_LOCAL        + "\n";
+
 			// Legacy
-			definitions += "#define x3d_NoneClipPlane  vec4 (88.0, 51.0, 68.0, 33.0)\n"; // ASCII »X3D!«
-			definitions += "#define x3d_NoneFog        0\n";
-			definitions += "#define x3d_NoneLight      0\n";
-			definitions += "#define x3d_NoneTexture    0\n";
+			definitions += "#define x3d_GeometryPoints  0\n";
+			definitions += "#define x3d_GeometryLines   1\n";
+			definitions += "#define x3d_NoneClipPlane   vec4 (88.0, 51.0, 68.0, 33.0)\n"; // ASCII »X3D!«
+			definitions += "#define x3d_NoneFog         0\n";
+			definitions += "#define x3d_NoneLight       0\n";
+			definitions += "#define x3d_NoneTexture     0\n";
 
-			definitions += "#define x3d_None 0\n";
-
-			depreciatedWarning (source, "x3d_NoneClipPlane", "x3d_NumClipPlanes");
-			depreciatedWarning (source, "x3d_NoneFog",       "x3d_None");
-			depreciatedWarning (source, "x3d_NoneLight",     "x3d_NumLights");
-			depreciatedWarning (source, "x3d_NoneTexture",   "x3d_NumTextures");
+			depreciatedWarning (source, "x3d_GeometryPoints", "x3d_Points");
+			depreciatedWarning (source, "x3d_GeometryLines",  "x3d_Lines");
+			depreciatedWarning (source, "x3d_NoneClipPlane",  "x3d_NumClipPlanes");
+			depreciatedWarning (source, "x3d_NoneFog",        "x3d_None");
+			depreciatedWarning (source, "x3d_NoneLight",      "x3d_NumLights");
+			depreciatedWarning (source, "x3d_NoneTexture",    "x3d_NumTextures");
 
 			// Adjust precision of struct types;
 
@@ -184,7 +212,11 @@ function (Shadow,
 			types = types .replace (/mediump\s+(float|vec2|vec3|mat3|mat4)/g, pf + " $1");
 			types = types .replace (/mediump\s+(int)/g, pi + " $1");
 
-			return constants + match [1] + definitions + types + match [2];
+			types += "#line " + (lines1 + lines2 + 1) + "\n";
+
+			var source = match [1] + constants + match [2] + definitions + types + match [3];
+
+			return source;
 		},
 	};
 

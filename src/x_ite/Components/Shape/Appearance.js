@@ -71,6 +71,7 @@ function (Fields,
 		this .addType (X3DConstants .Appearance);
 
 		this .linePropertiesNode   = null;
+		this .fillPropertiesNode   = null;
 		this .materialNode         = null;
 		this .textureNode          = null;
 		this .textureTransformNode = null;
@@ -84,8 +85,8 @@ function (Fields,
 		constructor: Appearance,
 		fieldDefinitions: new FieldDefinitionArray ([
 			new X3DFieldDefinition (X3DConstants .inputOutput, "metadata",         new Fields .SFNode ()),
-			new X3DFieldDefinition (X3DConstants .inputOutput, "fillProperties",   new Fields .SFNode ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput, "lineProperties",   new Fields .SFNode ()),
+			new X3DFieldDefinition (X3DConstants .inputOutput, "fillProperties",   new Fields .SFNode ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput, "material",         new Fields .SFNode ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput, "texture",          new Fields .SFNode ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput, "textureTransform", new Fields .SFNode ()),
@@ -111,6 +112,7 @@ function (Fields,
 			this .isLive () .addInterest ("set_live__", this);
 
 			this .lineProperties_   .addInterest ("set_lineProperties__",   this);
+			this .fillProperties_   .addInterest ("set_fillProperties__",   this);
 			this .material_         .addInterest ("set_material__",         this);
 			this .texture_          .addInterest ("set_texture__",          this);
 			this .textureTransform_ .addInterest ("set_textureTransform__", this);
@@ -119,27 +121,12 @@ function (Fields,
 
 			this .set_live__ ();
 			this .set_lineProperties__ ();
+			this .set_fillProperties__ ();
 			this .set_material__ ();
 			this .set_texture__ ();
 			this .set_textureTransform__ ();
 			this .set_shaders__ ();
 			this .set_blendMode__ ();
-		},
-		getLineProperties: function ()
-		{
-			return this .linePropertiesNode;
-		},
-		getMaterial: function ()
-		{
-			return this .materialNode;
-		},
-		getTexture: function ()
-		{
-			return this .textureNode;
-		},
-		getTextureTransform: function ()
-		{
-			return this .textureTransformNode;
 		},
 		set_live__: function ()
 		{
@@ -161,6 +148,24 @@ function (Fields,
 		set_lineProperties__: function ()
 		{
 			this .linePropertiesNode = X3DCast (X3DConstants .LineProperties, this .lineProperties_);
+
+			if (! this .linePropertiesNode)
+				this .linePropertiesNode = this .getBrowser () .getDefaultLineProperties ();
+		},
+		set_fillProperties__: function ()
+		{
+			if (this .fillPropertiesNode)
+				this .fillPropertiesNode .transparent_ .removeInterest ("set_transparent__", this);
+
+			this .fillPropertiesNode = X3DCast (X3DConstants .FillProperties, this .fillProperties_);
+
+			if (! this .fillPropertiesNode)
+				this .fillPropertiesNode = this .getBrowser () .getDefaultFillProperties ();
+
+			if (this .fillPropertiesNode)
+				this .fillPropertiesNode .transparent_ .addInterest ("set_transparent__", this);
+			
+			this .set_transparent__ ();
 		},
 		set_material__: function ()
 		{
@@ -183,8 +188,6 @@ function (Fields,
 
 			if (this .textureNode)
 				this .textureNode .transparent_ .addInterest ("set_transparent__", this);
-
-			this .generatedCubeMapTexture = X3DCast (X3DConstants .GeneratedCubeMapTexture, this .texture_);
 
 			this .set_transparent__ ();
 		},
@@ -226,7 +229,10 @@ function (Fields,
 			var shaderNodes = this .shaderNodes;
 
 			if (this .shaderNode)
+			{
 				this .getBrowser () .removeShader (this .shaderNode);
+				this .shaderNode .deselect ();
+			}
 
 			this .shaderNode = null;
 
@@ -239,13 +245,13 @@ function (Fields,
 				}
 			}
 
-			if (! this .shaderNode)
-				this .shaderNode = this .getBrowser () .getDefaultShader ();
-
 			if (this .isLive () .getValue ())
 			{
 				if (this .shaderNode)
+				{
 					this .getBrowser () .addShader (this .shaderNode);
+					this .shaderNode .select ();
+				}
 			}
 
 			this .set_transparent__ ();
@@ -262,30 +268,35 @@ function (Fields,
 		},
 		set_transparent__: function ()
 		{
-			this .transparent_ = (this .materialNode && this .materialNode .transparent_ .getValue ()) ||
-			                     (this .textureNode  && this .textureNode  .transparent_ .getValue () ||
-			                      this .blendModeNode);
+			this .setTransparent (this .fillPropertiesNode .getTransparent () ||
+			                      (this .materialNode && this .materialNode .getTransparent ()) ||
+			                      (this .textureNode  && this .textureNode  .getTransparent () ||
+			                      this .blendModeNode));
 		},
 		traverse: function (type, renderObject)
 		{
-			if (this .generatedCubeMapTexture)
-				this .generatedCubeMapTexture .traverse (type, renderObject);
+			if (this .textureNode)
+				this .textureNode .traverse (type, renderObject);
 
-			this .shaderNode .traverse (type, renderObject);
+			if (this .shaderNode)
+				this .shaderNode .traverse (type, renderObject);
 		},
 		enable: function (gl, context)
 		{
-			var browser = context .renderer .getBrowser ();
+			var browser = context .browser;
 
 			context .linePropertiesNode   = this .linePropertiesNode;
+			context .fillPropertiesNode   = this .fillPropertiesNode;
 			context .materialNode         = this .materialNode;
 			context .textureNode          = this .textureNode;
 			context .textureTransformNode = this .textureTransformNode;
 
-			if (context .shadow)
-				context .shaderNode = browser .getShadowShader ();
-			else
+			if (this .shaderNode)
 				context .shaderNode = this .shaderNode;
+			else if (context .shadow)
+				context .shaderNode = browser .getDefaultShadowShader ();
+			else
+				context .shaderNode = browser .getDefaultShader ();
 
 			if (this .blendModeNode)
 				this .blendModeNode .enable (gl);

@@ -50,19 +50,25 @@
 define ([
 	"x_ite/Fields",
 	"x_ite/Execution/X3DExecutionContext",
+	"x_ite/Configuration/ComponentInfoArray",
 	"x_ite/Configuration/UnitInfo",
 	"x_ite/Configuration/UnitInfoArray",
 	"x_ite/Execution/ExportedNode",
 	"x_ite/Bits/X3DConstants",
 	"x_ite/InputOutput/Generator",
+	"x_ite/Fields/SFNodeCache",
+	"standard/Networking/URI",
 ],
 function (Fields,
           X3DExecutionContext,
+          ComponentInfoArray,
           UnitInfo,
           UnitInfoArray,
           ExportedNode,
           X3DConstants,
-          Generator)
+          Generator,
+          SFNodeCache,
+          URI)
 {
 "use strict";
 
@@ -72,15 +78,20 @@ function (Fields,
 
 		this .getRootNodes () .setAccessType (X3DConstants .inputOutput);
 
-		this .unitArray = new UnitInfoArray ();
+		this ._specificationVersion = "3.3";
+		this ._encoding             = "SCRIPTED";
+		this ._profile              = null;
+		this ._components           = new ComponentInfoArray (this .getBrowser ());
+		this ._url                  = new URI (window .location);
+		this ._units                = new UnitInfoArray ();
 
-		this .unitArray .add ("angle",  new UnitInfo ("angle",  "radian",   1));
-		this .unitArray .add ("force",  new UnitInfo ("force",  "newton",   1));
-		this .unitArray .add ("length", new UnitInfo ("length", "metre",    1));
-		this .unitArray .add ("mass",   new UnitInfo ("mass",   "kilogram", 1));
+		this ._units .add ("angle",  new UnitInfo ("angle",  "radian",   1));
+		this ._units .add ("force",  new UnitInfo ("force",  "newton",   1));
+		this ._units .add ("length", new UnitInfo ("length", "metre",    1));
+		this ._units .add ("mass",   new UnitInfo ("mass",   "kilogram", 1));
 
-		this .metadata      = { };
-		this .exportedNodes = { };
+		this ._metadata      = new Map ();
+		this ._exportedNodes = new Map ();
 
 		this .setLive (false);
 	}
@@ -103,11 +114,51 @@ function (Fields,
 
 			return this .getExecutionContext () .getScene ();
 		},
+		setSpecificationVersion: function (specificationVersion)
+		{
+			this ._specificationVersion = specificationVersion;
+		},
+		getSpecificationVersion: function ()
+		{
+			return this ._specificationVersion;
+		},
+		setEncoding: function (encoding)
+		{
+			this ._encoding = encoding;
+		},
+		getEncoding: function ()
+		{
+			return this ._encoding;
+		},
+		setURL: function (url)
+		{
+			this ._url = url;
+		},
+		getURL: function ()
+		{
+			return this ._url;
+		},
+		setProfile: function (profile)
+		{
+			this ._profile = profile;
+		},
+		getProfile: function ()
+		{
+			return this ._profile;
+		},
+		addComponent: function (component)
+		{
+			this ._components .add (component .name, component);
+		},
+		getComponents: function ()
+		{
+			return this ._components;
+		},
 		updateUnit: function (category, name, conversionFactor)
 		{
 			// Private function.
 
-			var unit = this .unitArray .get (category);
+			var unit = this ._units .get (category);
 
 			if (! unit)
 				return;
@@ -117,7 +168,7 @@ function (Fields,
 		},
 		getUnits: function ()
 		{
-			return this .unitArray;
+			return this ._units;
 		},
 		fromUnit: function (category, value)
 		{
@@ -180,23 +231,23 @@ function (Fields,
 			if (! name .length)
 				return;
 
-			this .metadata [name] = String (value);
+			this ._metadata .set (name, String (value));
 		},
 		removeMetaData: function (name)
 		{
-			delete this .metadata [name];
+			this ._metadata .delete (name);
 		},
 		getMetaData: function (name)
 		{
-			return this .metadata [name];
+			return this ._metadata .get (name);
 		},
-		getMetadata: function ()
+		getMetaDatas: function ()
 		{
-			return Object .assign ({ }, this .metadata);
+			return this ._metadata;
 		},
 		addExportedNode: function (exportedName, node)
 		{
-			if (this .exportedNodes [exportedName])
+			if (this ._exportedNodes .has (exportedName))
 				throw new Error ("Couldn't add exported node: exported name '" + exportedName + "' already in use.");
 
 			this .updateExportedNode (exportedName, node);
@@ -217,24 +268,26 @@ function (Fields,
 			//if (node .getValue () .getExecutionContext () !== this)
 			//	throw new Error ("Couldn't update exported node: node does not belong to this execution context.");
 
-			this .exportedNodes [exportedName] = new ExportedNode (exportedName, node .getValue ());
+			var exportedNode = new ExportedNode (exportedName, node .getValue ());
+
+			this ._exportedNodes .set (exportedName, exportedNode);
 		},
 		removeExportedNode: function (exportedName)
 		{
-			delete this .exportedNodes [exportedName];
+			this ._exportedNodes .delete (exportedName);
 		},
 		getExportedNode: function (exportedName)
 		{
-			var exportedNode = this .exportedNodes [exportedName];
+			var exportedNode = this ._exportedNodes .get (exportedName);
 
 			if (exportedNode)
-				return exportedNode .getLocalNode ();	
+				return SFNodeCache .get (exportedNode .getLocalNode ());
 
 			throw new Error ("Exported node '" + exportedName + "' not found.");
 		},
 		getExportedNodes: function ()
 		{
-			return this .exportedNodes;
+			return this ._exportedNodes;
 		},
 		addRootNode: function (node)
 		{
@@ -271,6 +324,121 @@ function (Fields,
 		setRootNodes: function (value)
 		{
 			this .getRootNodes () .setValue (value);
+		},
+		toStream: function (stream)
+		{
+			stream .string += Object .prototype .toString .call (this);
+		},
+		toVRMLStream: function (stream)
+		{
+			var
+				generator            = Generator .Get (stream),
+				specificationVersion = this .getSpecificationVersion ();
+
+			if (specificationVersion === "2.0")
+				specificationVersion = "3.3";
+		
+			stream .string += "#X3D V";
+			stream .string += specificationVersion;
+			stream .string += " ";
+			stream .string += "utf8";
+			stream .string += " ";
+			stream .string += this .getBrowser () .name;
+			stream .string += " ";
+			stream .string += "V";
+			stream .string += this .getBrowser () .version;
+			stream .string += "\n";
+			stream .string += "\n";
+
+			var profile = this .getProfile ();
+
+			if (profile)
+			{
+				profile .toVRMLStream (stream);
+
+				stream .string += "\n";
+				stream .string += "\n";
+			}
+
+			var components = this .getComponents ();
+
+			if (components .length)
+			{
+				components .toVRMLStream (stream);
+
+				stream .string += "\n";
+			}
+
+			// Units
+			{
+				var
+					empty = true,
+					units = this .getUnits ();
+
+				for (var i = 0, length = units .length; i < length; ++ i)
+				{
+					var unit = units [i];
+
+					if (unit .conversionFactor !== 1)
+					{
+						empty = false;
+
+						unit .toVRMLStream (stream);
+	
+						stream .string += "\n";
+					}
+				}
+
+				if (! empty)
+					stream .string += "\n";
+			}
+
+			var metadata = this .getMetaDatas ();
+
+			if (metadata .size)
+			{
+				metadata .forEach (function (value, key)
+				{
+					stream .string += "META";
+					stream .string += " ";
+					stream .string += new Fields .SFString (key) .toString ();
+					stream .string += " ";
+					stream .string += new Fields .SFString (value) .toString ();
+					stream .string += "\n";
+				});
+
+				stream .string += "\n";
+			}
+
+			var exportedNodes = this .getExportedNodes ();
+
+			generator .PushExecutionContext (this);
+			generator .EnterScope ();
+			generator .ExportedNodes (exportedNodes);
+
+			X3DExecutionContext .prototype .toVRMLStream .call (this, stream);
+		
+			if (exportedNodes .size)
+			{
+				stream .string += "\n";
+
+				exportedNodes .forEach (function (exportedNode)
+				{
+					try
+					{
+						exportedNode .toVRMLStream (stream);
+	
+						stream .string += "\n";
+					}
+					catch (error)
+					{
+						console .log (error);
+					}
+				});
+			}
+
+			generator .LeaveScope ();
+			generator .PopExecutionContext ();
 		},
 		toXMLStream: function (stream)
 		{
@@ -328,10 +496,8 @@ function (Fields,
 					stream .string += "\n";
 				}
 			}
-		
-			var metaDatas = this .metadata;
 
-			for (var key in metaDatas)
+			this .getMetaDatas () .forEach (function (value, key)
 			{
 				stream .string += generator .Indent ();
 				stream .string += "<meta";
@@ -341,10 +507,10 @@ function (Fields,
 				stream .string += "'";
 				stream .string += " ";
 				stream .string += "content='";
-				stream .string += generator .XMLEncode (metaDatas [key]);
+				stream .string += generator .XMLEncode (value);
 				stream .string += "'";
 				stream .string += "/>\n";
-			}
+			});
 		
 			// </head>
 
@@ -367,17 +533,19 @@ function (Fields,
 
 			X3DExecutionContext .prototype .toXMLStream .call (this, stream);
 		
-			for (var exportedName in exportedNodes)
+			exportedNodes .forEach (function (exportedNode)
 			{
-				//try
+				try
 				{
-					exportedNodes [exportedName] .toXMLStream (stream);
+					exportedNode .toXMLStream (stream);
 
 					stream .string += "\n";
 				}
-				//catch (const X3DError &)
-				{ }
-			}
+				catch (error)
+				{
+					console .log (error);
+				}
+			});
 
 			generator .LeaveScope ();
 			generator .PopExecutionContext ();

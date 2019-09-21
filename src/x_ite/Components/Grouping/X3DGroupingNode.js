@@ -53,14 +53,14 @@ define ([
 	"x_ite/Components/Grouping/X3DBoundedObject",
 	"x_ite/Bits/TraverseType",
 	"x_ite/Bits/X3DConstants",
-	"standard/Math/Numbers/Matrix4",
+	"standard/Math/Geometry/Box3",
 ],
 function (Fields,
           X3DChildNode, 
           X3DBoundedObject, 
           TraverseType,
           X3DConstants,
-          Matrix4)
+          Box3)
 {
 "use strict";
 
@@ -87,16 +87,19 @@ function (Fields,
 
 		this .addType (X3DConstants .X3DGroupingNode);
 	               
-		this .hidden                = false;
-		this .allowedTypes          = new Set ();
-		this .pointingDeviceSensors = [ ];
-		this .maybeCameraObjects    = [ ];
-		this .cameraObjects         = [ ];
-		this .clipPlanes            = [ ];
-		this .localFogs             = [ ];
-		this .lights                = [ ];
-		this .displayNodes          = [ ];
-		this .childNodes            = [ ];
+		this .hidden                    = false;
+		this .allowedTypes              = new Set ();
+		this .pointingDeviceSensorNodes = [ ];
+		this .maybeCameraObjects        = [ ];
+		this .cameraObjects             = [ ];
+		this .maybePickableSensorNodes  = [ ];
+		this .pickableSensorNodes       = [ ];
+		this .pickableObjects           = [ ];
+		this .clipPlaneNodes            = [ ];
+		this .localFogNodes             = [ ];
+		this .lightNodes                = [ ];
+		this .displayNodes              = [ ];
+		this .childNodes                = [ ];
 	}
 
 	X3DGroupingNode .prototype = Object .assign (Object .create (X3DChildNode .prototype),
@@ -108,6 +111,8 @@ function (Fields,
 			X3DChildNode     .prototype .initialize .call (this);
 			X3DBoundedObject .prototype .initialize .call (this);
 
+			this .transformSensors_changed_ .addInterest ("set_pickableObjects__", this);
+
 			this .addChildren_    .addInterest ("set_addChildren__",    this);
 			this .removeChildren_ .addInterest ("set_removeChildren__", this);
 			this .children_       .addInterest ("set_children__",       this);
@@ -116,14 +121,14 @@ function (Fields,
 		},
 		getBBox: function (bbox)
 		{
-			if (this .bboxSize_ .getValue () .equals (this .defaultBBoxSize))
-				return X3DBoundedObject .prototype .getBBox .call (this, this .children_ .getValue (), bbox);
+			if (this .bboxSize_ .getValue () .equals (this .getDefaultBBoxSize ()))
+				return X3DBoundedObject .prototype .getBBox .call (this, this .childNodes, bbox);
 
 			return bbox .set (this .bboxSize_ .getValue (), this .bboxCenter_ .getValue ());
 		},
-		getMatrix: function ()
+		getSubBBox: function (bbox)
 		{
-			return Matrix4 .Identity;
+			return X3DGroupingNode .prototype .getBBox .call (this, bbox);
 		},
 		setHidden: function (value)
 		{
@@ -255,22 +260,22 @@ function (Fields,
 							{
 								case X3DConstants .X3DPointingDeviceSensorNode:
 								{
-									this .pointingDeviceSensors .push (innerNode);
+									this .pointingDeviceSensorNodes .push (innerNode);
 									break;
 								}
 								case X3DConstants .ClipPlane:
 								{
-									this .clipPlanes .push (innerNode);
+									this .clipPlaneNodes .push (innerNode);
 									break;
 								}
 								case X3DConstants .LocalFog:
 								{
-									this .localFogs .push (innerNode);
+									this .localFogNodes .push (innerNode);
 									break;
 								}
 								case X3DConstants .X3DLightNode:
 								{
-									this .lights .push (innerNode);
+									this .lightNodes .push (innerNode);
 									break;
 								}
 								case X3DConstants .X3DBindableNode:
@@ -278,10 +283,19 @@ function (Fields,
 									this .maybeCameraObjects .push (innerNode);
 									break;				
 								}
+								case X3DConstants .TransformSensor:
+								case X3DConstants .X3DPickSensorNode:
+								{
+									innerNode .isPickableObject_ .addInterest ("set_pickableObjects__", this);
+
+									this .maybePickableSensorNodes .push (innerNode);
+									break;
+								}
 								case X3DConstants .X3DBackgroundNode:
 								case X3DConstants .X3DChildNode:
 								{
-									innerNode .isCameraObject_ .addInterest ("set_cameraObjects__", this);
+									innerNode .isCameraObject_   .addInterest ("set_cameraObjects__",   this);
+									innerNode .isPickableObject_ .addInterest ("set_pickableObjects__", this);
 
 									this .maybeCameraObjects .push (innerNode);
 									this .childNodes .push (innerNode);
@@ -296,6 +310,7 @@ function (Fields,
 								case X3DConstants .X3DFollowerNode:
 								case X3DConstants .X3DInfoNode:
 								case X3DConstants .X3DInterpolatorNode:
+								case X3DConstants .X3DKeyDeviceSensorNode:
 								case X3DConstants .X3DLayoutNode:
 								case X3DConstants .X3DScriptNode:
 								case X3DConstants .X3DSequencerNode:
@@ -314,6 +329,7 @@ function (Fields,
 			}
 
 			this .set_cameraObjects__ ();
+			this .set_pickableObjects__ ();
 			this .set_display_nodes ();
 		},
 		remove: function (children)
@@ -336,37 +352,37 @@ function (Fields,
 							{
 								case X3DConstants .X3DPointingDeviceSensorNode:
 								{
-									var index = this .pointingDeviceSensors .indexOf (innerNode);
+									var index = this .pointingDeviceSensorNodes .indexOf (innerNode);
 
 									if (index >= 0)
-										this .pointingDeviceSensors .splice (index, 1);
+										this .pointingDeviceSensorNodes .splice (index, 1);
 
 									break;
 								}
 								case X3DConstants .ClipPlane:
 								{
-									var index = this .clipPlanes .indexOf (innerNode);
+									var index = this .clipPlaneNodes .indexOf (innerNode);
 
 									if (index >= 0)
-										this .clipPlanes .splice (index, 1);
+										this .clipPlaneNodes .splice (index, 1);
 
 									break;
 								}
 								case X3DConstants .LocalFog:
 								{
-									var index = this .localFogs .indexOf (innerNode);
+									var index = this .localFogNodes .indexOf (innerNode);
 
 									if (index >= 0)
-										this .localFogs .splice (index, 1);
+										this .localFogNodes .splice (index, 1);
 
 									break;
 								}
 								case X3DConstants .X3DLightNode:
 								{
-									var index = this .lights .indexOf (innerNode);
+									var index = this .lightNodes .indexOf (innerNode);
 
 									if (index >= 0)
-										this .lights .splice (index, 1);
+										this .lightNodes .splice (index, 1);
 
 									break;
 								}
@@ -379,10 +395,23 @@ function (Fields,
 
 									break;				
 								}
+								case X3DConstants .TransformSensor:
+								case X3DConstants .X3DPickSensorNode:
+								{
+									innerNode .isPickableObject_ .removeInterest ("set_pickableObjects__", this);
+
+									var index = this .maybePickableSensorNodes .indexOf (innerNode);
+
+									if (index >= 0)
+										this .maybePickableSensorNodes .splice (index, 1);
+
+									break;
+								}
 								case X3DConstants .X3DBackgroundNode:
 								case X3DConstants .X3DChildNode:
 								{
-									innerNode .isCameraObject_ .removeInterest ("set_cameraObjects__", this);
+									innerNode .isCameraObject_   .removeInterest ("set_cameraObjects__",   this);
+									innerNode .isPickableObject_ .removeInterest ("set_pickableObjects__", this);
 
 									var index = this .maybeCameraObjects .indexOf (innerNode);
 
@@ -405,6 +434,7 @@ function (Fields,
 								case X3DConstants .X3DFollowerNode:
 								case X3DConstants .X3DInfoNode:
 								case X3DConstants .X3DInterpolatorNode:
+								case X3DConstants .X3DKeyDeviceSensorNode:
 								case X3DConstants .X3DLayoutNode:
 								case X3DConstants .X3DScriptNode:
 								case X3DConstants .X3DSequencerNode:
@@ -423,135 +453,229 @@ function (Fields,
 			}
 
 			this .set_cameraObjects__ ();
+			this .set_pickableObjects__ ();
 			this .set_display_nodes ();
 		},
 		clear: function ()
 		{
-			for (var i = 0, length = this .childNodes .length; i < length; ++ i)
-				this .childNodes [i] .isCameraObject_ .removeInterest ("set_cameraObjects__", this);
-			
-			this .pointingDeviceSensors .length = 0;
-			this .maybeCameraObjects    .length = 0;
-			this .cameraObjects         .length = 0;
-			this .clipPlanes            .length = 0;
-			this .localFogs             .length = 0;
-			this .lights                .length = 0;
-			this .childNodes            .length = 0;
+			var
+				maybePickableSensorNodes = this .maybePickableSensorNodes,
+				childNodes               = this .childNodes;
+
+			for (var i = 0, length = maybePickableSensorNodes .length; i < length; ++ i)
+				maybePickableSensorNodes [i] .isPickableObject_ .removeInterest ("set_pickableObjects__", this);
+
+			for (var i = 0, length = childNodes .length; i < length; ++ i)
+			{
+				var childNode = childNodes [i];
+
+				childNode .isCameraObject_   .removeInterest ("set_cameraObjects__",   this);
+				childNode .isPickableObject_ .removeInterest ("set_pickableObjects__", this);
+			}
+
+			this .pointingDeviceSensorNodes .length = 0;
+			this .maybeCameraObjects        .length = 0;
+			this .clipPlaneNodes            .length = 0;
+			this .localFogNodes             .length = 0;
+			this .lightNodes                .length = 0;
+			this .maybePickableSensorNodes  .length = 0;
+			this .childNodes                .length = 0;
 		},
 		set_cameraObjects__: function ()
 		{
-			this .cameraObjects .length = 0;
+			var
+				maybeCameraObjects = this .maybeCameraObjects,
+				cameraObjects      = this .cameraObjects;
 
-			for (var i = 0, length = this .maybeCameraObjects .length; i < length; ++ i)
+			cameraObjects .length = 0;
+
+			for (var i = 0, length = maybeCameraObjects .length; i < length; ++ i)
 			{
-				var childNode = this .maybeCameraObjects [i];
+				var childNode = maybeCameraObjects [i];
 
 				if (childNode .getCameraObject ())
-					this .cameraObjects .push (childNode);
+					cameraObjects .push (childNode);
 			}
 
-			this .setCameraObject (this .cameraObjects .length);
+			this .setCameraObject (Boolean (cameraObjects .length));
+		},
+		set_pickableObjects__: function ()
+		{
+			var
+				maybePickableSensorNodes = this .maybePickableSensorNodes,
+				pickableSensorNodes      = this .pickableSensorNodes,
+				pickableObjects          = this .pickableObjects,
+				childNodes               = this .childNodes;
+
+			pickableSensorNodes .length = 0;
+			pickableObjects     .length = 0;
+
+			for (var i = 0, length = maybePickableSensorNodes .length; i < length; ++ i)
+			{
+				var sensorNode = maybePickableSensorNodes [i];
+
+				if (sensorNode .getPickableObject ())
+					pickableSensorNodes .push (sensorNode);
+			}
+
+			for (var i = 0, length = childNodes .length; i < length; ++ i)
+			{
+				var childNode = childNodes [i];
+
+				if (childNode .getPickableObject ())
+					pickableObjects .push (childNode);
+			}
+
+			this .setPickableObject (Boolean (this .getTransformSensors () .size || pickableSensorNodes .length || pickableObjects .length));
 		},
 		set_display_nodes: function ()
 		{
 			var
-				clipPlanes   = this .clipPlanes,
-				localFogs    = this .localFogs,
-				lights       = this .lights,
-				displayNodes = this .displayNodes;
+				clipPlaneNodes = this .clipPlaneNodes,
+				localFogNodes  = this .localFogNodes,
+				lightNodes     = this .lightNodes,
+				displayNodes   = this .displayNodes;
 
 			displayNodes .length = 0;
 
-			for (var i = 0, length = clipPlanes .length; i < length; ++ i)
-				displayNodes .push (clipPlanes [i]);
+			for (var i = 0, length = clipPlaneNodes .length; i < length; ++ i)
+				displayNodes .push (clipPlaneNodes [i]);
 
-			for (var i = 0, length = localFogs .length; i < length; ++ i)
-				displayNodes .push (localFogs [i]);
+			for (var i = 0, length = localFogNodes .length; i < length; ++ i)
+				displayNodes .push (localFogNodes [i]);
 
-			for (var i = 0, length = lights .length; i < length; ++ i)
-				displayNodes .push (lights [i]);
+			for (var i = 0, length = lightNodes .length; i < length; ++ i)
+				displayNodes .push (lightNodes [i]);
 		},
-		traverse: function (type, renderObject)
+		traverse: (function ()
 		{
-			switch (type)
+			var bbox = new Box3 ();
+
+			return function (type, renderObject)
 			{
-				case TraverseType .POINTER:
+				switch (type)
 				{
-					var
-						pointingDeviceSensors = this .pointingDeviceSensors,
-						clipPlanes            = this .clipPlanes,
-						childNodes            = this .childNodes;
-
-					if (pointingDeviceSensors .length)
+					case TraverseType .POINTER:
 					{
-						var sensors = { };
+						var
+							pointingDeviceSensorNodes = this .pointingDeviceSensorNodes,
+							clipPlaneNodes            = this .clipPlaneNodes,
+							childNodes                = this .childNodes;
+	
+						if (pointingDeviceSensorNodes .length)
+						{
+							var sensors = { };
+							
+							renderObject .getBrowser () .getSensors () .push (sensors);
 						
-						renderObject .getBrowser () .getSensors () .push (sensors);
-					
-						for (var i = 0, length = pointingDeviceSensors .length; i < length; ++ i)
-							pointingDeviceSensors [i] .push (renderObject, sensors);
+							for (var i = 0, length = pointingDeviceSensorNodes .length; i < length; ++ i)
+								pointingDeviceSensorNodes [i] .push (renderObject, sensors);
+						}
+	
+						for (var i = 0, length = clipPlaneNodes .length; i < length; ++ i)
+							clipPlaneNodes [i] .push (renderObject);
+	
+						for (var i = 0, length = childNodes .length; i < length; ++ i)
+							childNodes [i] .traverse (type, renderObject);
+	
+						for (var i = clipPlaneNodes .length - 1; i >= 0; -- i)
+							clipPlaneNodes [i] .pop (renderObject);
+	
+						if (pointingDeviceSensorNodes .length)
+							renderObject .getBrowser () .getSensors () .pop ();
+	
+						return;
 					}
+					case TraverseType .CAMERA:
+					{
+						var cameraObjects = this .cameraObjects;
+	
+						for (var i = 0, length = cameraObjects .length; i < length; ++ i)
+							cameraObjects [i] .traverse (type, renderObject);
+	
+						return;
+					}
+					case TraverseType .PICKING:
+					{
+						if (this .getTransformSensors () .size)
+						{
+							this .getSubBBox (bbox) .multRight (renderObject .getModelViewMatrix () .get ());
+	
+							this .getTransformSensors () .forEach (function (transformSensorNode)
+							{
+								transformSensorNode .collect (bbox);
+							});
+						}
 
-					for (var i = 0, length = clipPlanes .length; i < length; ++ i)
-						clipPlanes [i] .push (renderObject);
+						var pickableSensorNodes = this .pickableSensorNodes;
 
-					for (var i = 0, length = childNodes .length; i < length; ++ i)
-						childNodes [i] .traverse (type, renderObject);
+						for (var i = 0, length = pickableSensorNodes .length; i < length; ++ i)
+							pickableSensorNodes [i] .traverse (type, renderObject);
 
-					for (var i = clipPlanes .length - 1; i >= 0; -- i)
-						clipPlanes [i] .pop (renderObject);
+						var
+							browser          = renderObject .getBrowser (),
+							pickingHierarchy = browser .getPickingHierarchy (),
+							pickableStack    = browser .getPickable ();
 
-					if (pointingDeviceSensors .length)
-						renderObject .getBrowser () .getSensors () .pop ();
+						pickingHierarchy .push (this);
 
-					return;
+						if (pickableStack [pickableStack .length - 1])
+						{
+							var childNodes = this .childNodes;
+	
+							for (var i = 0, length = childNodes .length; i < length; ++ i)
+								childNodes [i] .traverse (type, renderObject);
+						}
+						else
+						{
+							var pickableObjects = this .pickableObjects;
+		
+							for (var i = 0, length = pickableObjects .length; i < length; ++ i)
+								pickableObjects [i] .traverse (type, renderObject);
+						}
+
+						pickingHierarchy .pop ();
+						return;
+					}
+					case TraverseType .COLLISION:
+					case TraverseType .DEPTH:
+					{					
+						var
+							clipPlaneNodes = this .clipPlaneNodes,
+							childNodes     = this .childNodes;
+	
+						for (var i = 0, length = clipPlaneNodes .length; i < length; ++ i)
+							clipPlaneNodes [i] .push (renderObject);
+	
+						for (var i = 0, length = childNodes .length; i < length; ++ i)
+							childNodes [i] .traverse (type, renderObject);
+	
+						for (var i = clipPlaneNodes .length - 1; i >= 0; -- i)
+							clipPlaneNodes [i] .pop (renderObject);
+						
+						return;
+					}
+					case TraverseType .DISPLAY:
+					{
+
+						var
+							displayNodes = this .displayNodes,
+							childNodes   = this .childNodes;
+	
+						for (var i = 0, length = displayNodes .length; i < length; ++ i)
+							displayNodes [i] .push (renderObject, this);
+	
+						for (var i = 0, length = childNodes .length; i < length; ++ i)
+							childNodes [i] .traverse (type, renderObject);
+	
+						for (var i = displayNodes .length - 1; i >= 0; -- i)
+							displayNodes [i] .pop (renderObject);
+	
+						return;
+					}
 				}
-				case TraverseType .CAMERA:
-				{
-					var cameraObjects = this .cameraObjects;
-
-					for (var i = 0, length = cameraObjects .length; i < length; ++ i)
-						cameraObjects [i] .traverse (type, renderObject);
-
-					return;
-				}
-				case TraverseType .COLLISION:
-				case TraverseType .DEPTH:
-				{					
-					var
-						clipPlanes = this .clipPlanes,
-						childNodes = this .childNodes;
-
-					for (var i = 0, length = clipPlanes .length; i < length; ++ i)
-						clipPlanes [i] .push (renderObject);
-
-					for (var i = 0, length = childNodes .length; i < length; ++ i)
-						childNodes [i] .traverse (type, renderObject);
-
-					for (var i = clipPlanes .length - 1; i >= 0; -- i)
-						clipPlanes [i] .pop (renderObject);
-					
-					return;
-				}
-				case TraverseType .DISPLAY:
-				{
-					var
-						displayNodes = this .displayNodes,
-						childNodes   = this .childNodes;
-
-					for (var i = 0, length = displayNodes .length; i < length; ++ i)
-						displayNodes [i] .push (renderObject, this);
-
-					for (var i = 0, length = childNodes .length; i < length; ++ i)
-						childNodes [i] .traverse (type, renderObject);
-
-					for (var i = displayNodes .length - 1; i >= 0; -- i)
-						displayNodes [i] .pop (renderObject);
-
-					return;
-				}
-			}
-		},
+			};
+		})(),
 	});
 
 	return X3DGroupingNode;

@@ -55,9 +55,10 @@ define ([
 	"x_ite/Bits/TraverseType",
 	"x_ite/Bits/X3DConstants",
 	"standard/Math/Algorithm",
-	"standard/Math/Geometry/Line3",
 	"standard/Math/Numbers/Vector3",
 	"standard/Math/Numbers/Matrix4",
+	"standard/Math/Geometry/Box3",
+	"standard/Math/Geometry/Line3",
 	"standard/Math/Algorithms/QuickSort",
 ],
 function (Fields,
@@ -67,9 +68,10 @@ function (Fields,
           TraverseType,
           X3DConstants,
           Algorithm,
-          Line3,
           Vector3,
           Matrix4,
+          Box3,
+          Line3,
           QuickSort)
 {
 "use strict";
@@ -103,6 +105,14 @@ function (Fields,
 		{
 			return "children";
 		},
+		initialize: function ()
+		{
+			X3DShapeNode .prototype .initialize .call (this);
+
+			this .transformSensors_changed_ .addInterest ("set_transformSensors__", this);
+
+			this .set_transformSensors__ ();
+		},
 		set_geometry__: function ()
 		{
 			X3DShapeNode .prototype .set_geometry__ .call (this);
@@ -111,6 +121,10 @@ function (Fields,
 				delete this .traverse;
 			else
 				this .traverse = Function .prototype;
+		},
+		set_transformSensors__: function ()
+		{
+			this .setPickableObject (this .getTransformSensors () .size);
 		},
 		intersectsBox: function (box, clipPlanes, modelViewMatrix)
 		{
@@ -123,17 +137,25 @@ function (Fields,
 			switch (type)
 			{
 				case TraverseType .POINTER:
+				{
 					this .pointer (renderObject);
 					break;
-
+				}
+				case TraverseType .PICKING:
+				{
+					this .picking (renderObject);
+					break;
+				}
 				case TraverseType .COLLISION:
+				{
 					renderObject .addCollisionShape (this);
 					break;
-
+				}
 				case TraverseType .DEPTH:
+				{
 					renderObject .addDepthShape (this);
 					break;
-
+				}
 				case TraverseType .DISPLAY:
 				{
 					if (renderObject .addDisplayShape (this))
@@ -185,10 +207,10 @@ function (Fields,
 	
 						// Find first point that is not greater than near plane;
 						var index = Algorithm .lowerBound (intersections, 0, intersections .length, -renderObject .getNavigationInfo () .getNearValue (),
-						                                   function (lhs, rhs)
-						                                   {
-						                                      return lhs .point .z > rhs;
-						                                   });
+						function (lhs, rhs)
+						{
+						   return lhs .point .z > rhs;
+						});
 	
 						// Are there intersections before the camera?
 						if (index !== intersections .length)
@@ -206,6 +228,38 @@ function (Fields,
 				{
 					console .log (error);
 				}
+			};
+		})(),
+		picking: (function ()
+		{
+			var bbox = new Box3 ();
+
+			return function (renderObject)
+			{
+				if (this .getTransformSensors () .size)
+				{
+					this .getBBox (bbox) .multRight (renderObject .getModelViewMatrix () .get ());
+
+					this .getTransformSensors () .forEach (function (transformSensorNode)
+					{
+						transformSensorNode .collect (bbox);
+					});
+				}
+
+				var
+					browser          = renderObject .getBrowser (),
+					pickSensorStack  = browser .getPickSensors (),
+					pickingHierarchy = browser .getPickingHierarchy ();
+
+				pickingHierarchy .push (this);
+
+				pickSensorStack [pickSensorStack .length - 1] .forEach (function (pickSensor)
+				{
+					pickSensor .collect (this .getGeometry (), renderObject .getModelViewMatrix () .get (), browser .getPickingHierarchy ());
+				},
+				this);
+
+				pickingHierarchy .pop ();
 			};
 		})(),
 		depth: function (gl, context, shaderNode)

@@ -54,7 +54,8 @@ define ([
 	"x_ite/Components/Core/X3DChildNode",
 	"x_ite/Bits/X3DConstants",
 	"x_ite/Bits/X3DCast",
-	"lib/ammojs/ammo",
+	"x_ite/Browser/RigidBodyPhysics/AppliedParametersType",
+	"lib/ammojs/Ammo",
 ],
 function (Fields,
           X3DFieldDefinition,
@@ -62,6 +63,7 @@ function (Fields,
           X3DChildNode, 
           X3DConstants,
           X3DCast,
+          AppliedParametersType,
           Ammo)
 {
 "use strict";
@@ -199,16 +201,20 @@ function (Fields,
 		},
 		set_bounce__: function ()
 		{
-			if (this .colliderNode && this .colliderNode .enabled_ .getValue ())
-			{
-				if (this .colliderNode .getAppliedParameters () .BOUNCE)
-				{
-					for (var i = 0, length = this .bodyNodes .length; i < length; ++ i)
-					{
-						var rigidBody = this .bodyNodes [i] .getRigidBody ();
+			var
+				colliderNode = this .colliderNode,
+				bodyNodes    = this .bodyNodes;
 
-						if (rigidBody .getLinearVelocity () .length () > this .colliderNode .minBounceSpeed_ .getValue ())
-							rigidBody .setRestitution (this .colliderNode .bounce_ .getValue ());
+			if (colliderNode && colliderNode .enabled_ .getValue ())
+			{
+				if (colliderNode .getAppliedParameters () .has (AppliedParametersType .BOUNCE))
+				{
+					for (var i = 0, length = bodyNodes .length; i < length; ++ i)
+					{
+						var rigidBody = bodyNodes [i] .getRigidBody ();
+
+						if (rigidBody .getLinearVelocity () .length () >= colliderNode .minBounceSpeed_ .getValue ())
+							rigidBody .setRestitution (colliderNode .bounce_ .getValue ());
 						else
 							rigidBody .setRestitution (0);
 					}
@@ -217,14 +223,14 @@ function (Fields,
 				}
 			}
 
-			for (var i = 0, length = this .bodyNodes .length; i < length; ++ i)
-				this .bodyNodes [i] .getRigidBody () .setRestitution (0);
+			for (var i = 0, length = bodyNodes .length; i < length; ++ i)
+				bodyNodes [i] .getRigidBody () .setRestitution (0);
 		},
 		set_frictionCoefficients__: function ()
 		{
 			if (this .colliderNode && this .colliderNode .enabled_ .getValue ())
 			{
-				if (this .colliderNode .getAppliedParameters () .FRICTION_COEFFICIENT_2)
+				if (this .colliderNode .getAppliedParameters () .has (AppliedParametersType .FRICTION_COEFFICIENT_2))
 				{
 					for (var i = 0, length = this .bodyNodes .length; i < length; ++ i)
 					{

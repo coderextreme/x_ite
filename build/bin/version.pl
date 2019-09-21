@@ -30,7 +30,6 @@ sub commit
 	system "git", "commit", "-am", "Published version $VERSION-$REVISION";
 	system "git", "push";
 	system "git", "push", "origin";
-	system "git", "push", "github";
 }
 
 sub publish
@@ -39,22 +38,36 @@ sub publish
 
 	system "git", "tag", "--delete", "$version";
 	system "git", "push", "--delete", "origin", "$version";
-	system "git", "push", "--delete", "github", "$version";
 
 	system "git", "tag", "$version";
 	system "git", "push", "origin", "--tags";
-	system "git", "push", "github", "--tags";
 }
 
 sub rsync
 {
 	my $release = shift;
-	my $ftp      = "/run/user/1000/gvfs/ftp:host=create3000.de/html/create3000.de/code/htdocs/x_ite";
+	my $local   = "/home/holger/Projekte/X_ITE/dist";
+	my $ftp     = "/html/create3000.de/code/htdocs/x_ite";
+	my $host    = "alfa3008.alfahosting-server.de";
+	my $user    = netuser ($host);
 
 	say "Uploading $release";
 
-	system "mkdir", "-p", "$ftp/$release/dist/";
-	system "rsync", "-r", "-x", "-c", "-v", "--progress", "--delete", "/home/holger/Projekte/X_ITE/dist/", "$ftp/$release/dist/";
+	#system "mkdir", "-p", "$ftp/$release/dist/";
+	#system "rsync", "-r", "-x", "-c", "-v", "--progress", "--delete", "$local/", "$ftp/$release/dist/";
+
+	system "lftp", "-e", "mkdir -p $ftp/$release/dist; bye", "ftp://$user\@$host";
+	system "lftp", "-e", "mirror --reverse --delete --overwrite --use-cache --verbose $local $ftp/$release/dist; bye", "ftp://$user\@$host";
+}
+
+sub netuser
+{
+	my $host  = shift;
+	my $netrc = `cat ~/.netrc`;
+
+	$netrc =~ /machine\s+$host\s+login\s+(\w+)/;
+
+	return $1;
 }
 
 my $result = system "zenity", "--question", "--text=Do you really want to publish X_ITE X3D v$VERSION-$REVISION now?", "--ok-label=Yes", "--cancel-label=No";

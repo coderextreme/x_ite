@@ -66,25 +66,25 @@ function (SFVec3,
 
 	function SFRotation (x, y, z, angle)
 	{
-	   if (this instanceof SFRotation)
-	   {
-			switch (arguments .length)
-			{
-				case 1:
-					return X3DField .call (this, arguments [0]);
-				case 2:
-					if (arguments [1] instanceof SFVec3f)
-						return X3DField .call (this, new Rotation4 (arguments [0] .getValue (), arguments [1] .getValue ()));
+		switch (arguments .length)
+		{
+			case 0:
+				return X3DField .call (this, new Rotation4 ());
 
-					return X3DField .call (this, new Rotation4 (arguments [0] .getValue (), arguments [1] * 1));
-				case 4:
-					return X3DField .call (this, new Rotation4 (x * 1, y * 1, z * 1, angle * 1));
-				default:
-					return X3DField .call (this, new Rotation4 ());
-			}
+			case 1:
+				return X3DField .call (this, arguments [0]);
+
+			case 2:
+				if (arguments [1] instanceof SFVec3f)
+					return X3DField .call (this, new Rotation4 (arguments [0] .getValue (), arguments [1] .getValue ()));
+
+				return X3DField .call (this, new Rotation4 (arguments [0] .getValue (), arguments [1] * 1));
+
+			case 4:
+				return X3DField .call (this, new Rotation4 (x * 1, y * 1, z * 1, angle * 1));
 		}
 
-		return SFRotation .apply (Object .create (SFRotation .prototype), arguments);
+		throw new Error ("Invalid arguments.");
 	}
 
 	SFRotation .prototype = Object .assign (Object .create (X3DField .prototype),
@@ -149,6 +149,10 @@ function (SFVec3,
 			                   rotation .y + " " +
 			                   rotation .z + " " +
 			                   generator .ToUnit ("angle", rotation .angle);
+		},
+		toVRMLStream: function (stream)
+		{
+			this .toStream (stream);
 		},
 		toXMLStream: function (stream)
 		{

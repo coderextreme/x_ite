@@ -163,7 +163,7 @@ function ($,
 			this .URL = this .getExecutionContext () .getURL () .transform (this .URL);
 			// In Firefox we don't need getRelativePath if file scheme, do we in Chrome???
 
-			this .image .attr ("src", this .URL);
+			this .image .attr ("src", this .URL .toString ());
 		},
 		setError: function ()
 		{
@@ -194,6 +194,7 @@ function ($,
 			try
 			{
 				var
+					gl     = this .getBrowser () .getContext (),
 				   image  = this .image [0],
 					width  = image .width,
 					height = image .height;
@@ -204,8 +205,24 @@ function ($,
 
 				// Scale image if needed and flip vertically.
 
-				if (! Algorithm .isPowerOfTwo (width) || ! Algorithm .isPowerOfTwo (height))
+				if (gl .getVersion () >= 2 || (Algorithm .isPowerOfTwo (width) && Algorithm .isPowerOfTwo (height)))
 				{
+					// Flip Y
+
+					canvas .width  = width;
+					canvas .height = height;
+
+					cx .clearRect (0, 0, width, height);
+					cx .save ();
+					cx .translate (0, height);
+					cx .scale (1, -1);
+					cx .drawImage (image, 0, 0);
+					cx .restore ();
+				}
+				else
+				{
+					// Flip Y and scale image to next power of two.
+
 					width  = Algorithm .nextPowerOfTwo (width);
 					height = Algorithm .nextPowerOfTwo (height);
 
@@ -219,43 +236,24 @@ function ($,
 					cx .drawImage (image, 0, 0, image .width, image .height, 0, 0, width, height);
 					cx .restore ();
 				}
-				else
-				{
-					canvas .width  = width;
-					canvas .height = height;
-
-					cx .clearRect (0, 0, width, height);
-					cx .save ();
-					cx .translate (0, height);
-					cx .scale (1, -1);
-					cx .drawImage (image, 0, 0);
-					cx .restore ();
-				}
 
 				// Determine image alpha.
 
 				var
-					data   = cx .getImageData (0, 0, width, height) .data,
-					opaque = true;
-
-				canvas .width  = 1;
-				canvas .height = 1;
+					data        = cx .getImageData (0, 0, width, height) .data,
+					transparent = false;
 
 				for (var i = 3; i < data .length; i += 4)
 				{
 					if (data [i] !== 255)
 					{
-						opaque = false;
+						transparent = true;
 						break;
 					}
 				}
 
-				setTimeout (function ()
-				{
-					this .setTexture (width, height, ! opaque, new Uint8Array (data), false);
-					this .setLoadState (X3DConstants .COMPLETE_STATE);
-				}
-				.bind (this), 16);
+				this .setTexture (width, height, transparent, new Uint8Array (data), false);
+				this .setLoadState (X3DConstants .COMPLETE_STATE);
 			}
 			catch (error)
 			{

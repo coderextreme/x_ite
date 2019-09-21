@@ -83,6 +83,11 @@ function (Fields,
 
 		this .addType (X3DConstants .HAnimHumanoid);
 
+		this .translation_ .setUnit ("length");
+		this .center_      .setUnit ("length");
+		this .bboxSize_    .setUnit ("length");
+		this .bboxCenter_  .setUnit ("length");
+
 		this .viewpointsNode = new Group (executionContext);
 		this .skeletonNode   = new Group (executionContext);
 		this .skinNode       = new Group (executionContext);
@@ -92,8 +97,6 @@ function (Fields,
 		this .skinCoordNode  = null;
 		this .restNormalNode = null;
 		this .restCoordNode  = null;
-
-		this .getBBox = this .transformNode .getBBox  .bind (this .transformNode);
 	}
 
 	HAnimHumanoid .prototype = Object .assign (Object .create (X3DChildNode .prototype),
@@ -174,7 +177,8 @@ function (Fields,
 			this .transformNode .bboxCenter_       = this .bboxCenter_;
 			this .transformNode .children_         = [ this .viewpointsNode, this .skeletonNode, this .skinNode ];
 
-			this .transformNode .isCameraObject_ .addFieldInterest (this .isCameraObject_);
+			this .transformNode .isCameraObject_   .addFieldInterest (this .isCameraObject_);
+			this .transformNode .isPickableObject_ .addFieldInterest (this .isPickableObject_);
 
 			// Setup
 
@@ -183,7 +187,8 @@ function (Fields,
 			this .skinNode       .setup ();
 			this .transformNode  .setup ();
 
-			this .setCameraObject (this .transformNode .getCameraObject ());
+			this .setCameraObject   (this .transformNode .getCameraObject ());
+			this .setPickableObject (this .transformNode .getPickableObject ());
 
 			// Skinning
 
@@ -194,6 +199,10 @@ function (Fields,
 			this .set_joints__ ();
 			this .set_skinNormal__ ();
 			this .set_skinCoord__ ();
+		},
+		getBBox: function (bbox)
+		{
+			return this .transformNode .getBBox (bbox);
 		},
 		set_joints__: function ()
 		{

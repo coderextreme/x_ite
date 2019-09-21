@@ -128,7 +128,6 @@ function (Fields,
 		this .invLightSpaceProjectionMatrix = new Matrix4 ();
 		this .shadowMatrix                  = new Matrix4 ();
 		this .shadowMatrixArray             = new Float32Array (16);
-		this .invGroupMatrix                = new Matrix4 ();
 		this .rotation                      = new Rotation4 ();
 		this .rotationMatrix                = new Matrix4 ();
 		this .textureUnit                   = 0;
@@ -176,13 +175,11 @@ function (Fields,
 
 						gl .activeTexture (gl .TEXTURE0 + this .textureUnit);
 
-						if (browser .getExtension ("WEBGL_depth_texture"))
+						if (gl .getVersion () >= 2 || browser .getExtension ("WEBGL_depth_texture"))
 							gl .bindTexture (gl .TEXTURE_2D, this .shadowBuffer .getDepthTexture ());
 						else
 							gl .bindTexture (gl .TEXTURE_2D, this .shadowBuffer .getColorTexture ());
 
-						gl .texParameteri (gl .TEXTURE_2D, gl .TEXTURE_MIN_FILTER, gl .NEAREST);
-						gl .texParameteri (gl .TEXTURE_2D, gl .TEXTURE_MAG_FILTER, gl .NEAREST);
 						gl .activeTexture (gl .TEXTURE0);
 					}
 					else
@@ -212,9 +209,7 @@ function (Fields,
 				invLightSpaceMatrix .translate (lightNode .getLocation ());
 				invLightSpaceMatrix .inverse ();
 
-				var
-					shadowMapSize  = lightNode .getShadowMapSize (),
-					invGroupMatrix = this .invGroupMatrix .assign (this .groupNode .getMatrix ()) .inverse ();
+				var shadowMapSize  = lightNode .getShadowMapSize ();
 
 				this .shadowBuffer .bind ();
 
@@ -229,9 +224,8 @@ function (Fields,
 					renderObject .getProjectionMatrix () .pushMatrix (this .projectionMatrix);
 					renderObject .getModelViewMatrix  () .pushMatrix (orientationMatrices [i]);
 					renderObject .getModelViewMatrix  () .multLeft (invLightSpaceMatrix);
-					renderObject .getModelViewMatrix  () .multLeft (invGroupMatrix);
 	
-					renderObject .render (TraverseType .DEPTH, this .groupNode);
+					renderObject .render (TraverseType .DEPTH, X3DGroupingNode .prototype .traverse, this .groupNode);
 	
 					renderObject .getModelViewMatrix  () .pop ();
 					renderObject .getProjectionMatrix () .pop ();
@@ -260,17 +254,16 @@ function (Fields,
 		},
 		setShaderUniforms: function (gl, shaderObject)
 		{
-			// For correct results the radius must be transform by the modelViewMatrix. This can only be done in the shader.
-			// distanceOfLightToFragmentInLightSpace = |(FragmentPosition - LightPosition) * inverseModelViewMatrixOfLight|
-			// distanceOfLightToFragmentInLightSpace can then be compared with radius.
+			var i = shaderObject .numLights ++;
+
+			if (shaderObject .hasLight (i, this))
+				return;
 
 			var 
 				lightNode   = this .lightNode,
 				color       = lightNode .getColor (),
 				attenuation = lightNode .getAttenuation (),
-				location    = this .location,
-				shadowColor = lightNode .getShadowColor (),
-				i           = shaderObject .numLights ++;
+				location    = this .location;
 
 			gl .uniform1i        (shaderObject .x3d_LightType [i],             2);
 			gl .uniform3f        (shaderObject .x3d_LightColor [i],            color .r, color .g, color .b);
@@ -283,12 +276,19 @@ function (Fields,
 
 			if (this .textureUnit)
 			{
+				var shadowColor = lightNode .getShadowColor ();
+
 				gl .uniform3f        (shaderObject .x3d_ShadowColor [i],         shadowColor .r, shadowColor .g, shadowColor .b);
 				gl .uniform1f        (shaderObject .x3d_ShadowIntensity [i],     lightNode .getShadowIntensity ());
 				gl .uniform1f        (shaderObject .x3d_ShadowBias [i],          lightNode .getShadowBias ());
 				gl .uniformMatrix4fv (shaderObject .x3d_ShadowMatrix [i], false, this .shadowMatrixArray);
 				gl .uniform1i        (shaderObject .x3d_ShadowMapSize [i],       lightNode .getShadowMapSize ());
 				gl .uniform1i        (shaderObject .x3d_ShadowMap [i],           this .textureUnit);
+			}
+			else
+			{
+				// Must be set to zero in case of multiple lights.
+				gl .uniform1f (shaderObject .x3d_ShadowIntensity [i], 0);			
 			}
 		},
 		dispose: function ()

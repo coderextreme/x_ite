@@ -60,8 +60,8 @@ define ([
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DShaderNode, 
-          X3DProgrammableShaderObject, 
+          X3DShaderNode,
+          X3DProgrammableShaderObject,
           LoadSensor,
           X3DCast,
           X3DConstants)
@@ -134,7 +134,7 @@ function (Fields,
 
 			if (this .isLive () .getValue ())
 			{
-				if (this .isValid_ .getValue ())
+				if (this .getValid ())
 				{
 					this .enable (gl);
 					this .addShaderFields ();
@@ -143,7 +143,7 @@ function (Fields,
 			}
 			else
 			{
-				if (this .isValid_ .getValue ())
+				if (this .getValid ())
 				{
 					this .enable (gl);
 					this .removeShaderFields ();
@@ -166,11 +166,11 @@ function (Fields,
 					parts   = this .parts_ .getValue (),
 					valid   = 0;
 
-				if (this .isValid_ .getValue ())
+				if (this .getValid ())
 					this .removeShaderFields ();
-	
+
 				this .program = program;
-	
+
 				for (var i = 0, length = parts .length; i < length; ++ i)
 				{
 					var partNode = X3DCast (X3DConstants .ShaderPart, parts [i]);
@@ -181,14 +181,14 @@ function (Fields,
 						gl .attachShader (program, partNode .getShader ());
 					}
 				}
-	
+
 				if (valid)
 				{
 					this .bindAttributeLocations (gl, program);
 
 					gl .linkProgram (program);
 
-					valid = valid && gl .getProgramParameter (program, gl .LINK_STATUS);
+					valid = gl .getProgramParameter (program, gl .LINK_STATUS);
 				}
 
 				if (valid)
@@ -198,11 +198,13 @@ function (Fields,
 					// Initialize uniform variables and attributes
 					if (this .getDefaultUniforms ())
 					{
-						// Setup user-defined fields. 
+						// Setup user-defined fields.
 						this .addShaderFields ();
 					}
 					else
+					{
 						valid = false;
+					}
 
 					// Debug, print complete shader info and statistics.
 					// this .printProgramInfo ();
@@ -210,11 +212,11 @@ function (Fields,
 				else
 					console .warn ("Couldn't initialize " + this .getTypeName () + " '" + this .getName () + "': " + gl .getProgramInfoLog (program));
 
-				this .isValid_ = valid;
+				this .setValid (!! valid);
 			}
 			else
 			{
-				this .isValid_ = false;
+				this .setValid (false);
 			}
 		},
 		set_field__: function (field)

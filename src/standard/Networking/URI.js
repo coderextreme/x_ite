@@ -66,7 +66,7 @@ define (function ()
 				value .separator         = separator;
 				value .leadingSeparator  = false;
 				value .trailingSeparator = false;
-				
+
 				if (value .length)
 				{
 					if (value [0] .length === 0)
@@ -82,9 +82,9 @@ define (function ()
 					{
 						value .pop ();
 						value .trailingSeparator = true;
-					}		
+					}
 				}
-				
+
 				break;
 			}
 			case 4:
@@ -93,7 +93,7 @@ define (function ()
 
 				value .separator         = arguments [1];
 				value .leadingSeparator  = arguments [2];
-				value .trailingSeparator = arguments [3];					
+				value .trailingSeparator = arguments [3];
 				break;
 			}
 		}
@@ -105,7 +105,7 @@ define (function ()
 		{
 			var value = this .value;
 
-			return new Path (value .slice (0, value .length), 
+			return new Path (value .slice (0, value .length),
 			                 value .separator,
 			                 value .leadingSeparator,
 			                 value .trailingSeparator);
@@ -124,7 +124,7 @@ define (function ()
 		},
 		get root ()
 		{
-			return new Path ([ ], 
+			return new Path ([ ],
 			                this .value .separator,
 			                true,
 			                true);
@@ -134,7 +134,7 @@ define (function ()
 			if (this .value .trailingSeparator)
 				return this .copy ();
 
-			return this .parent;	
+			return this .parent;
 		},
 		get parent ()
 		{
@@ -152,7 +152,7 @@ define (function ()
 				}
 				default:
 				{
-					return new Path (value .slice (0, value .length - 1), 
+					return new Path (value .slice (0, value .length - 1),
 				                     value .separator,
 				                     value .leadingSeparator,
 				                     true);
@@ -236,7 +236,7 @@ define (function ()
 				for (var i = 0; i < value .length; ++ i)
 				{
 					var segment = value [i];
-				
+
 					switch (segment)
 					{
 						case "":
@@ -297,7 +297,7 @@ define (function ()
 			var
 				value  = this .value,
 				string = "";
-		
+
 			if (value .leadingSeparator)
 				string += value .separator;
 
@@ -333,7 +333,7 @@ define (function ()
 	function parse (uri, string)
 	{
 		var result = address .exec (string);
-	
+
 		if (result)
 		{
 			uri .scheme    = result [1] || "";
@@ -401,7 +401,7 @@ define (function ()
 				value .path      = arguments [6];
 				value .query     = arguments [7];
 				value .fragment  = arguments [8];
-				value .string    = this .toString ();
+				value .string    = this .createString ();
 				break;
 			}
 		}
@@ -572,7 +572,7 @@ define (function ()
 			                value .port,
 			                value .path .parent,
 			                "",
-			                "");	
+			                "");
 		},
 		get filename ()
 		{
@@ -605,6 +605,9 @@ define (function ()
 			if (! (reference instanceof URI))
 				reference = new URI (reference .toString ());
 
+			if (reference .scheme == "data")
+				return new URI (reference .toString ());
+
 			var
 				value       = this .value,
 				T_local     = false,
@@ -619,25 +622,25 @@ define (function ()
 
 			if (reference .scheme)
 			{
-				T_local     = reference .isLocal ();
-				T_absolute  = reference .isAbsolute ();
-				T_scheme    = reference .scheme;
-				T_slashs    = reference .value .slashs;
-				T_host      = reference .host;
-				T_port      = reference .port;
-				T_path      = reference .path;
-				T_query     = reference .query;
+				T_local    = reference .isLocal ();
+				T_absolute = reference .isAbsolute ();
+				T_scheme   = reference .scheme;
+				T_slashs   = reference .value .slashs;
+				T_host     = reference .host;
+				T_port     = reference .port;
+				T_path     = reference .path;
+				T_query    = reference .query;
 			}
 			else
 			{
 				if (reference .authority)
 				{
-					T_local     = reference .isLocal ();
-					T_absolute  = reference .isAbsolute ();
-					T_host      = reference .host;
-					T_port      = reference .port;
-					T_path      = reference .path;
-					T_query     = reference .query;
+					T_local    = reference .isLocal ();
+					T_absolute = reference .isAbsolute ();
+					T_host     = reference .host;
+					T_port     = reference .port;
+					T_path     = reference .path;
+					T_query    = reference .query;
 				}
 				else
 				{
@@ -673,10 +676,10 @@ define (function ()
 						T_query = reference .query;
 					}
 
-					T_local     = this .isLocal ();
-					T_absolute  = this .isAbsolute () || reference .isAbsolute ();
-					T_host      = value .host;
-					T_port      = value .port;
+					T_local    = this .isLocal ();
+					T_absolute = this .isAbsolute () || reference .isAbsolute ();
+					T_host     = value .host;
+					T_port     = value .port;
 				}
 
 				T_scheme = value .scheme;
@@ -736,6 +739,9 @@ define (function ()
 		{
 			var value = this .value;
 
+			if (value .scheme === "data")
+				return new URI (value .string);
+
 			return new URI (value .local,
 			                value .absolute,
 			                value .scheme,
@@ -750,6 +756,9 @@ define (function ()
 		{
 			var value = this .value;
 
+			if (value .scheme === "data")
+				return new URI (value .string);
+
 			return new URI (value .local,
 			                value .absolute,
 			                value .scheme,
@@ -761,6 +770,10 @@ define (function ()
 			                unescape (value .fragment));
 		},
 		toString: function ()
+		{
+			return this .value .string;
+		},
+		createString: function ()
 		{
 			var
 				value  = this .value,

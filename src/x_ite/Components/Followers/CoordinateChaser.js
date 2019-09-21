@@ -59,7 +59,7 @@ define ([
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DChaserNode, 
+          X3DChaserNode,
           X3DArrayChaserTemplate,
           X3DConstants,
           Vector3)
@@ -106,13 +106,7 @@ function (Fields,
 		{
 			return new Vector3 (0, 0, 0);
 		},
-		getArray: function ()
-		{
-			return new Fields .MFVec3f ();
-		},
 	});
 
 	return CoordinateChaser;
 });
-
-

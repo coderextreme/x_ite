@@ -82,12 +82,6 @@ function ($,
 {
 "use strict";
 
-	var
-		paths = [ ],
-		min   = new Vector3 (0, 0, 0),
-		max   = new Vector3 (1, 1, 0),
-		bbox  = new Box3 ();
-
 	function ScreenText (text, fontStyle)
 	{
 		X3DTextGeometry .call (this, text, fontStyle);
@@ -108,306 +102,300 @@ function ($,
 	{
 		constructor: ScreenText,
 		modelViewMatrix: new Matrix4 (),
+		getTransparent: function ()
+		{
+			return true;
+		},
 		getMatrix: function ()
 		{
 			return this .matrix;
 		},
-		update: function ()
-		{
-			X3DTextGeometry .prototype .update .call (this);
-	
-			var
-				fontStyle = this .getFontStyle (),
-				text      = this .getText (),
-				offset    = 1; // For antialiasing border on bottom and right side
-
-			text .textBounds_ .x = Math .ceil (text .textBounds_ .x) + offset;
-			text .textBounds_ .y = Math .ceil (text .textBounds_ .y) + offset;
-
-			this .getBBox () .getExtents (min, max);
-
-			min .x -= offset;
-			min .y -= offset;
-
-			switch (fontStyle .getMajorAlignment ())
-			{
-				case TextAlignment .BEGIN:
-				case TextAlignment .FIRST:
-					min .x = Math .floor (min .x);
-					max .x = min .x + text .textBounds_ .x;
-					break;
-				case TextAlignment .MIDDLE:
-					min .x = Math .round (min .x);
-					max .x = min .x + text .textBounds_ .x;
-					break;
-				case TextAlignment .END:
-					max .x = Math .ceil (max .x);
-					min .x = max .x - text .textBounds_ .x;
-					break;
-			}
-
-			switch (fontStyle .getMinorAlignment ())
-			{
-				case TextAlignment .BEGIN:
-				case TextAlignment .FIRST:
-					max .y = Math .ceil (max .y);
-					min .y = max .y - text .textBounds_ .y;
-					break;
-				case TextAlignment .MIDDLE:
-					max .y = Math .round (max .y);
-					min .y = max .y - text .textBounds_ .y;
-					break;
-				case TextAlignment .END:
-					min .y = Math .floor (min .y);
-					max .y = min .y + text .textBounds_ .y;
-					break;
-			}
-
-			text .origin_ .x = min .x;
-			text .origin_ .y = max .y;
-
-			this .getBBox () .setExtents (min, max);
-		},
-		build: function ()
+		update: (function ()
 		{
 			var
-				fontStyle = this .getFontStyle (),
-				font      = fontStyle .getFont ();
+				min = new Vector3 (0, 0, 0),
+				max = new Vector3 (1, 1, 0);
 
-			if (! font)
-				return;
-
-			var
-				text           = this .getText (),
-				glyphs         = this .getGlyphs (),
-				minorAlignment = this .getMinorAlignment (),
-				translations   = this .getTranslations (),
-				charSpacings   = this .getCharSpacings (),
-				size           = fontStyle .getScale (), // in pixel
-				sizeUnitsPerEm = size / font .unitsPerEm,
-				texCoordArray  = this .texCoordArray,
-				normalArray    = text .getNormals (),
-				vertexArray    = text .getVertices (),
-				canvas         = this .canvas [0],
-				cx             = this .context;
-
-			// Set texCoord.
-
-			texCoordArray .length = 0;
-
-			text .getMultiTexCoords () .push (texCoordArray);
-
-			// Triangle one and two.
-
-			this .getBBox () .getExtents (min, max);
-
-			normalArray  .push (0, 0, 1,
-			                    0, 0, 1,
-			                    0, 0, 1,
-			                    0, 0, 1,
-			                    0, 0, 1,
-			                    0, 0, 1);
-
-			vertexArray .push (min .x, min .y, 0, 1,
-			                   max .x, min .y, 0, 1,
-			                   max .x, max .y, 0, 1,
-			                   min .x, min .y, 0, 1,
-			                   max .x, max .y, 0, 1,
-			                   min .x, max .y, 0, 1);
-
-			// Generate texture.
-
-			var
-			   width  = text .textBounds_ .x,
-			   height = text .textBounds_ .y;
-
-			// Scale canvas.
+			return function ()
+			{
+				X3DTextGeometry .prototype .update .call (this);
+		
+				var
+					fontStyle = this .getFontStyle (),
+					text      = this .getText (),
+					offset    = 1; // For antialiasing border on bottom and right side
 	
-			if (! Algorithm .isPowerOfTwo (width) || ! Algorithm .isPowerOfTwo (height))
-			{
-				canvas .width  = Algorithm .nextPowerOfTwo (width),
-				canvas .height = Algorithm .nextPowerOfTwo (height);
-			}
-			else
-			{
-				canvas .width  = width;
-				canvas .height = height;
-			}
-
-			var
-			   w = width  / canvas .width,
-			   h = height / canvas .height,
-			   y = 1 - h;
-
-			texCoordArray .push (0, y, 0, 1,
-			                     w, y, 0, 1,
-			                     w, 1, 0, 1,
-			                     0, y, 0, 1,
-			                     w, 1, 0, 1,
-			                     0, 1, 0, 1);
-
-			// Setup canvas.
-
-			cx .fillStyle = "rgba(255,255,255,0)";
-			cx .fillRect (0, 0, canvas .width, canvas .height);
-			cx .fillStyle = "rgba(255,255,255,1)";
-
-			// Draw glyphs.
-
-			if (fontStyle .horizontal_ .getValue ())
-			{
-				for (var l = 0, length = glyphs .length; l < length; ++ l)
+				text .textBounds_ .x = Math .ceil (text .textBounds_ .x) + offset;
+				text .textBounds_ .y = Math .ceil (text .textBounds_ .y) + offset;
+	
+				this .getBBox () .getExtents (min, max);
+	
+				min .x -= offset;
+				min .y -= offset;
+	
+				switch (fontStyle .getMajorAlignment ())
 				{
-					var
-						line         = glyphs [l],
-						charSpacing  = charSpacings [l],
-						translation  = translations [l],
-						advanceWidth = 0;
-
-					for (var g = 0, gl = line .length; g < gl; ++ g)
-					{
-						var
-							glyph = line [g],
-							x     = minorAlignment .x + translation .x + advanceWidth + g * charSpacing - min .x,
-							y     = minorAlignment .y + translation .y - max .y;
-
-						this .drawGlyph (cx, font, glyph, x, y, size);
-
-						// Calculate advanceWidth.
-		
-						var kerning = 0;
-		
-						if (g + 1 < line .length)
-							kerning = font .getKerningValue (glyph, line [g + 1]);
-		
-						advanceWidth += (glyph .advanceWidth + kerning) * sizeUnitsPerEm;
-					}
+					case TextAlignment .BEGIN:
+					case TextAlignment .FIRST:
+						min .x = Math .floor (min .x);
+						max .x = min .x + text .textBounds_ .x;
+						break;
+					case TextAlignment .MIDDLE:
+						min .x = Math .round (min .x);
+						max .x = min .x + text .textBounds_ .x;
+						break;
+					case TextAlignment .END:
+						max .x = Math .ceil (max .x);
+						min .x = max .x - text .textBounds_ .x;
+						break;
 				}
-			}
-			else
+	
+				switch (fontStyle .getMinorAlignment ())
+				{
+					case TextAlignment .BEGIN:
+					case TextAlignment .FIRST:
+						max .y = Math .ceil (max .y);
+						min .y = max .y - text .textBounds_ .y;
+						break;
+					case TextAlignment .MIDDLE:
+						max .y = Math .round (max .y);
+						min .y = max .y - text .textBounds_ .y;
+						break;
+					case TextAlignment .END:
+						min .y = Math .floor (min .y);
+						max .y = min .y + text .textBounds_ .y;
+						break;
+				}
+	
+				text .origin_ .x = min .x;
+				text .origin_ .y = max .y;
+	
+				this .getBBox () .setExtents (min, max);
+			};
+		})(),
+		build: (function ()
+		{
+			var
+				min = new Vector3 (0, 0, 0),
+				max = new Vector3 (1, 1, 0);
+
+			return function ()
 			{
 				var
-					leftToRight = fontStyle .leftToRight_ .getValue (),
-					topToBottom = fontStyle .topToBottom_ .getValue (),
-					first       = leftToRight ? 0 : text .string_ .length - 1,
-					last        = leftToRight ? text .string_ .length  : -1,
-					step        = leftToRight ? 1 : -1;
-
-				for (var l = first, t = 0; l !== last; l += step)
+					fontStyle = this .getFontStyle (),
+					font      = fontStyle .getFont ();
+	
+				if (! font)
+					return;
+	
+				var
+					text           = this .getText (),
+					glyphs         = this .getGlyphs (),
+					minorAlignment = this .getMinorAlignment (),
+					translations   = this .getTranslations (),
+					charSpacings   = this .getCharSpacings (),
+					size           = fontStyle .getScale (), // in pixel
+					sizeUnitsPerEm = size / font .unitsPerEm,
+					texCoordArray  = this .texCoordArray,
+					normalArray    = text .getNormals (),
+					vertexArray    = text .getVertices (),
+					canvas         = this .canvas [0],
+					cx             = this .context;
+	
+				// Set texCoord.
+	
+				texCoordArray .length = 0;
+	
+				text .getMultiTexCoords () .push (texCoordArray);
+	
+				// Triangle one and two.
+	
+				this .getBBox () .getExtents (min, max);
+	
+				normalArray  .push (0, 0, 1,
+				                    0, 0, 1,
+				                    0, 0, 1,
+				                    0, 0, 1,
+				                    0, 0, 1,
+				                    0, 0, 1);
+	
+				vertexArray .push (min .x, min .y, 0, 1,
+				                   max .x, min .y, 0, 1,
+				                   max .x, max .y, 0, 1,
+				                   min .x, min .y, 0, 1,
+				                   max .x, max .y, 0, 1,
+				                   min .x, max .y, 0, 1);
+	
+				// Generate texture.
+	
+				var
+				   width  = text .textBounds_ .x,
+				   height = text .textBounds_ .y;
+	
+				// Scale canvas.
+		
+				if (! Algorithm .isPowerOfTwo (width) || ! Algorithm .isPowerOfTwo (height))
 				{
-					var line = glyphs [l];
-
-					var
-					   numChars = line .length,
-						firstG   = topToBottom ? 0 : numChars - 1,
-						lastG    = topToBottom ? numChars : -1,
-						stepG    = topToBottom ? 1 : -1;
-
-					for (var g = firstG; g !== lastG; g += stepG, ++ t)
+					canvas .width  = Algorithm .nextPowerOfTwo (width),
+					canvas .height = Algorithm .nextPowerOfTwo (height);
+				}
+				else
+				{
+					canvas .width  = width;
+					canvas .height = height;
+				}
+	
+				var
+				   w = width  / canvas .width,
+				   h = height / canvas .height,
+				   y = 1 - h;
+	
+				texCoordArray .push (0, y, 0, 1,
+				                     w, y, 0, 1,
+				                     w, 1, 0, 1,
+				                     0, y, 0, 1,
+				                     w, 1, 0, 1,
+				                     0, 1, 0, 1);
+	
+				// Setup canvas.
+	
+				cx .fillStyle = "rgba(255,255,255,0)";
+				cx .fillRect (0, 0, canvas .width, canvas .height);
+				cx .fillStyle = "rgba(255,255,255,1)";
+	
+				// Draw glyphs.
+	
+				if (fontStyle .horizontal_ .getValue ())
+				{
+					for (var l = 0, length = glyphs .length; l < length; ++ l)
 					{
-						var translation = translations [t];
-
+						var
+							line         = glyphs [l],
+							charSpacing  = charSpacings [l],
+							translation  = translations [l],
+							advanceWidth = 0;
+	
+						for (var g = 0, gl = line .length; g < gl; ++ g)
+						{
 							var
-								x = minorAlignment .x + translation .x - min .x,
-								y = minorAlignment .y + translation .y - max .y;
-
-						this .drawGlyph (cx, font, line [g], x, y, size);
+								glyph = line [g],
+								x     = minorAlignment .x + translation .x + advanceWidth + g * charSpacing - min .x,
+								y     = minorAlignment .y + translation .y - max .y;
+	
+							this .drawGlyph (cx, font, glyph, x, y, size);
+	
+							// Calculate advanceWidth.
+			
+							var kerning = 0;
+			
+							if (g + 1 < line .length)
+								kerning = font .getKerningValue (glyph, line [g + 1]);
+			
+							advanceWidth += (glyph .advanceWidth + kerning) * sizeUnitsPerEm;
+						}
 					}
 				}
-			}
-
-			// Transfer texture data.
-
-			var imageData = cx .getImageData (0, 0, canvas .width, canvas .height);
-
-			// If the cavas is to large imageData is null.
-			if (imageData)
-				this .texture .setTexture (canvas .width, canvas .height, true, new Uint8Array (imageData .data), true);
-			else
-			   this .texture .clear ();
-		},
+				else
+				{
+					var
+						leftToRight = fontStyle .leftToRight_ .getValue (),
+						topToBottom = fontStyle .topToBottom_ .getValue (),
+						first       = leftToRight ? 0 : text .string_ .length - 1,
+						last        = leftToRight ? text .string_ .length  : -1,
+						step        = leftToRight ? 1 : -1;
+	
+					for (var l = first, t = 0; l !== last; l += step)
+					{
+						var line = glyphs [l];
+	
+						var
+						   numChars = line .length,
+							firstG   = topToBottom ? 0 : numChars - 1,
+							lastG    = topToBottom ? numChars : -1,
+							stepG    = topToBottom ? 1 : -1;
+	
+						for (var g = firstG; g !== lastG; g += stepG, ++ t)
+						{
+							var translation = translations [t];
+	
+								var
+									x = minorAlignment .x + translation .x - min .x,
+									y = minorAlignment .y + translation .y - max .y;
+	
+							this .drawGlyph (cx, font, line [g], x, y, size);
+						}
+					}
+				}
+	
+				// Transfer texture data.
+	
+				var imageData = cx .getImageData (0, 0, canvas .width, canvas .height);
+	
+				// If the cavas is to large imageData is null.
+				if (imageData)
+					this .texture .setTexture (canvas .width, canvas .height, true, new Uint8Array (imageData .data), true);
+				else
+				   this .texture .clear ();
+			};
+		})(),
 		drawGlyph: function (cx, font, glyph, x, y, size)
 		{
 		   //console .log (glyph .name, x, y);
 
-			var components = glyph .components;
-
-			paths  .length = 0;
-		
-			if (glyph .isComposite)
-			{
-				for (var c = 0, cl = components .length; c < cl; ++ c)
-				{
-					var component = components [c];
-
-					paths .push (glyph .getPath (component .dx / font .unitsPerEm * size + x,
-					                             component .dy / font .unitsPerEm * size - y,
-					                             size));
-				}
-			}
-			else
-				paths .push (glyph .getPath (x, -y, size));
-
 			// Get curves for the current glyph.
 
-			for (var p = 0, pl = paths .length; p < pl; ++ p)
+			var
+				path     = glyph .getPath (x, -y, size),
+				commands = path .commands;
+
+			cx .beginPath ();
+
+			for (var i = 0, cl = commands .length; i < cl; ++ i)
 			{
-				var
-				   path     = paths [p],
-					commands = path .commands;
+				var command = commands [i];
 
-				cx .beginPath ();
-
-				for (var i = 0, cl = commands .length; i < cl; ++ i)
+				switch (command .type)
 				{
-					var command = commands [i];
-
-					switch (command .type)
+					case "M": // Start
 					{
-						case "M": // Start
-						{
-							cx .moveTo (command .x, command .y);
-							continue;
-						}
-						case "Z": // End
-						{
-						   cx .closePath ();
-							continue;
-						}
-						case "L": // Linear
-						{
-							cx .lineTo (command .x, command .y);
-							continue;
-						}
-						case "C": // Bezier
-						{
-							cx .bezierCurveTo (command .x1, command .y1, command .x2, command .y2, command .x, command .y);
-							continue;
-						}
-						case "Q": // Cubic
-						{
-						   cx .quadraticCurveTo (command .x1, command .y1, command .x, command .y);
-							continue;
-						}
+						cx .moveTo (command .x, command .y);
+						continue;
+					}
+					case "Z": // End
+					{
+					   cx .closePath ();
+						continue;
+					}
+					case "L": // Linear
+					{
+						cx .lineTo (command .x, command .y);
+						continue;
+					}
+					case "C": // Bezier
+					{
+						cx .bezierCurveTo (command .x1, command .y1, command .x2, command .y2, command .x, command .y);
+						continue;
+					}
+					case "Q": // Cubic
+					{
+					   cx .quadraticCurveTo (command .x1, command .y1, command .x, command .y);
+						continue;
 					}
 				}
+			}
 
-				if (path .fill)
-					cx .fill ();
-	
-				if (path .stroke)
-				{
-					cx .lineWidth = path .strokeWidth;
-					cx .stroke ();
-				}
+			if (path .fill)
+				cx .fill ();
+
+			if (path .stroke)
+			{
+				cx .lineWidth = path .strokeWidth;
+				cx .stroke ();
 			}
 		},
-		getGlyphExtents: function (glyph, primitiveQuality, min, max)
+		getGlyphExtents: function (font, glyph, primitiveQuality, min, max)
 		{
-			var
-				fontStyle  = this .getFontStyle (),
-				font       = fontStyle .getFont (),
-				unitsPerEm = font .unitsPerEm;
+			var unitsPerEm = font .unitsPerEm;
 
 			min .set ((glyph .xMin || 0) / unitsPerEm, (glyph .yMin || 0) / unitsPerEm, 0);
 			max .set ((glyph .xMax || 0) / unitsPerEm, (glyph .yMax || 0) / unitsPerEm, 0);
@@ -419,7 +407,8 @@ function ($,
 				y            = new Vector4 (0, 0, 0, 0),
 				z            = new Vector4 (0, 0, 0, 0),
 				screenPoint  = new Vector3 (0, 0, 0),
-				screenMatrix = new Matrix4 ();
+				screenMatrix = new Matrix4 (),
+				bbox         = new Box3 ();
 
 			return function (renderObject)
 			{

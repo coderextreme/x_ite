@@ -79,7 +79,7 @@ function ($,
 	var
 		TIMEOUT       = 17,
 		ECMAScript    = /^\s*(?:vrmlscript|javascript|ecmascript)\:([^]*)$/,
-		dataURL       = /^data\:([^]*?)(?:;([^]*?))?(;base64)?,([^]*)$/,
+		dataURL       = /^data:(.*?)(?:;charset=(.*?))?(?:;(base64))?,([^]*)$/,
 		contentTypeRx = /^(?:(.*?);(.*?)$)/;
 
 	var foreignExtensions = new RegExp ("\.(?:html|xhtml)$");
@@ -100,9 +100,11 @@ function ($,
 		this .external         = external === undefined ? this .browser .isExternal () : external;
 		this .executionContext = this .external ? node .getExecutionContext () : this .browser .currentScene;
 		this .userAgent        = this .browser .getName () + "/" + this .browser .getVersion () + " (X3D Browser; +" + this .browser .getProviderUrl () + ")";
+		this .target           = "";
 		this .url              = [ ];
 		this .URL              = new URI ();
 		this .fileReader       = new FileReader ();
+		this .text             = true;
 	}
 
 	FileLoader .prototype = Object .assign (Object .create (X3DObject .prototype),
@@ -131,12 +133,12 @@ function ($,
 				var handlers = [
 					function (scene, string, success, error)
 					{
-						// Try parse X3D XML Encoding.	
+						// Try parse X3D XML Encoding.
 						setTimeout (this .importDocument .bind (this, scene, $.parseXML (string), success, error), TIMEOUT);
 					},
 					function (scene, string, success, error)
 					{
-						// Try parse X3D JSON Encoding.	
+						// Try parse X3D JSON Encoding.
 						setTimeout (this .importJS .bind (this, scene, JSON .parse (string), success, error), TIMEOUT);
 					},
 					function (scene, string, success, error)
@@ -149,8 +151,8 @@ function ($,
 							}
 							.bind (this, scene, success, error);
 						}
-	
-						// Try parse X3D Classic Encoding.	
+
+						// Try parse X3D Classic Encoding.
 						new Parser (scene) .parseIntoScene (string, success, error);
 					},
 				];
@@ -182,20 +184,22 @@ function ($,
 				var handlers = [
 					function (scene, string)
 					{
-						// Try parse X3D XML Encoding.	
+						// Try parse X3D XML Encoding.
 						this .importDocument (scene, $.parseXML (string));
 					},
 					function (scene, string)
 					{
-						// Try parse X3D JSON Encoding.	
+						// Try parse X3D JSON Encoding.
 						this .importJS (scene, JSON.parse (string));
 					},
 					function (scene, string)
 					{
-						// Try parse X3D Classic Encoding.	
+						// Try parse X3D Classic Encoding.
 						new Parser (scene) .parseIntoScene (string);
 					},
 				];
+
+				var errors = [ ];
 
 				for (var i = 0, length = handlers .length; i < length; ++ i)
 				{
@@ -207,9 +211,11 @@ function ($,
 					catch (error)
 					{
 						// Try next handler.
-						console .log (error);
+						errors .push (error);
 					}
 				}
+
+				console .error (errors);
 
 				throw new Error ("Couldn't parse x3d syntax.");
 			}
@@ -226,14 +232,16 @@ function ($,
 					}
 					.bind (this, scene, success, error);
 				}
-	
+
 				new XMLParser (scene) .parseIntoScene (dom, success, error);
-		
+
 				//AP: add reference to dom for later access.
 				this .node .dom = dom;
 			}
 			catch (exception)
 			{
+				delete this .node .dom;
+
 				if (error)
 					error (exception);
 				else
@@ -258,6 +266,8 @@ function ($,
 			}
 			catch (exception)
 			{
+				delete this .node .dom;
+
 				if (error)
 					error (exception);
 				else
@@ -298,9 +308,10 @@ function ($,
 		{
 			this .bindViewpoint = bindViewpoint;
 			this .foreign       = foreign;
+			this .target        = this .getTarget (parameter || defaultParameter);
 
 			if (callback)
-				return this .loadDocument (url, parameter, this .createX3DFromURLAsync .bind (this, callback));
+				return this .loadDocument (url, this .createX3DFromURLAsync .bind (this, callback));
 
 			return this .createX3DFromURLSync (url);
 		},
@@ -363,9 +374,9 @@ function ($,
 		{
 			this .script = true;
 
-			this .loadDocument (url, null, callback);
+			this .loadDocument (url, callback);
 		},
-		loadDocument: function (url, parameter, callback)
+		loadDocument: function (url, callback)
 		{
 			this .url       = url .copy ();
 			this .callback  = callback;
@@ -373,7 +384,16 @@ function ($,
 			if (url .length === 0)
 				return this .loadDocumentError (new Error ("No URL given."));
 
-			this .target = this .getTarget (parameter || defaultParameter);
+			this .loadDocumentAsync (this .url .shift ());
+		},
+		loadBinaryDocument: function (url, callback)
+		{
+			this .url       = url .copy ();
+			this .callback  = callback;
+			this .text      = false;
+
+			if (url .length === 0)
+				return this .loadDocumentError (new Error ("No URL given."));
 
 			this .loadDocumentAsync (this .url .shift ());
 		},
@@ -424,7 +444,7 @@ function ($,
 				try
 				{
 					var result = ECMAScript .exec (URL);
-	
+
 					if (result)
 					{
 						this .callback (result [1]);
@@ -454,7 +474,7 @@ function ($,
 
 					var data = result [4];
 
-					if (result [3] === ";base64")
+					if (result [3] === "base64")
 						data = atob (data);
 					else
 						data = unescape (data);
@@ -507,9 +527,18 @@ function ($,
 							return this .foreign (this .URL .toString () .replace (urls .getFallbackExpression (), ""), this .target);
 					}
 
-					this .fileReader .onload = this .readAsArrayBuffer .bind (this, blob);
+					if (this .text)
+					{
+						this .fileReader .onload = this .readAsArrayBuffer .bind (this, blob);
 
-					this .fileReader .readAsArrayBuffer (blob);
+						this .fileReader .readAsArrayBuffer (blob);
+					}
+					else
+					{
+						this .fileReader .onload = this .readAsBinaryString .bind (this);
+
+						this .fileReader .readAsBinaryString (blob);
+					}
 				},
 				error: function (xhr, textStatus, exception)
 				{
@@ -541,6 +570,17 @@ function ($,
 				this .loadDocumentError (exception);
 			}
 		},
+		readAsBinaryString: function ()
+		{
+			try
+			{
+				this .callback (this .fileReader .result);
+			}
+			catch (exception)
+			{
+				this .loadDocumentError (exception);
+			}
+		},
 		loadDocumentError: function (exception)
 		{
 			// Output exception.
@@ -558,9 +598,9 @@ function ($,
 		error: function (exception)
 		{
 			if (this .URL .scheme === "data")
-				return;
-
-			console .warn ("Couldn't load URL '" + this .URL + "':", exception .message);
+				console .warn ("Couldn't load URL 'data':", exception .message);
+			else
+				console .warn ("Couldn't load URL '" + this .URL + "':", exception .message);
 
 			if (DEBUG)
 				console .log (exception);
@@ -570,7 +610,9 @@ function ($,
 			var URL = this .getReferer () .transform (new URI (sURL));
 
 			if (URL .isLocal () || URL .host === "localhost")
+			{
 				URL = this .browser .getLocation () .getRelativePath (URL);
+			}
 			else
 			{
 				if (DEBUG)

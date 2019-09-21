@@ -48,6 +48,7 @@
 
 
 define ([
+	"jquery",
 	"x_ite/Fields/SFTime",
 	"x_ite/Basic/X3DBaseNode",
 	"x_ite/Browser/Core/X3DCoreContext",
@@ -57,14 +58,13 @@ define ([
 	"x_ite/Browser/Shaders/X3DShadersContext",
 	"x_ite/Browser/Rendering/X3DRenderingContext",
 	"x_ite/Browser/Shape/X3DShapeContext",
-	"x_ite/Browser/Geometry2D/X3DGeometry2DContext",
 	"x_ite/Browser/Geometry3D/X3DGeometry3DContext",
 	"x_ite/Browser/PointingDeviceSensor/X3DPointingDeviceSensorContext",
-	"x_ite/Browser/KeyDeviceSensor/X3DKeyDeviceSensorContext",
 	"x_ite/Browser/Navigation/X3DNavigationContext",
 	"x_ite/Browser/Layering/X3DLayeringContext",
 	"x_ite/Browser/EnvironmentalEffects/X3DEnvironmentalEffectsContext",
 	"x_ite/Browser/Lighting/X3DLightingContext",
+	"x_ite/Browser/Picking/X3DPickingContext",
 	"x_ite/Browser/Sound/X3DSoundContext",
 	"x_ite/Browser/Text/X3DTextContext",
 	"x_ite/Browser/Texturing/X3DTexturingContext",
@@ -72,7 +72,8 @@ define ([
 	"x_ite/Execution/World",
 	"x_ite/Bits/TraverseType",
 ],
-function (SFTime,
+function ($,
+          SFTime,
           X3DBaseNode,
           X3DCoreContext,
           X3DRoutingContext,
@@ -81,14 +82,13 @@ function (SFTime,
           X3DShadersContext,
           X3DRenderingContext,
           X3DShapeContext,
-          X3DGeometry2DContext,
           X3DGeometry3DContext,
           X3DPointingDeviceSensorContext,
-          X3DKeyDeviceSensorContext,
           X3DNavigationContext,
           X3DLayeringContext,
           X3DEnvironmentalEffectsContext,
           X3DLightingContext,
+          X3DPickingContext,
           X3DSoundContext,
           X3DTextContext,
           X3DTexturingContext,
@@ -97,6 +97,8 @@ function (SFTime,
           TraverseType)
 {
 "use strict";
+
+	var contexts = [ ];
 
 	function X3DBrowserContext (element)
 	{
@@ -108,18 +110,19 @@ function (SFTime,
 		X3DShadersContext              .call (this);
 		X3DRenderingContext            .call (this);
 		X3DShapeContext                .call (this);
-		X3DGeometry2DContext           .call (this);
 		X3DGeometry3DContext           .call (this);
 		X3DPointingDeviceSensorContext .call (this);
-		X3DKeyDeviceSensorContext      .call (this);
 		X3DNavigationContext           .call (this);
 		X3DLayeringContext             .call (this);
 		X3DEnvironmentalEffectsContext .call (this);
 		X3DLightingContext             .call (this);
+		X3DPickingContext              .call (this);
 		X3DSoundContext                .call (this);
 		X3DTextContext                 .call (this);
 		X3DTexturingContext            .call (this);
 		X3DTimeContext                 .call (this);
+
+		contexts .forEach (function (context) { context .call (this); } .bind (this));
 
 		this .addChildObjects ("initialized",   new SFTime (),
 		                       "shutdown",      new SFTime (),
@@ -133,7 +136,6 @@ function (SFTime,
 		this .systemTime      = 0;
 		this .systemStartTime = 0;
 		this .browserTime     = 0;
-		this .pickingTime     = 0;
 		this .cameraTime      = 0;
 		this .collisionTime   = 0;
 		this .displayTime     = 0;
@@ -147,14 +149,13 @@ function (SFTime,
 		X3DShadersContext .prototype,
 		X3DRenderingContext .prototype,
 		X3DShapeContext .prototype,
-		X3DGeometry2DContext .prototype,
 		X3DGeometry3DContext .prototype,
 		X3DPointingDeviceSensorContext .prototype,
-		X3DKeyDeviceSensorContext .prototype,
 		X3DNavigationContext .prototype,
 		X3DLayeringContext .prototype,
 		X3DEnvironmentalEffectsContext .prototype,
 		X3DLightingContext .prototype,
+		X3DPickingContext .prototype,
 		X3DSoundContext .prototype,
 		X3DTextContext .prototype,
 		X3DTexturingContext .prototype,
@@ -171,18 +172,24 @@ function (SFTime,
 			X3DShadersContext              .prototype .initialize .call (this);
 			X3DRenderingContext            .prototype .initialize .call (this);
 			X3DShapeContext                .prototype .initialize .call (this);
-			X3DGeometry2DContext           .prototype .initialize .call (this);
 			X3DGeometry3DContext           .prototype .initialize .call (this);
 			X3DPointingDeviceSensorContext .prototype .initialize .call (this);
-			X3DKeyDeviceSensorContext      .prototype .initialize .call (this);
 			X3DNavigationContext           .prototype .initialize .call (this);
 			X3DLayeringContext             .prototype .initialize .call (this);
 			X3DEnvironmentalEffectsContext .prototype .initialize .call (this);
 			X3DLightingContext             .prototype .initialize .call (this);
+			X3DPickingContext              .prototype .initialize .call (this);
 			X3DSoundContext                .prototype .initialize .call (this);
 			X3DTextContext                 .prototype .initialize .call (this);
 			X3DTexturingContext            .prototype .initialize .call (this);
 			X3DTimeContext                 .prototype .initialize .call (this);
+
+			contexts .forEach (function (context)
+			{
+				if (context .prototype .initialize)
+					context .prototype .initialize .call (this);
+			}
+			.bind (this));
 		},
 		initialized: function ()
 		{
@@ -277,6 +284,32 @@ function (SFTime,
 			this .systemStartTime = performance .now ();
 
 			this .finished_ .processInterests ();
+		},
+		toStream: function (stream)
+		{
+			stream .string += Object .prototype .toString .call (this);
+		},
+	});
+
+	Object .assign (X3DBrowserContext,
+	{
+		addContext: function (context)
+		{
+			var X3D = require ("x_ite/X3D");
+
+			contexts .push (context);
+
+			Object .assign (X3DBrowserContext .prototype, context .prototype);
+	
+			$("X3DCanvas") .each (function (i, canvas)
+			{
+				var browser = X3D .getBrowser (canvas);
+
+				context .call (browser);
+
+				if (context .prototype .initialize)
+					context .prototype .initialize .call (browser);
+			});
 		},
 	});
 

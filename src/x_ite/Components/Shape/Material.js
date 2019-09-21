@@ -70,10 +70,6 @@ function (Fields,
 
 		this .addType (X3DConstants .Material);
 
-		this .addChildObjects ("transparent", new Fields .SFBool ());
-
-		this .transparent_ .setAccessType (X3DConstants .outputOnly);
-
 		this .diffuseColor  = new Float32Array (3);
 		this .specularColor = new Float32Array (3);
 		this .emissiveColor = new Float32Array (3);
@@ -108,11 +104,11 @@ function (Fields,
 			X3DMaterialNode .prototype .initialize .call (this);
 
 			this .ambientIntensity_ .addInterest ("set_ambientIntensity__", this);
-			this .diffuseColor_     .addInterest ("set_diffuseColor__", this);
-			this .specularColor_    .addInterest ("set_specularColor__", this);
-			this .emissiveColor_    .addInterest ("set_emissiveColor__", this);
-			this .shininess_        .addInterest ("set_shininess__", this);
-			this .transparency_     .addInterest ("set_transparency__", this);
+			this .diffuseColor_     .addInterest ("set_diffuseColor__",     this);
+			this .specularColor_    .addInterest ("set_specularColor__",    this);
+			this .emissiveColor_    .addInterest ("set_emissiveColor__",    this);
+			this .shininess_        .addInterest ("set_shininess__",        this);
+			this .transparency_     .addInterest ("set_transparency__",     this);
 	
 			this .set_ambientIntensity__ ();
 			this .set_diffuseColor__ ();
@@ -174,8 +170,7 @@ function (Fields,
 
 			this .transparency = transparency;
 
-			if (transparency != this .transparent_ .getValue ())
-				this .transparent_ = transparency;
+			this .setTransparent (Boolean (transparency));
 		},
 		setShaderUniforms: function (gl, shaderObject)
 		{

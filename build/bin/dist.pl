@@ -6,6 +6,8 @@ use warnings;
 use v5.10.0;
 use open qw/:std :utf8/;
 
+use File::Basename qw (dirname basename);
+
 my $CWD = `pwd`;
 chomp $CWD;
 
@@ -21,19 +23,62 @@ sub check_version {
 	$VERSION = $1;
 
 	$ALPHA = $VERSION =~ /a$/;
-	
+
 	$REVISION = `cat package.json`;
 	$REVISION =~ /"revision":\s*"(.*?)"/;
 	$REVISION = $1 + 1;
 
 	say "VERSION »$VERSION«";
+}
 
-	my $BROWSER = `cat src/x_ite/Browser/VERSION.js`;
-	$BROWSER =~ s/"(.*?a?)"/"$VERSION"/;
+sub shader_source {
+	my $filename = shift;
 
-	open BROWSER, ">", "src/x_ite/Browser/VERSION.js";
-	print BROWSER $BROWSER;
-	close $BROWSER;
+	my $dirname = dirname ($filename);
+	my @lines   = `cat $filename`;
+	my $source  = "";
+
+	foreach my $line (@lines)
+	{
+		if ($line =~ /^#pragma\s+X3D\s+include\s+"(.*?[^\/]+\.glsl)"\s*$/)
+		{
+			$source .= shader_source ("$dirname/$1");
+		}
+		else
+		{
+			$line =~ s|^\s+||;
+
+			$source .= $line;
+		}
+	}
+
+	$source =~ s|//.*?\n|\n|sg;
+	$source =~ s|/\*.*?\*/||sg;
+	$source =~ s|[ \t]+| |sg;
+	$source =~ s|\n+|\n|sg;
+
+	return $source;
+}
+
+sub shader {
+	my $filename = shift;
+	my $dist     = shift;
+	chomp $filename;
+
+	return if -d $filename;
+
+	my $basename = basename ($filename);
+	my $source   = shader_source $filename;
+
+	open FILE, ">", "$dist/$basename";
+	print FILE $source;
+	close FILE;
+}
+
+sub shaders {
+	shader ("src/assets/shaders/webgl1/$_",           "dist/assets/shaders/webgl1")           foreach `ls -C1 src/assets/shaders/webgl1`;
+	shader ("src/assets/shaders/webgl2/$_",           "dist/assets/shaders/webgl2")           foreach `ls -C1 src/assets/shaders/webgl2`;
+	shader ("src/assets/shaders/volume-rendering/$_", "dist/assets/shaders/volume-rendering") foreach `ls -C1 src/assets/shaders/volume-rendering`;
 }
 
 sub dist {
@@ -52,13 +97,23 @@ sub dist {
 	print JS "/* X_ITE X3D v$VERSION-$REVISION\n * See LICENSE.txt for a detailed listing of used licences. */\n", $js_min;
 	close JS;
 
+	$css = `cat dist/x_ite.css`;
+	open CSS, ">", "dist/x_ite.css";
+	$css =~ s/content: "X_ITE Browser";/content: "X_ITE Browser v$VERSION";/;
+	print CSS $css;
+	close CSS;
+
 	say "Copying files";
-	system "rsync", "-r", "-x", "-c", "-v", "-t", "--progress", "--delete", "src/images", "dist/";
-	system "rsync", "-r", "-x", "-c", "-v", "-t", "--progress", "--delete", "src/fonts", "dist/";
+	system "rsync", "-r", "-x", "-c", "-v", "-t", "--progress", "--delete", "src/assets/fonts",    "dist/assets/";
+	system "rsync", "-r", "-x", "-c", "-v", "-t", "--progress", "--delete", "src/assets/hatching", "dist/assets/";
+	system "rsync", "-r", "-x", "-c", "-v", "-t", "--progress", "--delete", "src/assets/images",   "dist/assets/";
+	system "rsync", "-r", "-x", "-c", "-v", "-t", "--progress", "--delete", "src/assets/linetype", "dist/assets/";
 	system "cp", "-v", "src/example.html",  "dist/";
-	
+
 	system "perl", "-pi", "-e", "s|/latest/|/alpha/|sg", "dist/example.html" if $ALPHA;
 	system "perl", "-pi", "-e", "s|/latest/|/$VERSION/|sg", "dist/example.html" unless $ALPHA;
+
+	shaders;
 }
 
 sub licenses {
@@ -95,6 +150,7 @@ check_version;
 
 say "Making version '$VERSION' now.";
 
+shaders;
 licenses;
 dist;
 zip;

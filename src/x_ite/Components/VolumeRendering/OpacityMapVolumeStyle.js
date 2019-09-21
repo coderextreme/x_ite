@@ -53,12 +53,14 @@ define ([
 	"x_ite/Basic/FieldDefinitionArray",
 	"x_ite/Components/VolumeRendering/X3DComposableVolumeRenderStyleNode",
 	"x_ite/Bits/X3DConstants",
+	"x_ite/Bits/X3DCast",
 ],
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
           X3DComposableVolumeRenderStyleNode,
-          X3DConstants)
+          X3DConstants,
+          X3DCast)
 {
 "use strict";
 
@@ -67,14 +69,16 @@ function (Fields,
 		X3DComposableVolumeRenderStyleNode .call (this, executionContext);
 
 		this .addType (X3DConstants .OpacityMapVolumeStyle);
+
+		this .shaderNode = this .getBrowser () .createOpacityMapVolumeStyleShader ();
 	}
 
 	OpacityMapVolumeStyle .prototype = Object .assign (Object .create (X3DComposableVolumeRenderStyleNode .prototype),
 	{
 		constructor: OpacityMapVolumeStyle,
 		fieldDefinitions: new FieldDefinitionArray ([
-			new X3DFieldDefinition (X3DConstants .inputOutput, "enabled", new Fields .SFBool (true)),
-			new X3DFieldDefinition (X3DConstants .inputOutput, "metadata", new Fields .SFNode ()),
+			new X3DFieldDefinition (X3DConstants .inputOutput, "enabled",          new Fields .SFBool (true)),
+			new X3DFieldDefinition (X3DConstants .inputOutput, "metadata",         new Fields .SFNode ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput, "transferFunction", new Fields .SFNode ()),
 		]),
 		getTypeName: function ()
@@ -88,6 +92,37 @@ function (Fields,
 		getContainerField: function ()
 		{
 			return "renderStyle";
+		},
+		initialize: function ()
+		{
+			X3DComposableVolumeRenderStyleNode .prototype .initialize .call (this);
+
+			var gl = this .getBrowser () .getContext ();
+
+			if (gl .getVersion () < 2)
+				return;
+
+			this .transferFunction_ .addInterest ("set_transferFunction__", this);
+
+			this .shaderNode .addUserDefinedField (X3DConstants .inputOutput, "transferFunction", new Fields .SFNode ());
+
+			this .set_transferFunction__ ();
+		},
+		getShader: function ()
+		{
+			return this .shaderNode;
+		},
+		set_transferFunction__: function ()
+		{
+			var transferFunctionNode = X3DCast (X3DConstants .X3DTexture2DNode, this .transferFunction_);
+
+			//if (! transferFunctionNode)
+			//	transferFunctionNode = X3DCast (X3DConstants .X3DTexture3DNode, this .transferFunction_);
+
+			if (! transferFunctionNode)
+				transferFunctionNode = this .getBrowser () .getDefaultTransferFunction ();
+
+			this .shaderNode .getField ("transferFunction") .setValue (transferFunctionNode);
 		},
 	});
 

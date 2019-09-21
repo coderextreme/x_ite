@@ -72,13 +72,13 @@ function (Fields,
 	
 	function getHeadLight (browser)
 	{
-		var light = new DirectionalLight (browser .getPrivateScene ());
+		var headlight = new DirectionalLight (browser .getPrivateScene ());
 
-		light .setup ();
+		headlight .setup ();
 
-		var headlightContainer = light .getLights () .pop ();
+		var headlightContainer = headlight .getLights () .pop ();
 
-		headlightContainer .set (browser, light, null, Matrix4 .Identity);
+		headlightContainer .set (browser, headlight, null, Matrix4 .Identity);
 		headlightContainer .dispose = function () { };
 
 		return headlightContainer;
@@ -93,7 +93,7 @@ function (Fields,
 		                       "viewer",               new Fields .SFString ("EXAMINE"));
 		
 		this .activeCollisions = new Set ();
-		this .viewerNode       = null;
+		this .viewerNode       = new NoneViewer (this);
 	}
 
 	X3DNavigationContext .prototype =
@@ -102,10 +102,11 @@ function (Fields,
 		{
 			this .viewer_ .addInterest ("set_viewer__", this);
 
-			this .initialized () .addInterest ("set_world__", this);
+			this .initialized () .addInterest ("set_world__",    this);
 			this .shutdown ()    .addInterest ("remove_world__", this);
 
 			this .headlightContainer = getHeadLight (this);
+			this .viewerNode .setup ();
 		},
 		getHeadlight: function ()
 		{
@@ -126,6 +127,10 @@ function (Fields,
 		getCurrentViewer: function ()
 		{
 			return this .viewer_ .getValue ();
+		},
+		getViewer: function ()
+		{
+			return this .viewerNode;
 		},
 		addCollision: function (object)
 		{

@@ -244,13 +244,18 @@ X3D (function ()
 	function loadURL ()
 	{
 		var Browser = X3D .getBrowser ("#browser");
-	
+
 		bookmarks .loadURL ($(".location-entry") .val ());
 	}
 
 	function toXMLString ()
 	{
 		console .log (X3D .getBrowser ("#browser") .currentScene .toXMLString ());
+	}
+
+	function toVRMLString ()
+	{
+		console .log (X3D .getBrowser ("#browser") .currentScene .toVRMLString ());
 	}
 
 	var
@@ -263,7 +268,8 @@ X3D (function ()
 	$(".version") .text (Browser .name + " v" + Browser .version);
 	$(".location-entry") .keydown (function (event) { if (event .key == "Enter") loadURL (); });
 	$(".location-go") .click (loadURL);
-	$(".print-button") .click (toXMLString);
+	$(".print-xml") .click (toXMLString);
+	$(".print-vrml") .click (toVRMLString);
 },
 function (error)
 {
@@ -280,22 +286,24 @@ function (error)
 		</header>
 		<main>
 			<div>
-				<X3DCanvas id="browser" class="browser" splashScreen="true" cache="false" debug="true">
-					<p class="fallback">
-						Sorry,<br/>
-						it wasn't me!<br/>
-						<br/>
-						Your browser may not support all features required by X_ITE! You can use Firefox, Chrome,
-						or Microsoft Edge, because this is currently the choice of the choice. We will continuously
-						keep you informed on technical developments and as soon as X_ITE is running in other browser too.
-					</p>
-				</X3DCanvas>
+				<form action="javascript:alert('form submited')">
+					<X3DCanvas id="browser" class="browser" splashScreen="true" contextMenu="true" cache="false" debug="true" preserveDrawingBuffer="false">
+						<p class="fallback">
+							Sorry,<br/>
+							it wasn't me!<br/>
+							<br/>
+							Your browser may not support all features required by X_ITE! You can use Firefox, Chrome,
+							or Microsoft Edge, because this is currently the choice of the choice. We will continuously
+							keep you informed on technical developments and as soon as X_ITE is running in other browser too.
+						</p>
+					</X3DCanvas>
+				</form>
 				<div class="location-bar">
 					<input class="location-entry" value="http://www.web3d.org/x3d/content/examples/Basic/ChemicalMarkupLanguage/ButanedioicAcid.x3d"/>
-					<button class="location-go">Load URL</button>
+					<button class="location-go" type="button">Load URL</button>
 				</div>
 				<div class="buttons">
-					<a class="print-button" href="#">print</a>
+					<a class="print-xml" href="#">XML</a><a class="print-vrml" href="#">VRML</a>
 				</div>
 				<div class="links">
 					<a href="../x_ite.min.html">x_ite.min.html</a><a href="http://rawgit.com/create3000/x_ite/master/x_ite.min.html">github</a>

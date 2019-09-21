@@ -54,13 +54,15 @@ define ([
 	"x_ite/Components/RigidBodyPhysics/X3DNBodyCollidableNode",
 	"x_ite/Bits/X3DConstants",
 	"x_ite/Bits/X3DCast",
+	"x_ite/Bits/TraverseType",
 ],
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
           X3DNBodyCollidableNode, 
           X3DConstants,
-          X3DCast)
+          X3DCast,
+          TraverseType)
 {
 "use strict";
 
@@ -108,7 +110,7 @@ function (Fields,
 		},
 		getBBox: function (bbox)
 		{
-			if (this .bboxSize_ .getValue () .equals (this .defaultBBoxSize))
+			if (this .bboxSize_ .getValue () .equals (this .getDefaultBBoxSize ()))
 			{
 				var boundedObject = X3DCast (X3DConstants .X3DBoundedObject, this .collidable_);
 		
@@ -125,7 +127,8 @@ function (Fields,
 			if (this .collidableNode)
 			{
 				this .collidableNode .removeInterest ("addNodeEvent", this);
-				this .collidableNode .isCameraObject_ .removeFieldInterest (this .isCameraObject_);
+				this .collidableNode .isCameraObject_   .removeFieldInterest (this .isCameraObject_);
+				this .collidableNode .isPickableObject_ .removeFieldInterest (this .isPickableObject_);
 			}
 		
 			this .collidableNode = X3DCast (X3DConstants .X3DNBodyCollidableNode, this .collidable_);
@@ -133,15 +136,18 @@ function (Fields,
 			if (this .collidableNode)
 			{
 				this .collidableNode .addInterest ("addNodeEvent", this);
-				this .collidableNode .isCameraObject_ .addFieldInterest (this .isCameraObject_);
+				this .collidableNode .isCameraObject_   .addFieldInterest (this .isCameraObject_);
+				this .collidableNode .isPickableObject_ .addFieldInterest (this .isPickableObject_);
 
-				this .setCameraObject (this .collidableNode .getCameraObject ());
+				this .setCameraObject   (this .collidableNode .getCameraObject ());
+				this .setPickableObject (this .collidableNode .getPickableObject ());
 
 				delete this .traverse;
 			}
 			else
 			{
-				this .setCameraObject (false);
+				this .setCameraObject   (false);
+				this .setPickableObject (false);
 
 				this .traverse = Function .prototype;
 			}
@@ -158,14 +164,38 @@ function (Fields,
 		},
 		traverse: function (type, renderObject)
 		{
-			var modelViewMatrix = renderObject .getModelViewMatrix ();
-
-			modelViewMatrix .push ();
-			modelViewMatrix .multLeft (this .getMatrix ());
-	
-			this .collidableNode .traverse (type, renderObject);
+			switch (type)
+			{
+				case TraverseType .PICKING:
+				{
+					var
+						browser          = renderObject .getBrowser (),
+						pickingHierarchy = browser .getPickingHierarchy (),
+						modelViewMatrix  = renderObject .getModelViewMatrix ();
 		
-			modelViewMatrix .pop ();
+					pickingHierarchy .push (this);
+					modelViewMatrix .push ();
+					modelViewMatrix .multLeft (this .getMatrix ());
+
+					this .collidableNode .traverse (type, renderObject);
+
+					modelViewMatrix .pop ();
+					pickingHierarchy .pop ();
+					break;
+				}
+				default:
+				{
+					var modelViewMatrix = renderObject .getModelViewMatrix ();
+
+					modelViewMatrix .push ();
+					modelViewMatrix .multLeft (this .getMatrix ());
+
+					this .collidableNode .traverse (type, renderObject);
+
+					modelViewMatrix .pop ();
+					break;
+				}
+			}
 		},
 	});
 

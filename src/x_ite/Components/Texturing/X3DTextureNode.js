@@ -51,10 +51,16 @@ define ([
 	"x_ite/Fields",
 	"x_ite/Components/Shape/X3DAppearanceChildNode",
 	"x_ite/Bits/X3DConstants",
+	"x_ite/Browser/Texturing/MultiTextureModeType",
+	"x_ite/Browser/Texturing/MultiTextureSourceType",
+	"x_ite/Browser/Texturing/MultiTextureFunctionType",
 ],
 function (Fields,
-          X3DAppearanceChildNode, 
-          X3DConstants)
+          X3DAppearanceChildNode,
+          X3DConstants,
+          ModeType,
+          SourceType,
+          FunctionType)
 {
 "use strict";
 
@@ -65,7 +71,7 @@ function (Fields,
 		"MOZ_EXT_texture_filter_anisotropic",
 		"WEBKIT_EXT_texture_filter_anisotropic",
 	];
-	
+
 	function X3DTextureNode (executionContext)
 	{
 		X3DAppearanceChildNode .call (this, executionContext);
@@ -87,6 +93,15 @@ function (Fields,
 			var gl = this .getBrowser () .getContext ();
 
 			this .texture = gl .createTexture ();
+		},
+		setTransparent: function (value)
+		{
+			if (value !== this .transparent_ .getValue ())
+				this .transparent_ = value;
+		},
+		getTransparent: function ()
+		{
+			return this .transparent_ .getValue ();
 		},
 		getTexture: function ()
 		{
@@ -117,13 +132,17 @@ function (Fields,
 			{
 				gl .texParameteri (target, gl .TEXTURE_WRAP_S, gl [textureProperties .getBoundaryModeS ()]);
 				gl .texParameteri (target, gl .TEXTURE_WRAP_T, gl [textureProperties .getBoundaryModeT ()]);
-				//gl .texParameteri (target, gl .TEXTURE_WRAP_R, gl [textureProperties .getBoundaryModeR ()]);
+
+				if (gl .getVersion () >= 2)
+					gl .texParameteri (target, gl .TEXTURE_WRAP_R, gl [textureProperties .getBoundaryModeR ()]);
 			}
 			else
 			{
 				gl .texParameteri (target, gl .TEXTURE_WRAP_S, repeatS ? gl .REPEAT : gl .CLAMP_TO_EDGE);
 				gl .texParameteri (target, gl .TEXTURE_WRAP_T, repeatT ? gl .REPEAT : gl .CLAMP_TO_EDGE);
-				//gl .texParameteri (target, gl .TEXTURE_WRAP_R, repeatR ? gl .REPEAT : gl .CLAMP);
+
+				if (gl .getVersion () >= 2)
+					gl .texParameteri (target, gl .TEXTURE_WRAP_R, repeatR ? gl .REPEAT : gl .CLAMP_TO_EDGE);
 			}
 
 			//gl .texParameterfv (target, gl .TEXTURE_BORDER_COLOR, textureProperties .borderColor_ .getValue ());
@@ -132,7 +151,7 @@ function (Fields,
 			for (var i = 0; i < ANISOTROPIC_EXT .length; ++ i)
 			{
 				var ext = gl .getExtension (ANISOTROPIC_EXT [i]);
-				
+
 				if (ext)
 				{
 					gl .texParameterf (target, ext .TEXTURE_MAX_ANISOTROPY_EXT, textureProperties .anisotropicDegree_ .getValue ());
@@ -140,9 +159,17 @@ function (Fields,
 				}
 			}
 		},
+		setShaderUniforms: function (gl, shaderObject)
+		{
+			this .setShaderUniformsToChannel (gl, shaderObject, 0);
+
+			gl .uniform1i (shaderObject .x3d_NumTextures, 1);
+			gl .uniform1i (shaderObject .x3d_MultiTextureMode [0],      ModeType .MODULATE);
+			gl .uniform1i (shaderObject .x3d_MultiTextureAlphaMode [0], ModeType .MODULATE);
+			gl .uniform1i (shaderObject .x3d_MultiTextureSource [0],    SourceType .DEFAULT);
+			gl .uniform1i (shaderObject .x3d_MultiTextureFunction [0],  FunctionType .DEFAULT);
+		},
 	});
 
 	return X3DTextureNode;
 });
-
-

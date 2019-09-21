@@ -91,7 +91,7 @@ function ($,
 		this .hitPointSorter = new MergeSort (this .hits, function (lhs, rhs) { return lhs .intersection .point .z < rhs .intersection .point .z; });
 		this .layerSorter    = new MergeSort (this .hits, function (lhs, rhs) { return lhs .layerNumber < rhs .layerNumber; });
 
-		this .pickingTime = 0;
+		this .pointerTime = 0;
 	}
 
 	X3DPointingDeviceSensorContext .prototype =
@@ -234,6 +234,12 @@ function ($,
 		},
 		touch: function (x, y)
 		{
+			if (this .getViewer () .isActive_ .getValue ())
+			{
+				this .pointerTime = 0;
+				return;
+			}
+
 			var t0 = performance .now ();
 		
 			this .pointer .set (x, y);
@@ -252,7 +258,7 @@ function ($,
 			this .layerSorter    .sort (0, this .hits .length);
 
 			this .addBrowserEvent ();
-			this .pickingTime = performance .now () - t0;
+			this .pointerTime = performance .now () - t0;
 		},
 		motion: function ()
 		{

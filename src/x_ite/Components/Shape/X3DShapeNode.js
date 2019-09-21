@@ -117,13 +117,13 @@ function (X3DChildNode,
 		{
 			this .transparent = value;
 		},
-		isTransparent: function ()
+		getTransparent: function ()
 		{
 			return this .transparent;
 		},
 		set_bbox__: function ()
 		{
-			if (this .bboxSize_ .getValue () .equals (this .defaultBBoxSize))
+			if (this .bboxSize_ .getValue () .equals (this .getDefaultBBoxSize ()))
 			{
 				if (this .getGeometry ())
 					this .bbox .assign (this .getGeometry () .getBBox ());
@@ -133,7 +133,7 @@ function (X3DChildNode,
 			}
 			else
 				this .bbox .set (this .bboxSize_ .getValue (), this .bboxCenter_ .getValue ());
-			
+
 			this .bboxSize   .assign (this .bbox .size);
 			this .bboxCenter .assign (this .bbox .center);
 		},
@@ -173,8 +173,8 @@ function (X3DChildNode,
 		},
 		set_transparent__: function ()
 		{
-			this .transparent = (this .apparanceNode && this .apparanceNode .transparent_ .getValue ()) ||
-			                    (this .geometryNode && this .geometryNode .transparent_ .getValue ());
+			this .transparent = (this .apparanceNode && this .apparanceNode .getTransparent ()) ||
+			                    (this .geometryNode  && this .geometryNode  .getTransparent ());
 		},
 	});
 

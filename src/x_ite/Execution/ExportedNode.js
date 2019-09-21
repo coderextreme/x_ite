@@ -69,13 +69,36 @@ function (Fields,
 	ExportedNode .prototype = Object .assign (Object .create (X3DObject .prototype),
 	{
 		constructor: ExportedNode,
+		getTypeName: function ()
+		{
+			return "ExportedNode";
+		},
 		getExportedName: function ()
 		{
 			return this .exportedName;
 		},
 		getLocalNode: function ()
 		{
-			return new Fields .SFNode (this .localNode);
+			return this .localNode;
+		},
+		toVRMLStream: function (stream)
+		{
+			var
+				generator = Generator .Get (stream),
+				localName = generator .LocalName (this .localNode);
+
+			stream .string += generator .Indent ();
+			stream .string += "EXPORT";
+			stream .string += " ";
+			stream .string += localName;
+
+			if (this .exportedName !== localName)
+			{
+				stream .string += " ";
+				stream .string += "AS";
+				stream .string += " ";
+				stream .string += this .exportedName;
+			}
 		},
 		toXMLStream: function (stream)
 		{

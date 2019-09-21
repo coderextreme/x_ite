@@ -51,60 +51,28 @@ define ([
 	"x_ite/Browser/Core/Shading",
 	"x_ite/Components/Shaders/ComposedShader",
 	"x_ite/Components/Shaders/ShaderPart",
-	"text!x_ite/Browser/Shaders/PointSet.fs",
-	"text!x_ite/Browser/Shaders/Wireframe.vs",
-	"text!x_ite/Browser/Shaders/Wireframe.fs",
-	"text!x_ite/Browser/Shaders/Gouraud.vs",
-	"text!x_ite/Browser/Shaders/Gouraud.fs",
-	"text!x_ite/Browser/Shaders/Phong.vs",
-	"text!x_ite/Browser/Shaders/Phong.fs",
-	"text!x_ite/Browser/Shaders/Depth.vs",
-	"text!x_ite/Browser/Shaders/Depth.fs",
 	"x_ite/Browser/Shaders/ShaderTest",
+	"x_ite/Browser/Networking/urls",
 ],
 function (Shading,
           ComposedShader,
           ShaderPart,
-          pointSetFS,
-          wireframeVS,
-          wireframeFS,
-          gouraudVS,
-          gouraudFS,
-          phongVS,
-          phongFS,
-          depthVS,
-          depthFS,
-          verifyShader)
+          ShaderTest,
+          urls)
 {
 "use strict";
 
 	function X3DShadersContext ()
 	{
-		this .shaders = { };
+		this .multiTexturing = true;
+		this .shaders        = new Set ();
 	}
 
 	X3DShadersContext .prototype =
 	{
 		initialize: function ()
 		{
-			// Create shaders.
-	
-			this .depthShader   = this .createShader ("DepthShader",     depthVS,     depthFS,     false);
-			this .pointShader   = this .createShader ("PointShader",     wireframeVS, pointSetFS,  false);
-			this .lineShader    = this .createShader ("WireframeShader", wireframeVS, wireframeFS, false);
-			this .gouraudShader = this .createShader ("GouraudShader",   gouraudVS,   gouraudFS,   false);
-			this .phongShader   = this .createShader ("PhongShader",     phongVS,     phongFS,     false);
-			this .shadowShader  = this .createShader ("ShadowShader",    phongVS,     phongFS,     true);
-
-			this .pointShader   .shadowShader = this .pointShader;
-			this .lineShader    .shadowShader = this .lineShader;
-			this .gouraudShader .shadowShader = this .shadowShader;
-			this .phongShader   .shadowShader = this .shadowShader;
-	
 			this .setShading (Shading .GOURAUD);
-	
-			this .phongShader  .isValid_ .addInterest ("set_phong_shader_valid__",  this);
-			this .shadowShader .isValid_ .addInterest ("set_shadow_shader_valid__", this);
 		},
 		getShadingLanguageVersion: function ()
 		{
@@ -122,46 +90,120 @@ function (Shading,
 		{
 			return this .getContext () .getParameter (this .getContext () .MAX_VERTEX_ATTRIBS);
 		},
+		getMultiTexturing: function ()
+		{
+			return this .multiTexturing;
+		},
 		addShader: function (shader)
 		{
-			this .shaders [shader .getId ()] = shader;
+			this .shaders .add (shader);
+
 			shader .setShading (this .getBrowserOptions () .getShading ());
 		},
 		removeShader: function (shader)
 		{
-			delete this .shaders [shader .getId ()];
+			this .shaders .delete (shader);
 		},
 		getShaders: function ()
 		{
 			return this .shaders;
 		},
 		getDefaultShader: function ()
+		{ },
+		getDefaultShadowShader: function ()
 		{
-			return this .defaultShader;
+			return this .getDefaultShader () .getShadowShader ();
+		},
+		hasPointShader: function ()
+		{
+			return !! this .pointShader;
 		},
 		getPointShader: function ()
 		{
+			if (this .pointShader)
+				return this .pointShader;
+
+			this .pointShader = this .createShader ("PointShader", "PointSet", false);
+
+			this .pointShader .getShadowShader = this .getPointShader .bind (this);
+
 			return this .pointShader;
+		},
+		hasLineShader: function ()
+		{
+			return !! this .lineShader;
 		},
 		getLineShader: function ()
 		{
+			if (this .lineShader)
+				return this .lineShader;
+
+			this .lineShader = this .createShader ("WireframeShader", "Wireframe", false);
+
+			this .lineShader .getShadowShader = this .getLineShader .bind (this);
+
 			return this .lineShader;
+		},
+		hasGouraudShader: function ()
+		{
+			return !! this .gouraudShader;
 		},
 		getGouraudShader: function ()
 		{
-			// There must always be a gouraud shader available.
+			if (this .gouraudShader)
+				return this .gouraudShader;
+
+			this .gouraudShader = this .createShader ("GouraudShader", "Gouraud", false);
+
+			this .gouraudShader .getShadowShader = this .getShadowShader .bind (this);
+
+			this .gouraudShader .isValid_ .addInterest ("set_gouraud_shader_valid__", this);
+
 			return this .gouraudShader;
+		},
+		hasPhongShader: function ()
+		{
+			return !! this .phongShader;
 		},
 		getPhongShader: function ()
 		{
+			if (this .phongShader)
+				return this .phongShader;
+
+			this .phongShader = this .createShader ("PhongShader", "Phong", false);
+
+			this .phongShader .getShadowShader = this .getShadowShader .bind (this);
+
+			this .phongShader .isValid_ .addInterest ("set_phong_shader_valid__", this);
+
 			return this .phongShader;
+		},
+		hasShadowShader: function ()
+		{
+			return !! this .shadowShader;
 		},
 		getShadowShader: function ()
 		{
-			return this .defaultShader .shadowShader;
+			if (this .shadowShader)
+				return this .shadowShader;
+
+			this .shadowShader = this .createShader ("ShadowShader", "Phong", true);
+
+			this .shadowShader .isValid_ .addInterest ("set_shadow_shader_valid__", this);
+
+			return this .shadowShader;
+		},
+		hasDepthShader: function ()
+		{
+			return !! this .depthShader;
 		},
 		getDepthShader: function ()
 		{
+			if (this .depthShader)
+				return this .depthShader;
+
+			this .depthShader = this .createShader ("DepthShader", "Depth", false);
+
 			return this .depthShader;
 		},
 		setShading: function (type)
@@ -170,78 +212,105 @@ function (Shading,
 			{
 				case Shading .PHONG:
 				{
-					this .defaultShader = this .phongShader;
+					this .getDefaultShader = this .getPhongShader;
 					break;
 				}
 				default:
 				{
-					this .defaultShader = this .gouraudShader;
+					this .getDefaultShader = this .getGouraudShader;
 					break;
 				}
 			}
-	
-			this .pointShader   .setShading (type);
-			this .lineShader    .setShading (type);
-			this .gouraudShader .setShading (type);
-			this .phongShader   .setShading (type);
-			this .shadowShader  .setShading (type);
 
-			// Configure custom shaders
+			// Configure shaders.
 
-			var shaders = this .getShaders ();
-
-			for (var id in shaders)
-				shaders [id] .setShading (type);
+			for (var shader of this .getShaders ())
+				shader .setShading (type);
 		},
-		createShader: function (name, vs, fs, shadow)
+		createShader: function (name, file, shadow)
 		{
-			if (shadow)
-			{
-				vs = "\n#define X3D_SHADOWS\n" + vs;
-				fs = "\n#define X3D_SHADOWS\n" + fs;
-			}
+			if (this .getDebug ())
+				console .log ("Initializing " + name);
+
+			var version = this .getContext () .getVersion ();
 
 			var vertexShader = new ShaderPart (this .getPrivateScene ());
 			vertexShader .setName (name + "Vertex");
-			vertexShader .url_ .push ("data:text/plain;charset=utf-8," + vs);
+			vertexShader .url_ .push (urls .getShaderUrl ("webgl" + version + "/" + file + ".vs"));
+			vertexShader .setShadow (shadow);
 			vertexShader .setup ();
 
 			var fragmentShader = new ShaderPart (this .getPrivateScene ());
 			fragmentShader .setName (name + "Fragment");
-			fragmentShader .type_ = "FRAGMENT";
-			fragmentShader .url_ .push ("data:text/plain;charset=utf-8," + fs);
+			fragmentShader .type_  = "FRAGMENT";
+			fragmentShader .url_ .push (urls .getShaderUrl ("webgl" + version + "/" + file + ".fs"));
+			fragmentShader .setShadow (shadow);
 			fragmentShader .setup ();
-	
+
 			var shader = new ComposedShader (this .getPrivateScene ());
 			shader .setName (name);
 			shader .language_ = "GLSL";
 			shader .parts_ .push (vertexShader);
 			shader .parts_ .push (fragmentShader);
 			shader .setCustom (false);
+			shader .setShading (this .getBrowserOptions () .getShading ());
 			shader .setup ();
 
-			this .getLoadSensor () .watchList_ .push (vertexShader);
-			this .getLoadSensor () .watchList_ .push (fragmentShader);
+			this .addShader (shader);
 
 			return shader;
 		},
+		set_gouraud_shader_valid__: function (valid)
+		{
+			this .gouraudShader .isValid_ .removeInterest ("set_gouraud_shader_valid__", this);
+
+			if (valid .getValue () && ShaderTest .verify (this, this .gouraudShader))
+				return;
+
+			console .warn ("X_ITE: Disabling multi-texturing, as it might not work.");
+
+			this .gouraudShader .isValid_ .addInterest ("set_fallback_shader_valid__", this);
+
+			this .multiTexturing = false;
+
+			// Recompile shader.
+			this .gouraudShader .parts_ [0] .getValue () .url_ .addEvent ();
+			this .gouraudShader .parts_ [1] .getValue () .url_ .addEvent ();
+		},
+		set_fallback_shader_valid__: function (valid)
+		{
+			this .gouraudShader .isValid_ .removeInterest ("set_fallback_shader_valid__", this);
+
+			if (valid .getValue () && ShaderTest .verify (this, this .gouraudShader))
+				return;
+
+			console .warn ("X_ITE: All else fails, using fallback shader.");
+
+			// Recompile shader.
+			this .gouraudShader .parts_ [0] .url = [ urls .getShaderUrl ("webgl1/Fallback.vs") ];
+			this .gouraudShader .parts_ [1] .url = [ urls .getShaderUrl ("webgl1/Fallback.fs") ];
+		},
 		set_phong_shader_valid__: function (valid)
 		{
-			if (valid .getValue () && verifyShader (this, this .phongShader))
+			this .phongShader .isValid_ .removeInterest ("set_phong_shader_valid__", this);
+
+			if (valid .getValue () && ShaderTest .verify (this, this .phongShader))
 				return;
 
 			console .warn ("X_ITE: Phong shading is not available, using Gouraud shading.");
 
-			this .phongShader = this .gouraudShader;
+			this .phongShader = this .getGouraudShader ();
 		},
 		set_shadow_shader_valid__: function (valid)
 		{
-			if (valid .getValue () && verifyShader (this, this .shadowShader))
+			this .shadowShader .isValid_ .removeInterest ("set_shadow_shader_valid__", this);
+
+			if (valid .getValue () && ShaderTest .verify (this, this .shadowShader))
 				return;
 
 			console .warn ("X_ITE: Shadow shading is not available, using Gouraud shading.");
 
-			this .shadowShader = this .gouraudShader;
+			this .shadowShader = this .getGouraudShader ();
 		},
 	};
 

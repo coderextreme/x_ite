@@ -51,10 +51,12 @@ define ([
 	"x_ite/Basic/X3DField",
 	"x_ite/Bits/X3DConstants",
 	"x_ite/InputOutput/Generator",
+	"x_ite/Fields/SFNodeCache",
 ],
 function (X3DField,
           X3DConstants,
-          Generator)
+          Generator,
+          SFNodeCache)
 {
 "use strict";
 
@@ -110,27 +112,47 @@ function (X3DField,
 				return false;
 			}
 		},
+		has: function (target, key)
+		{
+			try
+			{
+				return Boolean (target .getValue () .getField (key));
+			}
+			catch (error)
+			{
+				return key in target;
+			}
+		},
+		enumerate: function (target)
+		{
+			if (! target .getValue ())
+				return [ ] [Symbol .iterator] ();
+
+			var
+				indices          = [ ],
+				fieldDefinitions = target .getValue () .getFieldDefinitions ();
+
+			for (var i = 0, length = fieldDefinitions .length; i < length; ++ i)
+				array .push (fieldDefinitions [i] .name);
+
+			return indices [Symbol .iterator] ();
+		},
 	};
 
 	function SFNode (value)
 	{
-	   if (this instanceof SFNode)
-	   {
-			if (value)
-			{
-				value .addParent (this);
+		if (value)
+		{
+			value .addParent (this);
 
-				X3DField .call (this, value);
-			}
-			else
-			{
-				X3DField .call (this, null);
-			}
-
-			return new Proxy (this, handler);
+			X3DField .call (this, value);
+		}
+		else
+		{
+			X3DField .call (this, null);
 		}
 
-		return SFNode .call (Object .create (SFNode .prototype), value);
+		return new Proxy (this, handler);
 	}
 
 	SFNode .prototype = Object .assign (Object .create (X3DField .prototype),
@@ -144,7 +166,7 @@ function (X3DField,
 		copy: function (executionContext)
 		{
 			var value = this .getValue ();
-			
+
 			if (value)
 				return new SFNode (value .copy (executionContext));
 
@@ -175,14 +197,14 @@ function (X3DField,
 
 			if (current)
 			{
-				current .removeClones (this ._cloneCount);
+				current .removeCloneCount (this ._cloneCount);
 				current .removeParent (this);
 			}
 
 			if (value)
 			{
 				value .addParent (this);
-				value .addClones (this ._cloneCount);
+				value .addCloneCount (this ._cloneCount);
 
 				X3DField .prototype .set .call (this, value);
 			}
@@ -227,50 +249,86 @@ function (X3DField,
 
 			throw new Error ("SFNode.getFieldDefinitions: node is null.");
 		},
-		addClones: function (count)
+		addFieldCallback: function (name, string, object)
+		{
+			switch (arguments .length)
+			{
+				case 2:
+				{
+					return X3DField .prototype .addFieldCallback .apply (this, arguments);
+				}
+				case 3:
+				{
+					var value = this .getValue ();
+
+					if (value)
+						return value .getField (name) .addFieldCallback (string, object);
+
+					throw new Error ("SFNode.addFieldCallback: node is null.");
+				}
+			}
+		},
+		removeFieldCallback: function (name, string)
+		{
+			switch (arguments .length)
+			{
+				case 1:
+				{
+					return X3DField .prototype .removeFieldCallback .apply (this, arguments);
+				}
+				case 2:
+				{
+					var value = this .getValue ();
+
+					if (value)
+						return value .getField (name) .removeFieldCallback (string);
+
+					throw new Error ("SFNode.removeFieldCallback: node is null.");
+				}
+			}
+		},
+		addCloneCount: function (count)
 		{
 			var value = this .getValue ();
 
 			this ._cloneCount += count;
 
 			if (value)
-				value .addClones (count);
+				value .addCloneCount (count);
 		},
-		removeClones: function (count)
+		removeCloneCount: function (count)
 		{
 			var value = this .getValue ();
 
 			this ._cloneCount -= count;
 
 			if (value)
-				value .removeClones (count);
+				value .removeCloneCount (count);
 		},
 		valueOf: function ()
 		{
-			if (this .getValue ())
-				return this;
+			var value = this .getValue ();
 
-			return null;	
+			if (value)
+				return SFNodeCache .get (value);
+
+			return null;
 		},
 		toStream: function (stream)
 		{
-			var node = this .getValue ();
+			var value = this .getValue ();
 
-			if (node)
-				node .toStream (stream);
+			if (value)
+				value .toStream (stream);
 			else
 				stream .string += "NULL";
 		},
-		toVRMLString: function ()
-		{
-			
-		},
 		toVRMLStream: function (stream)
 		{
-			var node = this .getValue ();
+			var value = this .getValue ();
 
-			if (node)
-				node .toVRMLStream (stream);
+			if (value)
+				value .toVRMLStream (stream);
 			else
 				stream .string += "NULL";
 		},
@@ -279,9 +337,9 @@ function (X3DField,
 			var
 				stream    = { string: "" },
 				generator = Generator .Get (stream),
-				node      = this .getValue ();
+				value     = this .getValue ();
 
-			generator .PushExecutionContext (node .getExecutionContext ());
+			generator .PushExecutionContext (value .getExecutionContext ());
 
 			this .toXMLStream (stream);
 
@@ -291,12 +349,12 @@ function (X3DField,
 		},
 		toXMLStream: function (stream)
 		{
-			var node = this .getValue ();
+			var value = this .getValue ();
 
-			if (node)
-				node .toXMLStream (stream);
+			if (value)
+				value .toXMLStream (stream);
 			else
-				stream .string += "NULL";
+				stream .string += "<!-- NULL -->";
 		},
 		dispose: function ()
 		{

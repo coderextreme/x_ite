@@ -55,6 +55,7 @@ define ([
 	"x_ite/Bits/TraverseType",
 	"x_ite/Bits/X3DConstants",
 	"standard/Math/Numbers/Vector3",
+	"standard/Math/Geometry/Box3",
 ],
 function (Fields,
           X3DFieldDefinition,
@@ -62,17 +63,18 @@ function (Fields,
           X3DEnvironmentalSensorNode,
           TraverseType,
           X3DConstants,
-          Vector3)
+          Vector3,
+          Box3)
 {
 "use strict";
 
-	var infinity = new Vector3 (-1, -1, -1);
-	
 	function VisibilitySensor (executionContext)
 	{
 		X3DEnvironmentalSensorNode .call (this, executionContext);
 
 		this .addType (X3DConstants .VisibilitySensor);
+
+		this .setZeroTest (false);
 
 		this .visible = false;
 	}
@@ -89,8 +91,6 @@ function (Fields,
 			new X3DFieldDefinition (X3DConstants .outputOnly,  "exitTime",  new Fields .SFTime ()),
 			new X3DFieldDefinition (X3DConstants .outputOnly,  "isActive",  new Fields .SFBool ()),
 		]),
-		size: new Vector3 (0, 0, 0),
-		center: new Vector3 (0, 0, 0),
 		getTypeName: function ()
 		{
 			return "VisibilitySensor";
@@ -141,30 +141,36 @@ function (Fields,
 				
 			this .setTraversed (false);
 		},
-		traverse: function (type, renderObject)
+		traverse: (function ()
 		{
-			if (type !== TraverseType .DISPLAY)
-				return;
+			var
+				bbox     = new Box3 (),
+				infinity = new Vector3 (-1, -1, -1);
 
-			this .setTraversed (true);
-
-			if (this .visible)
-				return;
-
-			if (this .size_ .getValue () .equals (infinity))
-				this .visible = true;
-
-			else
+			return function (type, renderObject)
 			{
-				var
-					viewVolume      = renderObject .getViewVolume (),
-					modelViewMatrix = renderObject .getModelViewMatrix () .get (),
-					size            = modelViewMatrix .multDirMatrix (this .size   .assign (this .size_   .getValue ())),
-					center          = modelViewMatrix .multVecMatrix (this .center .assign (this .center_ .getValue ()));
+				if (type !== TraverseType .DISPLAY)
+					return;
+	
+				this .setTraversed (true);
+	
+				if (this .visible)
+					return;
+	
+				if (this .size_ .getValue () .equals (infinity))
+				{
+					this .visible = true;
+				}
+				else
+				{
+					bbox
+						.set (this .size_ .getValue (), this .center_ .getValue ())
+						.multRight (renderObject .getModelViewMatrix () .get ());
 
-				this .visible = viewVolume .intersectsSphere (size .abs () / 2, center);
-			}
-		},
+					this .visible = renderObject .getViewVolume () .intersectsBox (bbox);
+				}
+			};
+		})(),
 	});
 		
 	return VisibilitySensor;

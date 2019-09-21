@@ -50,7 +50,7 @@
 define ([
 	"jquery",
 	"x_ite/Components/Text/FontStyle",
-	"lib/opentype.js/dist/opentype",
+	"opentype",
 ],
 function ($,
           FontStyle,
@@ -60,64 +60,74 @@ function ($,
 
 	function X3DTextContext ()
 	{
-		this .fontCache         = { };
-		this .fontGeometryCache = { }; // [fontName] [primitveQuality] [glyphIndex]
+		this .fontCache  = new Map ();
+		this .glyphCache = new Map (); // [font] [primitveQuality] [glyphIndex]
 	}
 
 	X3DTextContext .prototype =
 	{
 		initialize: function ()
-		{
-		},
+		{ },
 		getDefaultFontStyle: function ()
 		{
-			if (! this .defaultFontStyle)
-			{
-				this .defaultFontStyle = new FontStyle (this .getPrivateScene ());
-				this .defaultFontStyle .setup ();
-			}
+			if (this .defaultFontStyle)
+				return this .defaultFontStyle;
+
+			this .defaultFontStyle = new FontStyle (this .getPrivateScene ());
+
+			this .defaultFontStyle .setup ();
 
 			return this .defaultFontStyle;
 		},
-		getFont: function (URL, success, error)
+		getFont: function (url)
 		{
-			if (URL .query .length !== 0)
-				error ("Font url with query not supported");
+			url = url .toString ();
 
-			var deferred = this .fontCache [URL .filename];
+			var deferred = this .fontCache .get (url);
 
-			if (! deferred)
+			if (deferred === undefined)
 			{
-				deferred = this .fontCache [URL .filename] = $.Deferred ();
+				this .fontCache .set (url, deferred = $.Deferred ());
 
-				opentype .load (URL .toString (), this .setFont .bind (this, URL));
+				opentype .load (url, this .setFont .bind (this, deferred));
 			}
 
-			deferred .done (success);
-			deferred .fail (error);
+			return deferred;
 		},
-		setFont: function (URL, error, font)
+		setFont: function (deferred, error, font)
 		{
-			var deferred = this .fontCache [URL .filename];
-
 			if (error)
+			{
 				deferred .reject (error);
+			}
 			else
 			{
-				// Setup font.
-				font .fontName = font .familyName + font .styleName;
-
-				// Workaround to initialize composite glyphs.
-				for (var i = 0, length = font .numGlyphs; i < length; ++ i)
-					font .glyphs .get (i) .getPath (0, 0, 1);
+//				// Workaround to initialize composite glyphs.
+//				for (var i = 0, length = font .numGlyphs; i < length; ++ i)
+//					font .glyphs .get (i) .getPath (0, 0, 1);
 
 				// Resolve callbacks.
 				deferred .resolve (font);
 			}
 		},
-		getFontGeometryCache: function ()
+		getGlyph: function (font, primitveQuality, glyphIndex)
 		{
-		   return this .fontGeometryCache;
+			var cachedFont = this .glyphCache .get (font);
+
+			if (! cachedFont)
+				this .glyphCache .set (font, cachedFont = [ ]);
+
+			var cachedQuality = cachedFont [primitveQuality];
+
+			if (! cachedQuality)
+				cachedQuality = cachedFont [primitveQuality] = [ ];
+
+			var cachedGlyph = cachedQuality [glyphIndex];
+
+			if (! cachedGlyph)
+				cachedGlyph = cachedQuality [glyphIndex] = { };
+
+		   return cachedGlyph;
 		},
 	};
 

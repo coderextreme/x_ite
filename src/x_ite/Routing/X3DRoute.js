@@ -49,12 +49,12 @@
 
 define ([
 	"x_ite/Fields",
-	"x_ite/Basic/X3DBaseNode",
+	"x_ite/Base/X3DObject",
 	"x_ite/Bits/X3DConstants",
 	"x_ite/InputOutput/Generator",
 ],
 function (Fields,
-          X3DBaseNode,
+          X3DObject,
           X3DConstants,
           Generator)
 {
@@ -62,70 +62,36 @@ function (Fields,
 
 	function X3DRoute (executionContext, sourceNode, sourceField, destinationNode, destinationField)
 	{
-		X3DBaseNode .call (this, executionContext);
+		X3DObject .call (this, executionContext);
 
-		this .addChildObjects ("sourceNode",      new Fields .SFNode (sourceNode),
-		                       "destinationNode", new Fields .SFNode (destinationNode));
-
+		this ._executionContext = executionContext;
+		this ._sourceNode       = new Fields .SFNode (sourceNode);
 		this ._sourceField      = sourceField;
+		this ._destinationNode  = new Fields .SFNode (destinationNode);
 		this ._destinationField = destinationField;
 
-		//if (! (this .getExecutionContext () instanceof X3DProtoDeclaration))
-		{
-			sourceField .addFieldInterest (destinationField);
+		// Must connect in every context, to make X3DBaseNode.hasRoutes work.
 
-			sourceField      .addOutputRoute (this);
-			destinationField .addInputRoute (this);
-		}
+		sourceField .addFieldInterest (destinationField);
+
+		sourceField      .addOutputRoute (this);
+		destinationField .addInputRoute (this);
 	}
 
-	X3DRoute .prototype = Object .assign (Object .create (X3DBaseNode .prototype),
+	X3DRoute .prototype = Object .assign (Object .create (X3DObject .prototype),
 	{
 		getTypeName: function ()
 		{
 			return "X3DRoute";
 		},
-		getComponentName: function ()
+		getExecutionContext: function ()
 		{
-			return "X_ITE";
-		},
-		getContainerField: function ()
-		{
-			return "routes";
-		},
-		initialize: function ()
-		{
-			X3DBaseNode .prototype .initialize .call (this);
-
-			this .sourceNode_      .addInterest ("set_node", this);
-			this .destinationNode_ .addInterest ("set_node", this);
-
-//			Object .preventExtensions (this);
-//			Object .freeze (this);
-//			Object .seal (this);
-		},
-		set_node: function ()
-		{
-			if (! this .sourceNode_ .getValue () || ! this .destinationNode_ .getValue ())
-				this .dispose ();
-		},
-		disconnect: function ()
-		{
-			this ._sourceField .removeFieldInterest (this ._destinationField);
-
-			this ._sourceField      .removeOutputRoute (this);
-			this ._destinationField .removeInputRoute (this);
-
-			if (this .sourceNode_ .getValue ())
-				this .sourceNode_ .removeInterest ("set_node", this);
-
-			if (this .destinationNode_ .getValue ())
-				this .destinationNode_ .removeInterest ("set_node", this);
+			return this ._executionContext;
 		},
 		getSourceNode: function ()
 		{
 			///  SAI
-			return this .sourceNode_ .getValue ();
+			return this ._sourceNode .valueOf ();
 		},
 		getSourceField: function ()
 		{
@@ -135,23 +101,58 @@ function (Fields,
 		getDestinationNode: function ()
 		{
 			///  SAI
-			return this .destinationNode_ .getValue ();
+			return this ._destinationNode .valueOf ();
 		},
 		getDestinationField: function ()
 		{
 			///  SAI
 			return this ._destinationField .getName ();
 		},
-		toString: function ()
+		disconnect: function ()
 		{
-			return Object .prototype .toString (this);
+			this ._sourceField .removeFieldInterest (this ._destinationField);
+
+			this ._sourceField      .removeOutputRoute (this);
+			this ._destinationField .removeInputRoute (this);
+		},
+		toStream: function (stream)
+		{
+			stream .string += Object .prototype .toString .call (this);
+		},
+		toVRMLStream: function (stream)
+		{
+			var
+				generator           = Generator .Get (stream),
+				sourceNodeName      = generator .LocalName (this ._sourceNode .getValue ()),
+				destinationNodeName = generator .LocalName (this ._destinationNode .getValue ());
+
+			stream .string += generator .Indent ();
+			stream .string += "ROUTE";
+			stream .string += " ";
+			stream .string += sourceNodeName;
+			stream .string += ".";
+			stream .string += this ._sourceField .getName ();
+
+			if (this ._sourceField .getAccessType () === X3DConstants .inputOutput)
+				stream .string += "_changed";
+
+			stream .string += " ";
+			stream .string += "TO";
+			stream .string += " ";
+			stream .string += destinationNodeName;
+			stream .string += ".";
+
+			if (this ._destinationField .getAccessType () === X3DConstants .inputOutput)
+				stream .string += "set_";
+
+			stream .string += this ._destinationField .getName ();
 		},
 		toXMLStream: function (stream)
 		{
 			var
 				generator           = Generator .Get (stream),
-				sourceNodeName      = generator .LocalName (this .getSourceNode ()),
-				destinationNodeName = generator .LocalName (this .getDestinationNode ());
+				sourceNodeName      = generator .LocalName (this ._sourceNode .getValue ()),
+				destinationNodeName = generator .LocalName (this ._destinationNode .getValue ());
 
 			stream .string += generator .Indent ();
 			stream .string += "<ROUTE";
@@ -185,9 +186,9 @@ function (Fields,
 		{
 			this .disconnect ();
 
-			this .getExecutionContext () .deleteRoute (this);
+			this ._executionContext .deleteRoute (this);
 
-			X3DBaseNode .prototype .dispose .call (this);
+			X3DObject .prototype .dispose .call (this);
 		}
 	});
 
@@ -195,7 +196,7 @@ function (Fields,
 	{
 		get: function ()
 		{
-			return this .sourceNode_ .clone ();
+			return this ._sourceNode .valueOf ();
 		},
 		enumerable: true,
 		configurable: false
@@ -215,7 +216,7 @@ function (Fields,
 	{
 		get: function ()
 		{
-			return this .destinationNode_ .clone ();
+			return this ._destinationNode .valueOf ();
 		},
 		enumerable: true,
 		configurable: false

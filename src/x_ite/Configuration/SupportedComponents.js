@@ -87,7 +87,7 @@ function (ComponentInfoArray,
 		title:      "Distributed interactive simulation (DIS)",
 		name:       "DIS",
 		level:       2,
-		providerUrl: urls .getProviderUrl (),
+		providerUrl: urls .getProviderUrl ("dis"),
 	});
 
 	SupportedComponents .addBaseComponent (
@@ -127,7 +127,7 @@ function (ComponentInfoArray,
 		title:      "Geometry2D",
 		name:       "Geometry2D",
 		level:       2,
-		providerUrl: urls .getProviderUrl (),
+		providerUrl: urls .getProviderUrl ("geometry2d"),
 	});
 
 	SupportedComponents .addBaseComponent (
@@ -175,7 +175,7 @@ function (ComponentInfoArray,
 		title:      "Key device sensor",
 		name:       "KeyDeviceSensor",
 		level:       2,
-		providerUrl: urls .getProviderUrl (),
+		providerUrl: urls .getProviderUrl ("key-device-sensor"),
 	});
 
 	SupportedComponents .addBaseComponent (
@@ -239,7 +239,7 @@ function (ComponentInfoArray,
 		title:      "Picking sensor",
 		name:       "Picking",
 		level:       3,
-		providerUrl: urls .getProviderUrl (),
+		providerUrl: urls .getProviderUrl ("picking"),
 	});
 
 	SupportedComponents .addBaseComponent (
@@ -335,7 +335,7 @@ function (ComponentInfoArray,
 		title:      "Volume rendering",
 		name:       "VolumeRendering",
 		level:       2,
-		providerUrl: urls .getProviderUrl (),
+		providerUrl: urls .getProviderUrl ("volume-rendering"),
 	});
 
 	SupportedComponents .addBaseComponent (

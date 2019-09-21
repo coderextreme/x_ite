@@ -54,18 +54,6 @@ function (Generator)
 {
 "use strict";
 
-	/*
-	 *  Id
-	 */
-
-	var id = 0;
-	
-	function getId () { return this ._id; }
-
-	/*
-	 *  X3DObject
-	 */
-
 	function X3DObject () { }
 
 	X3DObject .prototype =
@@ -74,12 +62,19 @@ function (Generator)
 		_id: 0,
 		_name: "",
 		_interests: new Map (),
-		getId: function ()
+		getId: (function ()
 		{
-			this .getId = getId;
+			var id = 0;
+			
+			function getId () { return this ._id; }
 
-			return this ._id = ++ id;
-		},
+			return function ()
+			{
+				this .getId = getId;
+	
+				return this ._id = ++ id;
+			};
+		})(),
 		setName: function (value)
 		{
 			this ._name = value;
@@ -97,12 +92,23 @@ function (Generator)
 			if (! this .hasOwnProperty ("_interests"))
 				this ._interests = new Map ();
 
-			var args = Array .prototype .slice .call (arguments, 0);
+			var callback = object [callbackName];
 
-			args [0] = object;
-			args [1] = this;
+			if (arguments .length > 2)
+			{
+				var args = Array .prototype .slice .call (arguments, 0);
+	
+				args [0] = object;
+				args [1] = this;
+	
+				this ._interests .set (object .getId () + callbackName, Function .prototype .bind .apply (callback, args));
+			}
+			else
+			{
+				var self = this;
 
-			this ._interests .set (object .getId () + callbackName, Function .prototype .bind .apply (object [callbackName], args));
+				this ._interests .set (object .getId () + callbackName, function () { callback .call (object, self); });
+			}
 		},
 		removeInterest: function (callbackName, object)
 		{
@@ -131,7 +137,13 @@ function (Generator)
 			return stream .string;
 		},
 		toVRMLString: function ()
-		{ },
+		{
+			var stream = { string: "" };
+
+			this .toVRMLStream (stream);
+
+			return stream .string;
+		},
 		toXMLString: function ()
 		{
 			var stream = { string: "" };

@@ -73,6 +73,7 @@ define ([
 	"x_ite/Components/Scripting/X3DScriptNode",
 	"x_ite/InputOutput/FileLoader",
 	"x_ite/Bits/X3DConstants",
+	"x_ite/Fields/SFNodeCache",
 ],
 function ($,
           X3DFieldDefinition,
@@ -98,7 +99,8 @@ function ($,
           evaluate,
           X3DScriptNode, 
           FileLoader,
-          X3DConstants)
+          X3DConstants,
+          SFNodeCache)
 {
 	function Script (executionContext)
 	{
@@ -139,8 +141,10 @@ function ($,
 
 			var userDefinedFields = this .getUserDefinedFields ();
 
-			for (var field of userDefinedFields .values ())
+			userDefinedFields .forEach (function (field)
+			{
 				field .setSet (false);
+			});
 
 			this .set_url__ ();
 		},
@@ -200,7 +204,7 @@ function ($,
 					callbacks         = ["initialize", "prepareEvents", "eventsProcessed", "shutdown"],
 					userDefinedFields = this .getUserDefinedFields ();
 
-				for (var field of userDefinedFields .values ())
+				userDefinedFields .forEach (function (field)
 				{
 					switch (field .getAccessType ())
 					{
@@ -211,7 +215,7 @@ function ($,
 							callbacks .push ("set_" + field .getName ());
 							break;
 					}
-				}
+				});
 
 				text += "\n;var " + callbacks .join (",") + ";";
 				text += "\n[" + callbacks .join (",") + "];";
@@ -240,20 +244,32 @@ function ($,
 		},
 		getGlobal: function ()
 		{
-			var browser = this .getBrowser ();
+			var
+				browser          = this .getBrowser (),
+				executionContext = this .getExecutionContext (),
+				live             = this .isLive ();
 
 			function SFNode (vrmlSyntax)
 			{
-				var scene = browser .createX3DFromString (String (vrmlSyntax));
+				var
+					scene     = browser .createX3DFromString (String (vrmlSyntax)),
+					rootNodes = scene .getRootNodes ();
 
-				if (scene .getRootNodes () .length && scene .getRootNodes () [0])
-					return Fields .SFNode .call (this, scene .getRootNodes () [0] .getValue ());
+				live .addFieldInterest (scene .isLive ());
+
+				scene .setLive (live .getValue ());
+				scene .setPrivate (executionContext .getPrivate ());
+				scene .setExecutionContext (executionContext);
+
+				if (rootNodes .length && rootNodes [0])
+				{
+					return SFNodeCache .add (rootNodes [0] .getValue (), this);
+				}
 
 				throw new Error ("SFNode.new: invalid argument, must be 'string' is 'undefined'.");
 			}
 
-			SFNode .prototype = Object .create (Fields .SFNode .prototype);
-			SFNode .prototype .constructor = SFNode;
+			SFNode .prototype = Fields .SFNode .prototype;
 
 			var global =
 			{
@@ -330,12 +346,12 @@ function ($,
 
 			var userDefinedFields = this .getUserDefinedFields ();
 
-			for (var field of userDefinedFields .values ())
+			userDefinedFields .forEach (function (field)
 			{
 				var name = field .getName ();
 
 				if (field .getAccessType () === X3DConstants .inputOnly)
-					continue;
+					return;
 
 				if (! (name in global))
 				{
@@ -354,7 +370,7 @@ function ($,
 						set: field .setValue .bind (field),
 					};
 				}
-			}
+			});
 
 			return Object .create (Object .prototype, global);
 		},
@@ -370,7 +386,7 @@ function ($,
 				if ($.isFunction (this .context .eventsProcessed))
 					this .addInterest ("eventsProcessed__", this);
 
-				for (var field of userDefinedFields .values ())
+				userDefinedFields .forEach (function (field)
 				{
 					switch (field .getAccessType ())
 					{
@@ -393,7 +409,8 @@ function ($,
 							break;
 						}
 					}
-				}
+				},
+				this);
 			}
 			else
 			{
@@ -403,7 +420,7 @@ function ($,
 				if (this .context .eventsProcessed)
 					this .removeInterest ("eventsProcessed__", this);
 
-				for (var field of userDefinedFields .values ())
+				userDefinedFields .forEach (function (field)
 				{
 					switch (field .getAccessType ())
 					{
@@ -412,7 +429,8 @@ function ($,
 							field .removeInterest ("set_field__", this);
 							break;
 					}
-				}
+				},
+				this);
 			}
 		},
 		initialize__: function (text)
@@ -447,7 +465,7 @@ function ($,
 
 			var userDefinedFields = this .getUserDefinedFields ();
 
-			for (var field of userDefinedFields .values ())
+			userDefinedFields .forEach (function (field)
 			{
 				if (field .getSet ())
 				{
@@ -456,7 +474,8 @@ function ($,
 					if ($.isFunction (callback))
 						this .set_field__ (field, callback);
 				}
-			}
+			},
+			this);
 		},
 		prepareEvents__: function ()
 		{

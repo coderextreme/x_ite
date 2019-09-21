@@ -48,7 +48,6 @@
 
 
 define ([
-	"x_ite/Basic/FieldDefinitionArray",
 	"x_ite/Fields",
 	"x_ite/Base/X3DChildObject",
 	"x_ite/Components/Core/X3DNode",
@@ -56,8 +55,7 @@ define ([
 	"x_ite/Bits/X3DConstants",
 	"x_ite/InputOutput/Generator",
 ],
-function (FieldDefinitionArray,
-          Fields,
+function (Fields,
           X3DChildObject,
           X3DNode,
           X3DExecutionContext,
@@ -69,7 +67,7 @@ function (FieldDefinitionArray,
 	function X3DPrototypeInstance (executionContext, protoNode)
 	{
 		this .protoNode        = protoNode;
-		this .fieldDefinitions = new FieldDefinitionArray (protoNode .getFieldDefinitions () .getValue () .slice ());
+		this .fieldDefinitions = protoNode .getFieldDefinitions ();
 
 		X3DNode             .call (this, executionContext);
 		X3DExecutionContext .call (this, executionContext);
@@ -77,13 +75,18 @@ function (FieldDefinitionArray,
 		this .addType (X3DConstants .X3DPrototypeInstance);
 		this .getRootNodes () .setAccessType (X3DConstants .initializeOnly);
 
-		this .getScene () .addInitLoadCount (this);
+		var X3DProtoDeclaration = require ("x_ite/Prototype/X3DProtoDeclaration");
 
-		if (protoNode .isExternProto)
-			protoNode .requestAsyncLoad (this .construct .bind (this));
-
-		else
-			this .construct ();
+		if (this .getExecutionContext () .constructor !== X3DProtoDeclaration)
+		{
+			this .getScene () .addInitLoadCount (this);
+	
+			if (protoNode .isExternProto)
+				protoNode .requestAsyncLoad (this .construct .bind (this));
+	
+			else
+				this .construct ();
+		}
 	}
 
 	X3DPrototypeInstance .prototype = Object .assign (Object .create (X3DExecutionContext .prototype),
@@ -168,8 +171,6 @@ function (FieldDefinitionArray,
 
 				// Assign metadata.
 
-				this .setURL (proto .getURL ());
-
 				this .importExternProtos (proto .externprotos);
 				this .importProtos       (proto .protos);
 				this .copyRootNodes      (proto .rootNodes);
@@ -196,7 +197,7 @@ function (FieldDefinitionArray,
 
 				if (proto)
 				{
-					this .copyImportedNodes (proto, proto .importedNodes);
+					this .copyImportedNodes (proto, proto .getImportedNodes ());
 					this .copyRoutes (proto, proto .routes);
 				}
 
@@ -212,13 +213,41 @@ function (FieldDefinitionArray,
 				console .error (error .message);
 			}
 		},
+		getExtendedEventHandling: function ()
+		{
+			return false;
+		},
 		getSpecificationVersion: function ()
 		{
-			return this .getExecutionContext () .getSpecificationVersion ();
+			return this .protoNode .getProtoDeclaration () .getSpecificationVersion ();
 		},
 		getEncoding: function ()
 		{
-			return this .getExecutionContext () .getEncoding ();
+			return this .protoNode .getProtoDeclaration () .getEncoding ();
+		},
+		getURL: function ()
+		{
+			return this .protoNode .getProtoDeclaration () .getURL ();
+		},
+		getProfile: function ()
+		{
+			return this .protoNode .getProtoDeclaration () .getProfile ();
+		},
+		getComponents: function ()
+		{
+			return this .protoNode .getProtoDeclaration () .getComponents ();
+		},
+		fromUnit: function (category, value)
+		{
+			return this .protoNode .getProtoDeclaration () .fromUnit (category, value);
+		},
+		toUnit: function (category, value)
+		{
+			return this .protoNode .getProtoDeclaration () .toUnit (category, value);
+		},
+		getUnits: function ()
+		{
+			return this .protoNode .getProtoDeclaration () .getUnits ();
 		},
 		getInnerNode: function ()
 		{
@@ -233,18 +262,6 @@ function (FieldDefinitionArray,
 			}
 
 			throw new Error ("Root node not available.");
-		},
-		fromUnit: function (category, value)
-		{
-			return this .protoNode .getProtoDeclaration () .fromUnit (category, value);
-		},
-		toUnit: function (category, value)
-		{
-			return this .protoNode .getProtoDeclaration () .toUnit (category, value);
-		},
-		getExtendedEventHandling: function ()
-		{
-			return false;
 		},
 		importExternProtos: function (externprotos)
 		{
@@ -267,15 +284,13 @@ function (FieldDefinitionArray,
 		},
 		copyImportedNodes: function (executionContext, importedNodes)
 		{
-			for (var importedName in importedNodes)
+			importedNodes .forEach (function (importedNode, importedName)
 			{
 				try
 				{
 					var
-						importedNode = importedNodes [importedName],
 						inlineNode   = this .getNamedNode (importedNode .getInlineNode () .getName ()),
-						exportedName = importedNode .getExportedName (),
-						importedName = importedNode .getImportedName ();
+						exportedName = importedNode .getExportedName ();
 
 					this .addImportedNode (inlineNode, exportedName, importedName);
 				}
@@ -283,7 +298,8 @@ function (FieldDefinitionArray,
 				{
 					console .error ("Bad IMPORT specification in copy: ", error);
 				}
-			}
+			},
+			this);
 		},
 		copyRoutes: function (executionContext, routes)
 		{
@@ -304,6 +320,10 @@ function (FieldDefinitionArray,
 					console .log (error);
 				}
 			}
+		},
+		toVRMLStream: function (stream)
+		{
+			X3DNode .prototype .toVRMLStream .call (this, stream);
 		},
 		toXMLStream: function (stream)
 		{
@@ -416,10 +436,10 @@ function (FieldDefinitionArray,
 								initializableReference = false,
 								fieldReferences        = field .getReferences ();
 
-							for (var fieldReference of fieldReferences .values ())
+							fieldReferences .forEach (function (fieldReference)
 							{
 								initializableReference |= fieldReference .isInitializable ();
-							}
+							});
 
 							if (! initializableReference)
 								mustOutputValue = true;
@@ -541,7 +561,7 @@ function (FieldDefinitionArray,
 							field       = references [i],
 							protoFields = field .getReferences ();
 
-						for (var protoField of protoFields .values ())
+						protoFields .forEach (function (protoField)
 						{
 							stream .string += generator .Indent ();
 							stream .string += "<connect";
@@ -554,7 +574,7 @@ function (FieldDefinitionArray,
 							stream .string += generator .XMLEncode (protoField .getName ());
 							stream .string += "'";
 							stream .string += "/>\n";
-						}
+						});
 					}
 
 					generator .DecIndent ();

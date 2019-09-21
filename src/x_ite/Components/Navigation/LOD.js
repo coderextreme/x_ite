@@ -56,6 +56,7 @@ define ([
 	"x_ite/Bits/TraverseType",
 	"x_ite/Bits/X3DConstants",
 	"standard/Math/Numbers/Matrix4",
+	"standard/Math/Geometry/Box3",
 	"standard/Math/Algorithm",
 ],
 function (Fields,
@@ -66,6 +67,7 @@ function (Fields,
           TraverseType,
           X3DConstants,
           Matrix4,
+          Box3,
           Algorithm)
 {
 "use strict";
@@ -120,16 +122,9 @@ function (Fields,
 			this .child = this .getChild (this .level_changed_ .getValue ());
 			this .set_cameraObjects__ ();
 		},
-		set_cameraObjects__: function ()
+		getBBox: function (bbox)
 		{
-			if (this .child && this .child .getCameraObject)
-				this .setCameraObject (this .child .getCameraObject ());
-			else
-				this .setCameraObject (false);
-		},
-		getBBox: function (bbox) 
-		{
-			if (this .bboxSize_ .getValue () .equals (this .defaultBBoxSize))
+			if (this .bboxSize_ .getValue () .equals (this .getDefaultBBoxSize ()))
 			{
 				var boundedObject = X3DCast (X3DConstants .X3DBoundedObject, this .child);
 
@@ -140,6 +135,26 @@ function (Fields,
 			}
 
 			return bbox .set (this .bboxSize_ .getValue (), this .bboxCenter_ .getValue ());
+		},
+		getSubBBox: function (bbox)
+		{
+			return this .getBBox (bbox);
+		},
+		set_cameraObjects__: function ()
+		{
+			if (this .child && this .child .getCameraObject)
+				this .setCameraObject (this .child .getCameraObject ());
+			else
+				this .setCameraObject (false);
+		},
+		set_pickableObjects__: function ()
+		{
+			if (this .getTransformSensors () .size)
+				this .setPickableObject (true);
+			else if (this .child && this .child .getPickableObject)
+				this .setPickableObject (this .child .getPickableObject ());
+			else
+				this .setPickableObject (false);
 		},
 		getLevel: (function ()
 		{
@@ -153,22 +168,22 @@ function (Fields,
 				if (this .range_ .length === 0)
 				{
 					var size = this .children_ .length;
-	
+
 					if (size < 2)
 						return 0;
-	
+
 					this .frameRate = ((FRAMES - 1) * this .frameRate + browser .currentFrameRate) / FRAMES;
-	
+
 					if (size === 2)
 						return (this .frameRate > FRAME_RATE_MAX) * 1;
-	
+
 					var fraction = 1 - Algorithm .clamp ((this .frameRate - FRAME_RATE_MIN) / (FRAME_RATE_MAX - FRAME_RATE_MIN), 0, 1);
 
 					return Math .min (Math .floor (fraction * size), size - 1);
 				}
-	
+
 				var distance = this .getDistance (modelViewMatrix);
-	
+
 				return Algorithm .upperBound (this .range_, 0, this .range_ .length, distance, Algorithm .less);
 			};
 		})(),
@@ -180,45 +195,86 @@ function (Fields,
 		},
 		traverse: (function ()
 		{
-			var modelViewMatrix = new Matrix4 ();
+			var
+				modelViewMatrix = new Matrix4 (),
+				bbox            = new Box3 ();
 
 			return function (type, renderObject)
 			{
-				if (! this .keepCurrentLevel)
-				{
-					if (type === TraverseType .DISPLAY)
-					{
-						var
-							level        = this .getLevel (renderObject .getBrowser (), modelViewMatrix .assign (renderObject .getModelViewMatrix () .get ())),
-							currentLevel = this .level_changed_ .getValue ();
+				var child = this .child;
 
-						if (this .forceTransitions_ .getValue ())
+				switch (type)
+				{
+					case TraverseType .PICKING:
+					{
+						if (this .getTransformSensors () .size)
 						{
-							if (level > currentLevel)
-								level = currentLevel + 1;
-		
-							else if (level < currentLevel)
-								level = currentLevel - 1;
+							this .getSubBBox (bbox) .multRight (renderObject .getModelViewMatrix () .get ());
+
+							this .getTransformSensors () .forEach (function (transformSensorNode)
+							{
+								transformSensorNode .collect (bbox);
+							});
 						}
-	
-						if (level !== currentLevel)
+
+						if (child)
 						{
-							this .level_changed_ = level;
-					
-							this .child = this .getChild (Math .min (level, this .children_ .length - 1));
-	
-							this .set_cameraObjects__ ();
+							var
+								browser          = renderObject .getBrowser (),
+								pickingHierarchy = browser .getPickingHierarchy ();
+
+							pickingHierarchy .push (this);
+
+							child .traverse (type, renderObject);
+
+							pickingHierarchy .pop ();
 						}
+
+						return;
+					}
+					case TraverseType .DISPLAY:
+					{
+						if (! this .keepCurrentLevel)
+						{
+							var
+								level        = this .getLevel (renderObject .getBrowser (), modelViewMatrix .assign (renderObject .getModelViewMatrix () .get ())),
+								currentLevel = this .level_changed_ .getValue ();
+
+							if (this .forceTransitions_ .getValue ())
+							{
+								if (level > currentLevel)
+									level = currentLevel + 1;
+
+								else if (level < currentLevel)
+									level = currentLevel - 1;
+							}
+
+							if (level !== currentLevel)
+							{
+								this .level_changed_ = level;
+
+								child = this .child = this .getChild (Math .min (level, this .children_ .length - 1));
+
+								this .set_cameraObjects__ ();
+							}
+						}
+
+						if (child)
+							child .traverse (type, renderObject);
+
+						return;
+					}
+					default:
+					{
+						if (child)
+							child .traverse (type, renderObject);
+
+						return;
 					}
 				}
-	
-				if (this .child)
-					this .child .traverse (type, renderObject);
 			};
 		})(),
 	});
 
 	return LOD;
 });
-
-

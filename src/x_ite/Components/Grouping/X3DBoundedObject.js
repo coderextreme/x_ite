@@ -48,12 +48,14 @@
 
 
 define ([
+	"x_ite/Fields",
 	"x_ite/Bits/X3DCast",
 	"x_ite/Bits/X3DConstants",
 	"standard/Math/Numbers/Vector3",
 	"standard/Math/Geometry/Box3",
 ],
-function (X3DCast,
+function (Fields,
+          X3DCast,
           X3DConstants,
           Vector3,
           Box3)
@@ -64,35 +66,61 @@ function (X3DCast,
 	{
 		this .addType (X3DConstants .X3DBoundedObject);
 
+		this .addChildObjects ("transformSensors_changed", new Fields .SFTime ());
+
 		this .bboxSize_   .setUnit ("length");
 		this .bboxCenter_ .setUnit ("length");
 
-		this .childBBox = new Box3 ();
+		this .childBBox            = new Box3 (); // Must be unique for each X3DBoundedObject.
+		this .transformSensorNodes = new Set ();
 	}
 
 	X3DBoundedObject .prototype =
 	{
 		constructor: X3DBoundedObject,
-		defaultBBoxSize: new Vector3 (-1, -1, -1),
 		initialize: function () { },
+		getDefaultBBoxSize: (function ()
+		{
+			var defaultBBoxSize = new Vector3 (-1, -1, -1);
+
+			return function ()
+			{
+				return defaultBBoxSize;
+			};
+		})(),
 		getBBox: function (nodes, bbox)
 		{
 			bbox .set ();
 	
 			// Add bounding boxes
-	
+
 			for (var i = 0, length = nodes .length; i < length; ++ i)
 			{
 				var boundedObject = X3DCast (X3DConstants .X3DBoundedObject, nodes [i]);
-	
+
 				if (boundedObject)
 					bbox .add (boundedObject .getBBox (this .childBBox));
 			}
-	
+
 			return bbox;
 		},
-	};
+		addTransformSensor: function (transformSensorNode)
+		{
+			this .transformSensorNodes .add (transformSensorNode);
 
+			this .transformSensors_changed_ = this .getBrowser () .getCurrentTime ();
+		},
+		removeTransformSensor: function (transformSensorNode)
+		{
+			this .transformSensorNodes .delete (transformSensorNode);
+
+			this .transformSensors_changed_ = this .getBrowser () .getCurrentTime ();
+		},
+		getTransformSensors: function ()
+		{
+			return this .transformSensorNodes;
+		},
+	};
 
 	return X3DBoundedObject;
 });

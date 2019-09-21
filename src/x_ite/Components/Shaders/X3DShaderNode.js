@@ -65,6 +65,9 @@ function (Shading,
 		X3DAppearanceChildNode .call (this, executionContext);
 
 		this .addType (X3DConstants .X3DShaderNode);
+
+		this .valid    = false;
+		this .selected = 0;
 	}
 
 	X3DShaderNode .prototype = Object .assign (Object .create (X3DAppearanceChildNode .prototype),
@@ -78,6 +81,14 @@ function (Shading,
 		getCustom: function ()
 		{
 			return this .custom;
+		},
+		setValid: function (value)
+		{
+			this .isValid_ = this .valid = value;
+		},
+		getValid: function ()
+		{
+			return this .valid;
 		},
 		setShading: function (shading)
 		{
@@ -109,16 +120,29 @@ function (Shading,
 				}
 			}	
 		},
+		select: function ()
+		{
+			++ this .selected;
+
+			if (! this .isSelected_ .getValue ())
+				this .isSelected_ = true;
+		},
+		deselect: function ()
+		{
+			++ this .selected;
+
+			if (this .selected === 0)
+			{
+				if (this .isSelected_ .getValue ())
+					this .isSelected_ = false;
+			}
+		},
 		traverse: function (type, renderObject)
 		{
-			switch (type)
-			{
-				case TraverseType .DISPLAY:
-					renderObject .getShaders () .set (this .getId (), this);
-					break;
-				default:
-					break;
-			}
+			if (type !== TraverseType .DISPLAY)
+				return;
+
+			renderObject .getShaders () .add (this);
 		},
 	});
 

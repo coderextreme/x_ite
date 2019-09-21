@@ -1,7 +1,7 @@
 {
 	"name": "x_ite",
-	"version": "4.2.18a",
-	"revision": "582",
+	"version": "4.5.12a",
+	"revision": "832",
 	"description": "X_ITE X3D Browser",
 	"main": "src/x_ite.js",
 	"repository": {
@@ -29,6 +29,10 @@
 		{
 			"name": "John Carlson",
 			"email": "yottzumm@gmail.com"
+		},
+		{
+			"name": "Simon Place",
+			"url": "https://github.com/splace"
 		}
 	],
 	"bugs": {
@@ -38,12 +42,12 @@
 		"ammojs": "latest",
 		"bezier-js": "latest",
 		"css-element-queries": "latest",
-		"jquery": "^3.3.1",
+		"jquery": "^3.4.0",
 		"jquery-contextmenu": "^2.7.1",
 		"jquery-mousewheel": "latest",
 		"jquery.fullscreen": "latest",
 		"libtess": "latest",
-		"opentype.js": "latest",
+		"opentype.js": "^0.11.0",
 		"pako": "^1.0.7",
 		"require": "latest",
 		"requirejs": "^2.3.6",

@@ -60,10 +60,7 @@ function (X3DField,
 
 	function SFFloat (value)
 	{
-		if (this instanceof SFFloat)
-			return X3DField .call (this, arguments .length ? value * 1 : 0);
-		
-		return X3DField .call (Object .create (SFFloat .prototype), arguments .length ? +value : 0);
+		return X3DField .call (this, arguments .length ? value * 1 : 0);
 	}
 
 	SFFloat .prototype = Object .assign (Object .create (X3DField .prototype),
@@ -97,6 +94,10 @@ function (X3DField,
 				category  = generator .Unit (this .getUnit ());
 
 			stream .string += String (generator .ToUnit (category, this .getValue ()));
+		},
+		toVRMLStream: function (stream)
+		{
+			this .toStream (stream);
 		},
 		toXMLStream: function (stream)
 		{

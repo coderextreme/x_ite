@@ -68,6 +68,16 @@ function (Generator)
 	Object .assign (UnitInfo .prototype,
 	{
 		constructor: UnitInfo,
+		toVRMLStream: function (stream)
+		{
+			stream .string += "UNIT";
+			stream .string += " ";
+			stream .string += this .category;
+			stream .string += " ";
+			stream .string += this .name;
+			stream .string += " ";
+			stream .string += this .conversionFactor;
+		},
 		toXMLStream: function (stream)
 		{
 			var generator = Generator .Get (stream);

@@ -58,10 +58,7 @@ function (X3DField,
 
 	function SFInt32 (value)
 	{
-		if (this instanceof SFInt32)
-			return X3DField .call (this, ~~value);
-		
-		return X3DField .call (Object .create (SFInt32 .prototype), ~~value);
+		return X3DField .call (this, ~~value);
 	}
 
 	SFInt32 .prototype = Object .assign (Object .create (X3DField .prototype),
@@ -91,6 +88,10 @@ function (X3DField,
 		toStream: function (stream, base)
 		{
 			stream .string += this .getValue () .toString (base);
+		},
+		toVRMLStream: function (stream)
+		{
+			this .toStream (stream);
 		},
 		toXMLStream: function (stream)
 		{

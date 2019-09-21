@@ -50,13 +50,13 @@
 define ([
 	"x_ite/Fields",
 	"x_ite/Components/Texturing/X3DTextureNode",
-	"x_ite/Bits/X3DCast",
 	"x_ite/Bits/X3DConstants",
+	"x_ite/Bits/X3DCast",
 ],
 function (Fields,
           X3DTextureNode,
-          X3DCast,
-          X3DConstants)
+          X3DConstants,
+          X3DCast)
 {
 "use strict";
 
@@ -80,9 +80,9 @@ function (Fields,
 		initialize: function ()
 		{
 			X3DTextureNode .prototype .initialize .call (this);
-			
+
 			var gl = this .getBrowser () .getContext ();
-			
+
 			this .target = gl .TEXTURE_2D;
 
 			this .repeatS_           .addInterest ("updateTextureProperties", this);
@@ -91,7 +91,7 @@ function (Fields,
 
 			gl .bindTexture (gl .TEXTURE_2D, this .getTexture ());
 			gl .texImage2D  (gl .TEXTURE_2D, 0, gl .RGBA, 1, 1, 0, gl .RGBA, gl .UNSIGNED_BYTE, defaultData);
-		
+
 			this .set_textureProperties__ ();
 		},
 		set_textureProperties__: function ()
@@ -128,48 +128,48 @@ function (Fields,
 		{
 			return this .data;
 		},
+		clearTexture: function ()
+		{
+			this .setTexture (1, 1, false, defaultData, false);
+		},
 		setTexture: function (width, height, transparent, data, flipY)
 		{
 			try
 			{
-				this .transparent_ = transparent;
-				this .width        = width;
-				this .height       = height;
-				this .flipY        = flipY;
-				this .data         = data;
-	
+				this .width  = width;
+				this .height = height;
+				this .flipY  = flipY;
+				this .data   = data;
+
 				var gl = this .getBrowser () .getContext ();
-	
+
 				gl .pixelStorei (gl .UNPACK_FLIP_Y_WEBGL, flipY);
 				gl .pixelStorei (gl .UNPACK_ALIGNMENT, 1);
 				gl .bindTexture (gl .TEXTURE_2D, this .getTexture ());
 				gl .texImage2D  (gl .TEXTURE_2D, 0, gl .RGBA, width, height, 0, gl .RGBA, gl .UNSIGNED_BYTE, data);
-	
+
+				this .setTransparent (transparent);
 				this .updateTextureProperties ();
 				this .addNodeEvent ();
 			}
 			catch (error)
 			{ }
 		},
-		clearTexture: function ()
-		{
-			this .setTexture (1, 1, false, defaultData, false);
-		},
 		updateTexture: function (data, flipY)
 		{
 			try
 			{
 				this .data = data;
-	
+
 				var gl = this .getBrowser () .getContext ();
-	
+
 				gl .pixelStorei (gl .UNPACK_FLIP_Y_WEBGL, flipY);
 				gl .bindTexture (gl .TEXTURE_2D, this .getTexture ());
 				gl .texSubImage2D (gl .TEXTURE_2D, 0, 0, 0, gl .RGBA, gl .UNSIGNED_BYTE, data);
-	
+
 				if (this .texturePropertiesNode .generateMipMaps_ .getValue ())
 					gl .generateMipmap (gl .TEXTURE_2D);
-	
+
 				this .addNodeEvent ();
 			}
 			catch (error)
@@ -189,46 +189,13 @@ function (Fields,
 			                                                          this .repeatT_ .getValue (),
 			                                                          false);
 		},
-		resize: function (input, inputWidth, inputHeight, outputWidth, outputHeight)
+		setShaderUniformsToChannel: function (gl, shaderObject, i)
 		{
-		   // Nearest neighbor scaling algorithm for very small images.
-
-			var
-				output = new Uint8Array (outputWidth * outputHeight * 4),
-				scaleX = outputWidth / inputWidth,
-				scaleY = outputHeight / inputHeight;
-
-			for (var y = 0; y < outputHeight; ++ y)
-			{
-				var
-					inputW  = Math .floor (y / scaleY) * inputWidth,
-					outputW = y * outputWidth;
-
-				for (var x = 0; x < outputWidth; ++ x)
-				{
-					var
-						index       = (inputW + Math.floor (x / scaleX)) * 4,
-						indexScaled = (outputW + x) * 4;
-
-					output [indexScaled]     = input [index];
-					output [indexScaled + 1] = input [index + 1];
-					output [indexScaled + 2] = input [index + 2];
-					output [indexScaled + 3] = input [index + 3];
-				}
-			}
-
-			return output;
-		},
-		setShaderUniforms: function (gl, shaderObject, i)
-		{
-			shaderObject .textureTypeArray [i] = 2;
-			gl .activeTexture (gl .TEXTURE2);
+			gl .activeTexture (gl .TEXTURE0 + shaderObject .getBrowser () .getTexture2DUnits () [i]);
 			gl .bindTexture (gl .TEXTURE_2D, this .getTexture ());
-			gl .uniform1iv (shaderObject .x3d_TextureType, shaderObject .textureTypeArray); // TODO: Put this in X3DProgramableShaderObject
+			gl .uniform1i (shaderObject .x3d_TextureType [i], 2);
 		},
 	});
 
 	return X3DTexture2DNode;
 });
-
-

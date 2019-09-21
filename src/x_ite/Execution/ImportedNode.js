@@ -67,7 +67,7 @@ function (Fields,
 		this .inlineNode   = inlineNode;
 		this .exportedName = exportedName;
 		this .importedName = importedName;
-		this .routes       = { };
+		this .routes       = new Map ();
 
 		this .inlineNode .loadState_ .addInterest ("set_loadState__", this);
 	}
@@ -113,13 +113,13 @@ function (Fields,
 
 			var id = sourceNode .getId () + "." + sourceField + " " + destinationNode .getId () + "." + destinationField;
 
-			this .routes [id] =
+			this .routes .set (id,
 			{
 				sourceNode:       sourceNode,
 				sourceField:      sourceField,
 				destinationNode:  destinationNode,
 				destinationField: destinationField,
-			};
+			});
 
 			// Try to resolve source or destination node routes.
 
@@ -131,7 +131,7 @@ function (Fields,
 			try
 			{
 				var
-					route            = this .routes [id],
+					route            = this .routes .get (id),
 					sourceNode       = route .sourceNode,
 					sourceField      = route .sourceField,
 					destinationNode  = route .destinationNode,
@@ -155,18 +155,15 @@ function (Fields,
 		},
 		deleteRoutes: function ()
 		{
-			var routes = this .routes;
-
-			for (var id in routes)
+			this .routes .forEach (function (route)
 			{
-				var route = routes [id];
-
 				if (route ._route)
 				{
 					this .getExecutionContext () .deleteRoute (route ._route);
 					delete route ._route;
 				}
-			}
+			},
+			this);
 		},
 		set_loadState__: function ()
 		{
@@ -180,16 +177,88 @@ function (Fields,
 				}
 				case X3DConstants .COMPLETE_STATE:
 				{
-					var routes = this .routes;
-
 					this .deleteRoutes ();
 
-					for (var id in routes)
+					this .routes .forEach (function (route, id)
+					{
 						this .resolveRoute (id);
+					},
+					this);
 
 					break;
 				}
 			}
+		},
+		toVRMLStream: function (stream)
+		{
+			var generator = Generator .Get (stream);
+
+			if (generator .ExistsNode (this .getInlineNode ()))
+			{
+				stream .string += generator .Indent ();
+				stream .string += "IMPORT";
+				stream .string += " ";
+				stream .string += generator .Name (this .getInlineNode ());
+				stream .string += ".";
+				stream .string += this .getExportedName ();
+
+				if (this .getImportedName () !== this .getExportedName ())
+				{
+					stream .string += " ";
+					stream .string += "AS";
+					stream .string += " ";
+					stream .string += this .getImportedName ();
+				}
+
+				try
+				{
+					generator .AddRouteNode (this);
+					generator .AddImportedNode (this .getExportedNode () .getValue  (), this .getImportedName ());
+				}
+				catch (error)
+				{
+					// Output unresolved routes.
+
+					this .routes .forEach (function (route)
+					{
+						var
+							sourceNode       = route .sourceNode,
+							sourceField      = route .sourceField,
+							destinationNode  = route .destinationNode,
+							destinationField = route .destinationField;
+
+						if (generator .ExistsRouteNode (sourceNode) && generator .ExistsRouteNode (destinationNode))
+						{
+							if (sourceNode instanceof ImportedNode)
+								var sourceNodeName = sourceNode .getImportedName ();
+							else
+								var sourceNodeName = generator .Name (sourceNode);
+	
+							if (destinationNode instanceof ImportedNode)
+								var destinationNodeName = destinationNode .getImportedName ();
+							else
+								var destinationNodeName = generator .Name (destinationNode);
+	
+							stream .string += "\n";
+							stream .string += "\n";
+							stream .string += generator .Indent ();
+							stream .string += "ROUTE";
+							stream .string += " ";
+							stream .string += sourceNodeName;
+							stream .string += ".";
+							stream .string += sourceField;
+							stream .string += " ";
+							stream .string += "TO";
+							stream .string += " ";
+							stream .string += destinationNodeName;
+							stream .string += ".";
+							stream .string += destinationField;
+						}
+					});
+				}
+			}
+			else
+				throw new Error ("ImportedNode.toXMLStream: Inline node does not exist.");
 		},
 		toXMLStream: function (stream)
 		{
@@ -221,18 +290,15 @@ function (Fields,
 				try
 				{
 					generator .AddRouteNode (this);
-					generator .AddImportedNode (this .getExportedNode (), this .getImportedName ());
+					generator .AddImportedNode (this .getExportedNode () .getValue (), this .getImportedName ());
 				}
 				catch (error)
 				{
 					// Output unresolved routes.
 
-					var routes = this .routes;
-
-					for (var id in routes)
+					this .routes .forEach (function (route)
 					{
 						var
-							route            = routes [id],
 							sourceNode       = route .sourceNode,
 							sourceField      = route .sourceField,
 							destinationNode  = route .destinationNode,
@@ -272,7 +338,7 @@ function (Fields,
 							stream .string += "'";
 							stream .string += "/>";
 						}
-					}
+					});
 				}
 			}
 			else
