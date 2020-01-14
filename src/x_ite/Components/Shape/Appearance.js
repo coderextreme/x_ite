@@ -70,6 +70,7 @@ function (Fields,
 
 		this .addType (X3DConstants .Appearance);
 
+		this .pointPropertiesNode  = null;
 		this .linePropertiesNode   = null;
 		this .fillPropertiesNode   = null;
 		this .materialNode         = null;
@@ -85,6 +86,7 @@ function (Fields,
 		constructor: Appearance,
 		fieldDefinitions: new FieldDefinitionArray ([
 			new X3DFieldDefinition (X3DConstants .inputOutput, "metadata",         new Fields .SFNode ()),
+			new X3DFieldDefinition (X3DConstants .inputOutput, "pointProperties",  new Fields .SFNode ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput, "lineProperties",   new Fields .SFNode ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput, "fillProperties",   new Fields .SFNode ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput, "material",         new Fields .SFNode ()),
@@ -111,6 +113,7 @@ function (Fields,
 
 			this .isLive () .addInterest ("set_live__", this);
 
+			this .pointProperties_  .addInterest ("set_pointProperties__",  this);
 			this .lineProperties_   .addInterest ("set_lineProperties__",   this);
 			this .fillProperties_   .addInterest ("set_fillProperties__",   this);
 			this .material_         .addInterest ("set_material__",         this);
@@ -120,6 +123,7 @@ function (Fields,
 			this .blendMode_        .addInterest ("set_blendMode__",        this);
 
 			this .set_live__ ();
+			this .set_pointProperties__ ();
 			this .set_lineProperties__ ();
 			this .set_fillProperties__ ();
 			this .set_material__ ();
@@ -145,6 +149,13 @@ function (Fields,
 					this .getBrowser () .removeShader (this .shaderNode);
 			}
 		},
+		set_pointProperties__: function ()
+		{
+			this .pointPropertiesNode = X3DCast (X3DConstants .PointProperties, this .pointProperties_);
+
+			if (! this .pointPropertiesNode)
+				this .pointPropertiesNode = this .getBrowser () .getDefaultPointProperties ();
+		},
 		set_lineProperties__: function ()
 		{
 			this .linePropertiesNode = X3DCast (X3DConstants .LineProperties, this .lineProperties_);
@@ -164,7 +175,7 @@ function (Fields,
 
 			if (this .fillPropertiesNode)
 				this .fillPropertiesNode .transparent_ .addInterest ("set_transparent__", this);
-			
+
 			this .set_transparent__ ();
 		},
 		set_material__: function ()
@@ -176,7 +187,7 @@ function (Fields,
 
 			if (this .materialNode)
 				this .materialNode .transparent_ .addInterest ("set_transparent__", this);
-			
+
 			this .set_transparent__ ();
 		},
 		set_texture__: function ()
@@ -194,7 +205,7 @@ function (Fields,
 		set_textureTransform__: function ()
 		{
 			this .textureTransformNode = X3DCast (X3DConstants .X3DTextureTransformNode, this .textureTransform_);
-			
+
 			if (this .textureTransformNode)
 				return;
 
@@ -208,13 +219,13 @@ function (Fields,
 
 			for (var i = 0, length = shaderNodes .length; i < length; ++ i)
 				shaderNodes [i] .isValid_ .removeInterest ("set_shader__", this);
-		
+
 			shaderNodes .length = 0;
-		
+
 			for (var i = 0, length = shaders .length; i < length; ++ i)
 			{
 				var shaderNode = X3DCast (X3DConstants .X3DShaderNode, shaders [i]);
-		
+
 				if (shaderNode)
 				{
 					shaderNodes .push (shaderNode);
@@ -281,12 +292,23 @@ function (Fields,
 			if (this .shaderNode)
 				this .shaderNode .traverse (type, renderObject);
 		},
-		enable: function (gl, context)
+		enable: function (gl, context, geometryType)
 		{
 			var browser = context .browser;
 
-			context .linePropertiesNode   = this .linePropertiesNode;
-			context .fillPropertiesNode   = this .fillPropertiesNode;
+			switch (geometryType)
+			{
+				case 0:
+					context .stylePropertiesNode = this .pointPropertiesNode;
+					break;
+				case 1:
+					context .stylePropertiesNode = this .linePropertiesNode;
+					break;
+				default:
+					context .stylePropertiesNode = this .fillPropertiesNode;
+					break;
+			}
+
 			context .materialNode         = this .materialNode;
 			context .textureNode          = this .textureNode;
 			context .textureTransformNode = this .textureTransformNode;
@@ -310,5 +332,3 @@ function (Fields,
 
 	return Appearance;
 });
-
-

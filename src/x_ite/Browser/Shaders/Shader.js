@@ -113,8 +113,14 @@ function (ShaderSource,
 			if (browser .getMultiTexturing ())
 				constants += "#define X3D_MULTI_TEXTURING\n";
 
+			if (browser .getProjectiveTextureMapping ())
+				constants += "#define X3D_PROJECTIVE_TEXTURE_MAPPING\n";
+
 			if (shadow)
+			{
 				constants += "#define X3D_SHADOWS\n";
+				constants += "#define X3D_PCF_FILTERING\n";
+			}
 
 			constants += "#line " + (lines1 + 1) + "\n";
 
@@ -137,12 +143,15 @@ function (ShaderSource,
 			definitions += "#define x3d_DirectionalLight  1\n";
 			definitions += "#define x3d_PointLight        2\n";
 			definitions += "#define x3d_SpotLight         3\n";
-			definitions += "#define X3D_PCF_FILTERING\n";
 
 			definitions += "#define x3d_MaxTextures                " + browser .getMaxTextures () + "\n";
 			definitions += "#define x3d_TextureType2D              2\n";
 			definitions += "#define x3d_TextureType3D              3\n";
 			definitions += "#define x3d_TextureTypeCubeMapTexture  4\n";
+
+			definitions += "#define x3d_PointColor           0\n";
+			definitions += "#define x3d_TextureColor         1\n";
+			definitions += "#define x3d_TextureAndPointColor 2\n";
 
 			definitions += "#define x3d_Replace                   " + MultiTextureModeType .REPLACE                   + "\n";
 			definitions += "#define x3d_Modulate                  " + MultiTextureModeType .MODULATE                  + "\n";

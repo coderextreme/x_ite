@@ -1,30 +1,37 @@
 
-#pragma X3D include "Perlin.glsl"
-
 uniform int         x3d_NumTextures;
 uniform int         x3d_TextureType [x3d_MaxTextures]; // x3d_None, x3d_TextureType2D or x3d_TextureTypeCubeMapTexture
 uniform sampler2D   x3d_Texture2D [x3d_MaxTextures];
 uniform samplerCube x3d_CubeMapTexture [x3d_MaxTextures];
+
+#ifdef X3D_MULTI_TEXTURING
+
+#pragma X3D include "Perlin.glsl"
+
+#ifdef X3D_PROJECTIVE_TEXTURE_MAPPING
+uniform int       x3d_NumProjectiveTextures;
+uniform sampler2D x3d_ProjectiveTexture [x3d_MaxTextures];
+uniform mat4      x3d_ProjectiveTextureMatrix [x3d_MaxTextures];
+uniform vec3      x3d_ProjectiveTextureLocation [x3d_MaxTextures];
+#endif
 
 uniform vec4 x3d_MultiTextureColor;
 uniform x3d_MultiTextureParameters x3d_MultiTexture [x3d_MaxTextures];
 
 uniform x3d_TextureCoordinateGeneratorParameters x3d_TextureCoordinateGenerator [x3d_MaxTextures];
 
-#ifdef X3D_MULTI_TEXTURING
 vec4
 getTexCoord (const in int i)
 {
+	#if x3d_MaxTextures > 0
 	if (i == 0)
-	{
 		return texCoord0;
-	}
-	else if (i == 1)
-	{
-		return texCoord1;
-	}
+	#endif
 
-	return texCoord1;
+	#if x3d_MaxTextures > 1
+	if (i == 1)
+		return texCoord1;
+	#endif
 }
 
 vec4
@@ -98,19 +105,29 @@ getTextureCoordinate (const in x3d_TextureCoordinateGeneratorParameters textureC
 vec4
 getTexture2D (const in int i, const in vec2 texCoord)
 {
+	#if x3d_MaxTextures > 0
 	if (i == 0)
 		return texture2D (x3d_Texture2D [0], texCoord);
+	#endif
 
-	return texture2D (x3d_Texture2D [1], texCoord);
+	#if x3d_MaxTextures > 1
+	if (i == 1)
+		return texture2D (x3d_Texture2D [1], texCoord);
+	#endif
 }
 
 vec4
 getTextureCube (const in int i, const in vec3 texCoord)
 {
+	#if x3d_MaxTextures > 0
 	if (i == 0)
 		return textureCube (x3d_CubeMapTexture [0], texCoord);
+	#endif
 
-	return textureCube (x3d_CubeMapTexture [1], texCoord);
+	#if x3d_MaxTextures > 1
+	if (i == 1)
+		return textureCube (x3d_CubeMapTexture [1], texCoord);
+	#endif
 }
 
 vec4
@@ -349,7 +366,69 @@ getTextureColor (const in vec4 diffuseColor, const in vec4 specularColor)
 
 	return currentColor;
 }
+
+#ifdef X3D_PROJECTIVE_TEXTURE_MAPPING
+vec4
+getProjectiveTexture (const in int i, const in vec2 texCoord)
+{
+	#if x3d_MaxTextures > 0
+	if (i == 0)
+		return texture2D (x3d_ProjectiveTexture [0], texCoord);
+	#endif
+
+	#if x3d_MaxTextures > 1
+	if (i == 1)
+		return texture2D (x3d_ProjectiveTexture [1], texCoord);
+	#endif
+}
+
+vec4
+getProjectiveTextureColor (in vec4 currentColor)
+{
+	if (x3d_NumProjectiveTextures > 0)
+	{
+		vec3 N = gl_FrontFacing ? normal : -normal;
+
+		for (int i = 0; i < x3d_MaxTextures; ++ i)
+		{
+			if (i == x3d_NumProjectiveTextures)
+				break;
+
+			vec4 texCoord = x3d_ProjectiveTextureMatrix [i] * vec4 (vertex, 1.0);
+
+			texCoord .stp /= texCoord .q;
+
+			if (texCoord .s < 0.0 || texCoord .s > 1.0)
+				continue;
+
+			if (texCoord .t < 0.0 || texCoord .t > 1.0)
+				continue;
+
+			if (texCoord .p < 0.0 || texCoord .p > 1.0)
+				continue;
+
+			// We do not need to normalze p, as we only need the sign of the dot product.
+			vec3 p = x3d_ProjectiveTextureLocation [i] - vertex;
+
+			if (dot (N, p) < 0.0)
+				continue;
+
+			currentColor *= getProjectiveTexture (i, texCoord .st);
+		}
+	}
+
+	return currentColor;
+}
 #else
+vec4
+getProjectiveTextureColor (in vec4 currentColor)
+{
+	return currentColor;
+}
+#endif
+
+#else
+
 vec4
 getTextureColor (const in vec4 diffuseColor, const in vec4 specularColor)
 {
@@ -373,5 +452,11 @@ getTextureColor (const in vec4 diffuseColor, const in vec4 specularColor)
 	}
 
 	return diffuseColor * textureColor;
+}
+
+vec4
+getProjectiveTextureColor (in vec4 currentColor)
+{
+	return currentColor;
 }
 #endif

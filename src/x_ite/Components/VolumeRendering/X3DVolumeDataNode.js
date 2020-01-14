@@ -112,9 +112,6 @@ function (Fields,
 
 			this .appearanceNode .setPrivate (true);
 
-			this .proximitySensorNode .orientation_changed_ .addFieldInterest (this .transformNode .rotation_);
-			this .proximitySensorNode .orientation_changed_ .addFieldInterest (this .textureTransformNode .rotation_);
-
 			this .proximitySensorNode .size_         = new Fields .SFVec3f (-1, -1, -1);
 			this .transformNode .children_           = new Fields .MFNode (this .shapeNode);
 			this .shapeNode .appearance_             = this .appearanceNode;
@@ -133,6 +130,11 @@ function (Fields,
 			this .shapeNode             .setup ();
 			this .transformNode         .setup ();
 			this .proximitySensorNode   .setup ();
+
+			this .proximitySensorNode .orientation_changed_ .addFieldInterest (this .transformNode .rotation_);
+			this .proximitySensorNode .orientation_changed_ .addFieldInterest (this .textureTransformNode .rotation_);
+
+			this .textureTransformNode .addInterest ("set_textureTransform__", this);
 		},
 		getBBox: function (bbox)
 		{
@@ -144,6 +146,24 @@ function (Fields,
 		getAppearance: function ()
 		{
 			return this .appearanceNode;
+		},
+		setShader: function (shaderNode)
+		{
+			this .getAppearance () .shaders_ [0] = shaderNode;
+
+			shaderNode .addUserDefinedField (X3DConstants .inputOutput, "x3d_TextureNormalMatrix" , new Fields .SFMatrix3f ());
+			shaderNode .setup ();
+
+			this .set_textureTransform__ ();
+		},
+		getShader: function ()
+		{
+			var node = this .appearanceNode .shaders_ [0];
+
+			if (node)
+				return node .getValue ();
+
+			return null;
 		},
 		getNumPlanes: function ()
 		{
@@ -189,6 +209,17 @@ function (Fields,
 			this .textureCoordinateNode .point_ = points;
 
 			this .textureTransformNode .scale_ = new Fields .SFVec3f (1 / this .dimensions_ .x, 1 / this .dimensions_ .y, 1 / this .dimensions_ .z);
+		},
+		set_textureTransform__: function ()
+		{
+			var shaderNode = this .getShader ();
+
+			if (shaderNode)
+			{
+				var invTextureMatrix = shaderNode .getField ("x3d_TextureNormalMatrix");
+
+				invTextureMatrix .setValue (this .textureTransformNode .getMatrix () .submatrix .inverse () .transpose ());
+			}
 		},
 		traverse: function (type, renderObject)
 		{

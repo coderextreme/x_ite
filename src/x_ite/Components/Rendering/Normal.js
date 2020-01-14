@@ -58,7 +58,7 @@ define ([
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DNormalNode, 
+          X3DNormalNode,
           X3DConstants,
           Vector3)
 {
@@ -109,10 +109,19 @@ function (Fields,
 		},
 		get1Vector: function (index, result)
 		{
-			if (index < this .length)
+			if (index >= 0 && index < this .length)
 			{
 				const vector = this .vector;
 
+				index *= 3;
+
+				return result .set (vector [index], vector [index + 1], vector [index + 2]);
+			}
+			else if (index >= 0 && this .length)
+			{
+				const vector = this .vector;
+
+				index %= this .length;
 				index *= 3;
 
 				return result .set (vector [index], vector [index + 1], vector [index + 2]);
@@ -132,6 +141,15 @@ function (Fields,
 
 				array .push (vector [index], vector [index + 1], vector [index + 2]);
 			}
+			else if (index >= 0 && this .length)
+			{
+				const vector = this .vector;
+
+				index %= this .length;
+				index *= 3;
+
+				array .push (vector [index], vector [index + 1], vector [index + 2]);
+			}
 			else
 			{
 				return array .push (0, 0, 0);
@@ -141,5 +159,3 @@ function (Fields,
 
 	return Normal;
 });
-
-

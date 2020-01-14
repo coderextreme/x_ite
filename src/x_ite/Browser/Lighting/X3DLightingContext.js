@@ -53,10 +53,20 @@ define ([
 function (TextureBuffer)
 {
 "use strict";
-	
+
 	function X3DLightingContext ()
 	{
-		this .localLights   = [ ]; // Local light dumpster
+		var
+			gl                    = this .getContext (),
+			maxVertexTextureUnits = gl .getParameter (gl .MAX_VERTEX_TEXTURE_IMAGE_UNITS);
+
+		if (maxVertexTextureUnits > 16)
+			this .maxLights = 8;
+		else if (maxVertexTextureUnits > 8)
+			this .maxLights = 4;
+		else
+			this .maxLights = 2;
+
 		this .shadowBuffers = [ ]; // Shadow buffer cache
 	}
 
@@ -66,18 +76,14 @@ function (TextureBuffer)
 		{ },
 		getMaxLights: function ()
 		{
-			return 8;
-		},
-		getLocalLights: function ()
-		{
-			return this .localLights;
+			return this .maxLights;
 		},
 		popShadowBuffer: function (shadowMapSize)
 		{
 			try
 			{
 				var shadowBuffers = this .shadowBuffers [shadowMapSize];
-	
+
 				if (shadowBuffers)
 				{
 					if (shadowBuffers .length)
@@ -85,7 +91,7 @@ function (TextureBuffer)
 				}
 				else
 					this .shadowBuffers [shadowMapSize] = [ ];
-	
+
 				return new TextureBuffer (this, shadowMapSize, shadowMapSize);
 			}
 			catch (error)

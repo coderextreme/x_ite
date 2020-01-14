@@ -69,8 +69,6 @@ function (Fields,
 		X3DComposableVolumeRenderStyleNode .call (this, executionContext);
 
 		this .addType (X3DConstants .OpacityMapVolumeStyle);
-
-		this .shaderNode = this .getBrowser () .createOpacityMapVolumeStyleShader ();
 	}
 
 	OpacityMapVolumeStyle .prototype = Object .assign (Object .create (X3DComposableVolumeRenderStyleNode .prototype),
@@ -104,25 +102,74 @@ function (Fields,
 
 			this .transferFunction_ .addInterest ("set_transferFunction__", this);
 
-			this .shaderNode .addUserDefinedField (X3DConstants .inputOutput, "transferFunction", new Fields .SFNode ());
-
 			this .set_transferFunction__ ();
-		},
-		getShader: function ()
-		{
-			return this .shaderNode;
 		},
 		set_transferFunction__: function ()
 		{
-			var transferFunctionNode = X3DCast (X3DConstants .X3DTexture2DNode, this .transferFunction_);
+			this .transferFunctionNode = X3DCast (X3DConstants .X3DTexture2DNode, this .transferFunction_);
 
-			//if (! transferFunctionNode)
-			//	transferFunctionNode = X3DCast (X3DConstants .X3DTexture3DNode, this .transferFunction_);
+			if (! this .transferFunctionNode)
+				this .transferFunctionNode = X3DCast (X3DConstants .X3DTexture3DNode, this .transferFunction_);
 
-			if (! transferFunctionNode)
-				transferFunctionNode = this .getBrowser () .getDefaultTransferFunction ();
+			if (! this .transferFunctionNode)
+				this .transferFunctionNode = this .getBrowser () .getDefaultTransferFunction ();
+		},
+		addShaderFields: function (shaderNode)
+		{
+			if (! this .enabled_ .getValue ())
+				return;
 
-			this .shaderNode .getField ("transferFunction") .setValue (transferFunctionNode);
+			shaderNode .addUserDefinedField (X3DConstants .inputOutput, "transferFunction_" + this .getId (), new Fields .SFNode (this .transferFunctionNode));
+		},
+		getUniformsText: function ()
+		{
+			if (! this .enabled_ .getValue ())
+				return "";
+
+			var string = "";
+
+			string += "\n";
+			string += "// OpacityMapVolumeStyle\n";
+			string += "\n";
+
+			if (this .transferFunctionNode .getType () .indexOf (X3DConstants .X3DTexture2DNode) !== -1)
+			{
+				string += "uniform sampler2D transferFunction_" + this .getId () + ";\n";
+
+				string += "\n";
+				string += "vec4\n";
+				string += "getOpacityMapStyle_" + this .getId () + " (in vec4 originalColor)\n";
+				string += "{\n";
+				string += "	return texture (transferFunction_" + this .getId () + ", originalColor .rg);\n";
+				string += "}\n";
+			}
+			else
+			{
+				string += "uniform sampler3D transferFunction_" + this .getId () + ";\n";
+
+				string += "\n";
+				string += "vec4\n";
+				string += "getOpacityMapStyle_" + this .getId () + " (in vec4 originalColor)\n";
+				string += "{\n";
+				string += "	return texture (transferFunction_" + this .getId () + ", originalColor .rgb);\n";
+				string += "}\n";
+			}
+
+			return string;
+		},
+		getFunctionsText: function ()
+		{
+			if (! this .enabled_ .getValue ())
+				return "";
+
+			var string = "";
+
+			string += "\n";
+			string += "	// OpacityMapVolumeStyle\n";
+			string += "\n";
+			string += "	textureColor = getOpacityMapStyle_" + this .getId () + " (textureColor);\n";
+
+			return string;
 		},
 	});
 

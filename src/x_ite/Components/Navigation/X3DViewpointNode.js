@@ -458,19 +458,23 @@ function (Fields,
 		straightenHorizon: (function ()
 		{
 			var
-				localXAxis = new Vector3 (0, 0, 0),
-				localZAxis = new Vector3 (0, 0, 0),
-				rotation   = new Rotation4 (0, 0, 1, 0);
+				localXAxis  = new Vector3 (0, 0, 0),
+				localZAxis  = new Vector3 (0, 0, 0),
+				rotation    = new Rotation4 (0, 0, 1, 0);
 
 			return function (orientation)
 			{
 				orientation .multVecRot (localXAxis .assign (Vector3 .xAxis) .negate ());
 				orientation .multVecRot (localZAxis .assign (Vector3 .zAxis));
 
-				var vector = localZAxis .cross (this .getUpVector ());
+				var upVector = this .getUpVector ();
+				var vector   = localZAxis .cross (upVector);
 
 				// If viewer looks along the up vector.
-				if (vector .equals (Vector3 .Zero))
+				if (Math .abs (localZAxis .dot (upVector)) >= 1)
+					return orientation;
+
+				if (Math .abs (vector .dot (localXAxis)) >= 1)
 					return orientation;
 
 				rotation .setFromToVec (localXAxis, vector);

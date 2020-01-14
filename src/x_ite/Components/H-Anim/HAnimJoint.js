@@ -61,9 +61,9 @@ define ([
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DGroupingNode, 
-          X3DTransformNode, 
-          TraverseType, 
+          X3DGroupingNode,
+          X3DTransformNode,
+          TraverseType,
           X3DConstants,
           X3DCast,
           Matrix4)
@@ -198,5 +198,3 @@ function (Fields,
 
 	return HAnimJoint;
 });
-
-

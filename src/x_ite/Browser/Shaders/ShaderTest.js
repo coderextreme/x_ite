@@ -95,7 +95,7 @@ function (TextureBuffer,
 				frameBuffer .bind ();
 
 				shaderNode .enable (gl);
-				shaderNode .setShaderObjects (gl, [ ]);
+				shaderNode .setLocalObjects (gl, [ ]);
 
 				gl .bindBuffer (gl .ARRAY_BUFFER, vertexBuffer);
 				gl .bufferData (gl .ARRAY_BUFFER, new Float32Array (vertices), gl .STATIC_DRAW);
@@ -117,6 +117,8 @@ function (TextureBuffer,
 				gl .uniform1i (shaderNode .x3d_Lighting,              true);
 				gl .uniform1i (shaderNode .x3d_NumLights,             0);
 				gl .uniform1i (shaderNode .x3d_NumTextures,           0);
+				gl .uniform1i (shaderNode .x3d_NumProjectiveTextures, 0);
+				gl .uniform1i (shaderNode .x3d_NumClipPlanes,         0);
 
 				gl .uniform1i (shaderNode .x3d_SeparateBackColor, false);
 				gl .uniform1f (shaderNode .x3d_AmbientIntensity,  0);

@@ -1,4 +1,4 @@
-/* X_ITE v4.5.11-832 */
+/* X_ITE v4.6.10a-981 */
 @charset "utf-8";
 @import url(https://fonts.googleapis.com/css?family=PT+Sans:400,400italic,700,700italic);
 X3DCanvas .x_ite-private-splash-screen {
@@ -71,6 +71,7 @@ X3DCanvas {
 	margin: 0px;
 	padding: 0px;
 	border: 0px;
+	border-radius: 0px;
 	width: 300px;
 	height: 150px;
 }
@@ -89,18 +90,20 @@ X3DCanvas .x_ite-private-browser {
 	z-index: 0;
 	display: block;
 	position: absolute;
-	top: 0;
-	right: 0;
-	bottom: 0;
-	left: 0;
+	top: 0px;
+	right: 0px;
+	bottom: 0px;
+	left: 0px;
 	margin: 0px;
 	padding: 0px;
 	border: 0px;
+	border-radius: 0px;
 }
 X3DCanvas .x_ite-private-surface {
 	margin: 0px;
 	padding: 0px;
 	border: 0px;
+	border-radius: 0px;
 	height: 100%;
 	margin-right: 0px;
 }
@@ -110,6 +113,7 @@ X3DCanvas canvas.x_ite-private-canvas {
 	margin: 0px;
 	padding: 0px;
 	border: 0px;
+	border-radius: 0px;
 	width: 100%;
 	height: 100%;
 }
@@ -130,6 +134,8 @@ X3DCanvas .x_ite-private-notification {
 	color: white;
 	font-family: PT Sans, sans-serif;
 	font-size: 10pt;
+	letter-spacing: unset;
+	line-height: 1;
 	white-space: pre;
 	pointer-events: none;
 }
@@ -155,7 +161,6 @@ X3DCanvas .x_ite-private-browser-timings {
 	color: white;
 	font-family: PT Sans, sans-serif;
 	font-size: 9pt;
-	line-height: 1.1;
 	white-space: pre;
 	pointer-events: none;
 }
@@ -166,30 +171,33 @@ X3DCanvas .x_ite-private-browser-timings tfoot,
 X3DCanvas .x_ite-private-browser-timings tr,
 X3DCanvas .x_ite-private-browser-timings th,
 X3DCanvas .x_ite-private-browser-timings td {
-	outline: 0;
-	margin: 0;
-	border: 0;
+	box-sizing: border-box;
+	outline: 0px;
+	margin: 0px;
+	border: 0px;
+	border-radius: 0px;
 	padding: 0;
 	background: none;
 	color: white;
+	font-size: inherit;
 	font-weight: normal;
 	font-style: normal;
+	letter-spacing: unset;
 	line-height: 1;
 	text-align: left;
 }
 X3DCanvas .x_ite-private-browser-timings table {
+	overflow: hidden;
 	background: url(assets/images/Time.png) no-repeat;
-}
-X3DCanvas .x_ite-private-browser-timings tr,
-X3DCanvas .x_ite-private-browser-timings th,
-X3DCanvas .x_ite-private-browser-timings td {
+	width: 100%;
+	max-width: 100%;
 	border-collapse: separate;
+	border-spacing: 2px;
+	empty-cells: show;
 }
 X3DCanvas .x_ite-private-browser-timings thead th {
 	padding-left: 20px;
 	padding-bottom: 5px;
-}
-X3DCanvas .x_ite-private-browser-timings thead th {
 	font-weight: bold;
 }
 X3DCanvas .x_ite-private-browser-timings td:first-child {
@@ -201,22 +209,27 @@ X3DCanvas .x_ite-private-browser-timings tr.x_ite-private-more td {
 X3DCanvas .x_ite-private-browser-timings td {
 	padding-bottom: 2px;
 }
+X3DCanvas .x_ite-private-browser-timings tfoot td:first-child {
+	padding-right: 0px;
+}
 X3DCanvas .x_ite-private-browser-timings tfoot td {
 	padding-top: 4px;
 }
 X3DCanvas .x_ite-private-browser-timings button {
-	border: 0;
-	padding: 2px;
+	box-sizing: border-box;
+	border: 0px;
+	border-radius: 10px;
+	padding: 2px 2px 4px 2px;
+	width: 100%;
 	background: rgba(0,0,0,0.38196601);
 	color: white;
-	font-size: 9pt;
-	line-height: 1.1;
 	font-family: PT Sans, sans-serif;
 	font-style: italic;
+	font-size: 9pt;
+	letter-spacing: unset;
+	line-height: 1.1;
+	text-align: center;
 	pointer-events: all;
-	cursor: default;
-}
-X3DCanvas .x_ite-private-browser-timings button:hover {
 	cursor: pointer;
 }
 /*!
@@ -234,7 +247,7 @@ X3DCanvas .x_ite-private-browser-timings button:hover {
  * Date: 2015-09-20T18:47:54.927Z
  */
 .x_ite-private-menu.x_ite-private-menu-title:before {
-    content: "X_ITE Browser v4.5.11";
+    content: "X_ITE Browser v4.6.10a";
     display: block;
     padding: 4px 32px 4px 8px;
     font-weight: bold;
@@ -250,6 +263,7 @@ X3DCanvas .x_ite-private-browser-timings button:hover {
 	min-width: 120px;
 	padding: 0;
 	margin: 0;
+	margin-left: 1px;
 	white-space: pre;
 	font-family: PT Sans, sans-serif;
 	font-size: 10pt;
@@ -264,13 +278,17 @@ X3DCanvas .x_ite-private-browser-timings button:hover {
 .x_ite-private-menu .context-menu-item {
 	position: relative;
 	background-color: #222;
+	margin: 0px;
 	border-top: 1px solid #222;
 	border-bottom: 1px solid #222;
 	padding: 3px 24px 3px 24px;
 	-webkit-user-select: none;
 	   -moz-user-select: none;
 	    -ms-user-select: none;
-	        user-select: none;
+			  user-select: none;
+	font-size: 10pt;
+	line-height: 1;
+	letter-spacing: unset;
 }
 .x_ite-private-menu .context-menu-separator {
 	padding-bottom: 0;
@@ -278,10 +296,19 @@ X3DCanvas .x_ite-private-browser-timings button:hover {
 }
 .x_ite-private-menu .context-menu-item > label > input,
 .x_ite-private-menu .context-menu-item > label > textarea {
+	all: revert;
 	-webkit-user-select: text;
 	   -moz-user-select: text;
 	    -ms-user-select: text;
  	       user-select: text;
+}
+.x_ite-private-menu .context-menu-input > label > input[type="checkbox"] {
+	-webkit-appearance: checkbox;
+	-moz-appearance: checkbox;
+}
+.x_ite-private-menu .context-menu-input > label > input[type="radio"] {
+	-webkit-appearance: radio;
+	-moz-appearance: radio;
 }
 .x_ite-private-menu .context-menu-hover {
 	cursor: pointer;
@@ -316,6 +343,10 @@ X3DCanvas .x_ite-private-browser-timings button:hover {
 }
 .x_ite-private-menu .context-menu-input > label > * {
 	vertical-align: top;
+	font-size: 10pt;
+	font-weight: normal;
+	letter-spacing: unset;
+	line-height: 1;
 }
 .x_ite-private-menu .context-menu-input > label > input[type="checkbox"],
 .x_ite-private-menu .context-menu-input > label > input[type="radio"] {
@@ -326,17 +357,20 @@ X3DCanvas .x_ite-private-browser-timings button:hover {
 	padding: 0;
 }
 .x_ite-private-menu .context-menu-input > label > span {
-	margin-left: 4px;
+	margin-left: 2px;
 }
 .x_ite-private-menu .context-menu-input > label,
 .x_ite-private-menu .context-menu-input > label > input[type="text"],
 .x_ite-private-menu .context-menu-input > label > textarea,
 .x_ite-private-menu .context-menu-input > label > select {
 	display: block;
+	box-sizing: border-box;
+	margin: 0px;
+	padding: 0px;
 	width: 100%;
-	-webkit-box-sizing: border-box;
-	   -moz-box-sizing: border-box;
-	        box-sizing: border-box;
+	font-size: 10pt;
+	letter-spacing: unset;
+	line-height: 1;
 }
 .x_ite-private-menu .context-menu-input > label > textarea {
 	height: 100px;

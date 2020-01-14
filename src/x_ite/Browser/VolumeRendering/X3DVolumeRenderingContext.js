@@ -72,6 +72,16 @@ function (PixelTexture,
 
 			return this .defaultVolumeStyle;
 		},
+		getDefaultBlendedVolumeStyle: function ()
+		{
+			if (this .defaultBlendedVolumeStyle !== undefined)
+				return this .defaultBlendedVolumeStyle;
+
+			this .defaultBlendedVolumeStyle = new OpacityMapVolumeStyle (this .getPrivateScene ());
+			this .defaultBlendedVolumeStyle .setup ();
+
+			return this .defaultBlendedVolumeStyle;
+		},
 		getDefaultTransferFunction: function ()
 		{
 			if (this .defaultTransferFunction !== undefined)
@@ -100,15 +110,6 @@ function (PixelTexture,
 			this .defaultTransferFunction .setup ();
 
 			return this .defaultTransferFunction;
-		},
-		createOpacityMapVolumeStyleShader: function ()
-		{
-			var gl = this .getContext ();
-
-			if (gl .getVersion () < 2)
-				return null;
-
-			return this .createShader ("OpacityMapVolumeStyleShader", "../volume-rendering/OpacityMapVolumeStyle", false);
 		},
 	};
 

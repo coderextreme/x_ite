@@ -57,7 +57,7 @@ define ([
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DGeometricPropertyNode, 
+          X3DGeometricPropertyNode,
           X3DConstants)
 {
 "use strict";
@@ -118,6 +118,9 @@ function (Fields,
 
 			else if (this .length)
 				array .push (this .depth [this .length - 1]);
+
+			else
+				array .push (0);
 		},
 		addDepths: function (array, min)
 		{
@@ -126,7 +129,7 @@ function (Fields,
 			if (length)
 			{
 				const depth = this .depth;
-	
+
 				for (var index = 0; index < length; ++ index)
 					array .push (depth [index]);
 
@@ -135,10 +138,13 @@ function (Fields,
 				for (var index = length; index < min; ++ index)
 					array .push (last);
 			}
+			else
+			{
+				for (var index = 0; index < min; ++ index)
+					array .push (0);
+			}
 		},
 	});
 
 	return FogCoordinate;
 });
-
-

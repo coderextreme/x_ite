@@ -60,6 +60,31 @@ require .config ({
 			"name": "ammojs",
 			"location": "../node_modules/ammojs",
 			"main": "ammo.js"
+		},
+		{
+			"name": "dicom-parser",
+			"location": "../node_modules/dicom-parser",
+			"main": "dist/dicomParser.js"
+		},
+		{
+			"name": "jpeg",
+			"location": "../node_modules/jpeg-js",
+			"main": "lib/decoder.js"
+		},
+		{
+			"name": "jpegLossless",
+			"location": "../node_modules/jpeg-lossless-decoder-js",
+			"main": "release/current/lossless.js"
+		},
+		{
+			"name": "CharLS",
+			"location": "../node_modules/CharLS.js",
+			"main": "build/charLS-FixedMemory-browser.js"
+		},
+		{
+			"name": "OpenJPEG",
+			"location": "../node_modules/OpenJPEG.js",
+			"main": "build/openJPEG-FixedMemory-browser.js"
 		}
 	],
 	"shim": { },

@@ -1,6 +1,11 @@
 #version 300 es
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+precision highp int;
+#else
 precision mediump float;
 precision mediump int;
+#endif
 uniform int x3d_GeometryType;
 uniform bool x3d_Lighting; 
 uniform bool x3d_ColorMaterial; 
@@ -11,12 +16,16 @@ uniform x3d_MaterialParameters x3d_FrontMaterial;
 uniform x3d_MaterialParameters x3d_BackMaterial;
 in float fogDepth; 
 in vec4 color; 
-in vec4 texCoord0; 
-in vec4 texCoord1; 
 in vec3 normal; 
 in vec3 vertex; 
 in vec3 localNormal; 
 in vec3 localVertex; 
+#if x3d_MaxTextures > 0
+in vec4 texCoord0;
+#endif
+#if x3d_MaxTextures > 1
+in vec4 texCoord1;
+#endif
 #ifdef X3D_LOGARITHMIC_DEPTH_BUFFER
 uniform float x3d_LogarithmicFarFactor1_2;
 in float depth;
@@ -67,38 +76,54 @@ getShadowDepth (const in int index, const in vec2 shadowCoord)
 {
 switch (index)
 {
+#if x3d_MaxLights > 0
 case 0:
 {
 return unpack (texture (x3d_ShadowMap [0], shadowCoord));
 }
+#endif
+#if x3d_MaxLights > 1
 case 1:
 {
 return unpack (texture (x3d_ShadowMap [1], shadowCoord));
 }
+#endif
+#if x3d_MaxLights > 2
 case 2:
 {
 return unpack (texture (x3d_ShadowMap [2], shadowCoord));
 }
+#endif
+#if x3d_MaxLights > 3
 case 3:
 {
 return unpack (texture (x3d_ShadowMap [3], shadowCoord));
 }
+#endif
+#if x3d_MaxLights > 4
 case 4:
 {
 return unpack (texture (x3d_ShadowMap [4], shadowCoord));
 }
+#endif
+#if x3d_MaxLights > 5
 case 5:
 {
 return unpack (texture (x3d_ShadowMap [5], shadowCoord));
 }
+#endif
+#if x3d_MaxLights > 6
 case 6:
 {
 return unpack (texture (x3d_ShadowMap [6], shadowCoord));
 }
+#endif
+#if x3d_MaxLights > 7
 case 7:
 {
 return unpack (texture (x3d_ShadowMap [7], shadowCoord));
 }
+#endif
 default:
 {
 return 0.0;
@@ -270,6 +295,17 @@ return light .shadowIntensity * value;
 return 0.0;
 }
 #endif
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp sampler3D;
+#else
+precision mediump sampler3D;
+#endif
+uniform int x3d_NumTextures;
+uniform int x3d_TextureType [x3d_MaxTextures]; 
+uniform sampler2D x3d_Texture2D [x3d_MaxTextures];
+uniform sampler3D x3d_Texture3D [x3d_MaxTextures];
+uniform samplerCube x3d_CubeMapTexture [x3d_MaxTextures];
+#ifdef X3D_MULTI_TEXTURING
 #define M_PI 3.14159265358979323846
 float rand (vec2 co) { return fract (sin (dot (co.xy, vec2 (12.9898,78.233))) * 43758.5453); }
 float rand (vec2 co, float l) { return rand (vec2 (rand (co), l)); }
@@ -299,29 +335,32 @@ return vec3 (perlin (p.xy, 1.0, 0.0),
 perlin (p.yz, 1.0, 0.0),
 perlin (p.zx, 1.0, 0.0));
 }
-precision mediump sampler3D;
-uniform int x3d_NumTextures;
-uniform int x3d_TextureType [x3d_MaxTextures]; 
-uniform sampler2D x3d_Texture2D [x3d_MaxTextures];
-uniform sampler3D x3d_Texture3D [x3d_MaxTextures];
-uniform samplerCube x3d_CubeMapTexture [x3d_MaxTextures];
+#ifdef X3D_PROJECTIVE_TEXTURE_MAPPING
+uniform int x3d_NumProjectiveTextures;
+uniform sampler2D x3d_ProjectiveTexture [x3d_MaxTextures];
+uniform mat4 x3d_ProjectiveTextureMatrix [x3d_MaxTextures];
+uniform vec3 x3d_ProjectiveTextureLocation [x3d_MaxTextures];
+#endif
 uniform vec4 x3d_MultiTextureColor;
 uniform x3d_MultiTextureParameters x3d_MultiTexture [x3d_MaxTextures];
 uniform x3d_TextureCoordinateGeneratorParameters x3d_TextureCoordinateGenerator [x3d_MaxTextures];
-#ifdef X3D_MULTI_TEXTURING
 vec4
 getTexCoord (const in int i)
 {
 switch (i)
 {
+#if x3d_MaxTextures > 0
 case 0:
 {
 return texCoord0;
 }
-default:
+#endif
+#if x3d_MaxTextures > 1
+case 1:
 {
 return texCoord1;
 }
+#endif
 }
 }
 vec4
@@ -396,14 +435,18 @@ getTexture2D (const in int i, const in vec2 texCoord)
 {
 switch (i)
 {
+#if x3d_MaxTextures > 0
 case 0:
 {
 return texture (x3d_Texture2D [0], texCoord);
 }
-default:
+#endif
+#if x3d_MaxTextures > 1
+case 1:
 {
 return texture (x3d_Texture2D [1], texCoord);
 }
+#endif
 }
 }
 vec4
@@ -411,14 +454,18 @@ getTexture3D (const in int i, const in vec3 texCoord)
 {
 switch (i)
 {
+#if x3d_MaxTextures > 0
 case 0:
 {
 return texture (x3d_Texture3D [0], texCoord);
 }
-default:
+#endif
+#if x3d_MaxTextures > 1
+case 1:
 {
 return texture (x3d_Texture3D [1], texCoord);
 }
+#endif
 }
 }
 vec4
@@ -426,14 +473,18 @@ getTextureCube (const in int i, const in vec3 texCoord)
 {
 switch (i)
 {
+#if x3d_MaxTextures > 0
 case 0:
 {
 return texture (x3d_CubeMapTexture [0], texCoord);
 }
-default:
+#endif
+#if x3d_MaxTextures > 1
+case 1:
 {
 return texture (x3d_CubeMapTexture [1], texCoord);
 }
+#endif
 }
 }
 vec4
@@ -712,6 +763,59 @@ break;
 }
 return currentColor;
 }
+#ifdef X3D_PROJECTIVE_TEXTURE_MAPPING
+vec4
+getProjectiveTexture (const in int i, const in vec2 texCoord)
+{
+switch (i)
+{
+#if x3d_MaxTextures > 0
+case 0:
+{
+return texture (x3d_ProjectiveTexture [0], texCoord);
+}
+#endif
+#if x3d_MaxTextures > 1
+case 1:
+{
+return texture (x3d_ProjectiveTexture [1], texCoord);
+}
+#endif
+}
+}
+vec4
+getProjectiveTextureColor (in vec4 currentColor)
+{
+if (x3d_NumProjectiveTextures > 0)
+{
+vec3 N = gl_FrontFacing ? normal : -normal;
+for (int i = 0; i < x3d_MaxTextures; ++ i)
+{
+if (i == x3d_NumProjectiveTextures)
+break;
+vec4 texCoord = x3d_ProjectiveTextureMatrix [i] * vec4 (vertex, 1.0);
+texCoord .stp /= texCoord .q;
+if (texCoord .s < 0.0 || texCoord .s > 1.0)
+continue;
+if (texCoord .t < 0.0 || texCoord .t > 1.0)
+continue;
+if (texCoord .p < 0.0 || texCoord .p > 1.0)
+continue;
+vec3 p = x3d_ProjectiveTextureLocation [i] - vertex;
+if (dot (N, p) < 0.0)
+continue;
+currentColor *= getProjectiveTexture (i, texCoord .st);
+}
+}
+return currentColor;
+}
+#else
+vec4
+getProjectiveTextureColor (in vec4 currentColor)
+{
+return currentColor;
+}
+#endif
 #else
 vec4
 getTextureColor (const in vec4 diffuseColor, const in vec4 specularColor)
@@ -740,6 +844,11 @@ break;
 }
 }
 return diffuseColor * textureColor;
+}
+vec4
+getProjectiveTextureColor (in vec4 currentColor)
+{
+return currentColor;
 }
 #endif
 uniform x3d_FillPropertiesParameters x3d_FillProperties;
@@ -820,7 +929,6 @@ if (x3d_Lighting)
 {
 vec3 N = normalize (gl_FrontFacing ? normal : -normal);
 vec3 V = normalize (-vertex); 
-float dV = length (vertex);
 vec3 diffuseFactor = vec3 (1.0);
 float alpha = 1.0 - material .transparency;
 if (x3d_ColorMaterial)
@@ -846,6 +954,9 @@ alpha = T .a;
 else
 diffuseFactor = material .diffuseColor;
 }
+vec4 P = getProjectiveTextureColor (vec4 (1.0));
+diffuseFactor *= P .rgb;
+alpha *= P .a;
 vec3 ambientTerm = diffuseFactor * material .ambientIntensity;
 vec3 finalColor = vec3 (0.0);
 for (int i = 0; i < x3d_MaxLights; i ++)
@@ -862,20 +973,20 @@ vec3 d = light .direction;
 vec3 c = light .attenuation;
 vec3 L = di ? -d : normalize (vL); 
 vec3 H = normalize (L + V); 
-float lightAngle = dot (N, L); 
-vec3 diffuseTerm = diffuseFactor * clamp (lightAngle, 0.0, 1.0);
+float lightAngle = max (dot (N, L), 0.0); 
+vec3 diffuseTerm = diffuseFactor * lightAngle;
 float specularFactor = material .shininess > 0.0 ? pow (max (dot (N, H), 0.0), material .shininess * 128.0) : 1.0;
 vec3 specularTerm = material .specularColor * specularFactor;
 float attenuationFactor = di ? 1.0 : 1.0 / max (c [0] + c [1] * dL + c [2] * (dL * dL), 1.0);
 float spotFactor = light .type == x3d_SpotLight ? getSpotFactor (light .cutOffAngle, light .beamWidth, L, d) : 1.0;
 float attenuationSpotFactor = attenuationFactor * spotFactor;
-vec3 ambientColor = light .color * light .ambientIntensity * ambientTerm;
-vec3 diffuseSpecularColor = light .color * light .intensity * (diffuseTerm + specularTerm);
+vec3 ambientColor = light .ambientIntensity * ambientTerm;
+vec3 diffuseSpecularColor = light .intensity * (diffuseTerm + specularTerm);
 #ifdef X3D_SHADOWS
 if (lightAngle > 0.0)
 diffuseSpecularColor = mix (diffuseSpecularColor, light .shadowColor, getShadowIntensity (i, light));
 #endif
-finalColor += attenuationSpotFactor * (ambientColor + diffuseSpecularColor);
+finalColor += attenuationSpotFactor * light .color * (ambientColor + diffuseSpecularColor);
 }
 }
 finalColor += material .emissiveColor;

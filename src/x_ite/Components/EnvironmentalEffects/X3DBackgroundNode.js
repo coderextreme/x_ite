@@ -160,7 +160,7 @@ function (X3DBindableNode,
 		this .projectionMatrixArray = new Float32Array (16);
 		this .modelMatrix           = new Matrix4 ();
 		this .modelViewMatrixArray  = new Float32Array (16);
-		this .shaderObjects         = [ ];
+		this .localObjects          = [ ];
 		this .colors                = [ ];
 		this .sphere                = [ ];
 		this .textures              = 0;
@@ -501,8 +501,8 @@ function (X3DBindableNode,
 				case TraverseType .DISPLAY:
 				{
 					var
-						sourceObjects = renderObject .getShaderObjects (),
-						destObjects   = this .shaderObjects;
+						sourceObjects = renderObject .getLocalObjects (),
+						destObjects   = this .localObjects;
 
 					for (var i = 0, length = sourceObjects .length; i < length; ++ i)
 						destObjects [i] = sourceObjects [i];
@@ -585,7 +585,7 @@ function (X3DBindableNode,
 
 				// Clip planes
 
-				shaderNode .setShaderObjects (gl, this .shaderObjects);
+				shaderNode .setLocalObjects (gl, this .localObjects);
 
 				// Enable vertex attribute arrays.
 
@@ -631,7 +631,7 @@ function (X3DBindableNode,
 
 					// Clip planes
 
-					shaderNode .setShaderObjects (gl, this .shaderObjects);
+					shaderNode .setLocalObjects (gl, this .localObjects);
 
 					// Enable vertex attribute arrays.
 
@@ -647,6 +647,7 @@ function (X3DBindableNode,
 					gl .uniform1i (shaderNode .x3d_NumTextures,                        1);
 					gl .uniform1i (shaderNode .x3d_TextureType [0],                    2);
 					gl .uniform1i (shaderNode .x3d_TextureCoordinateGeneratorMode [0], 0);
+					gl .uniform1i (shaderNode .x3d_NumProjectiveTextures,              0);
 
 					gl .uniformMatrix4fv (shaderNode .x3d_TextureMatrix [0], false, textureMatrixArray);
 					gl .uniformMatrix4fv (shaderNode .x3d_ProjectionMatrix,  false, this .projectionMatrixArray);

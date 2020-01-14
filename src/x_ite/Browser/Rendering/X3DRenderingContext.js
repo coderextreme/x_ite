@@ -64,7 +64,7 @@ function ($,
 	{
 		this .addChildObjects ("viewport", new Fields .MFInt32 (0, 0, 300, 150));
 
-		this .clipPlanes = [ ]; // Clip planes dumpster
+		this .localObjects = [ ]; // shader objects dumpster
 	}
 
 	X3DRenderingContext .prototype =
@@ -145,9 +145,9 @@ function ($,
 		{
 			return this .viewport_;
 		},
-		getClipPlanes: function ()
+		getLocalObjects: function ()
 		{
-			return this .clipPlanes;
+			return this .localObjects;
 		},
 		reshape: function ()
 		{

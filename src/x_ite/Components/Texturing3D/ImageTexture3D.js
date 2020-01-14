@@ -55,6 +55,7 @@ define ([
 	"x_ite/Components/Networking/X3DUrlObject",
 	"x_ite/Bits/X3DConstants",
 	"x_ite/Browser/Texturing3D/NRRDParser",
+	"x_ite/Browser/Texturing3D/DICOMParser",
 	"x_ite/InputOutput/FileLoader",
 ],
 function (Fields,
@@ -62,8 +63,9 @@ function (Fields,
           FieldDefinitionArray,
           X3DTexture3DNode,
           X3DUrlObject,
-			 X3DConstants,
-			 NRRDParser,
+          X3DConstants,
+          NRRDParser,
+          DICOMParser,
           FileLoader)
 {
 "use strict";
@@ -75,7 +77,7 @@ function (Fields,
 
 		this .addType (X3DConstants .ImageTexture3D);
 
-		this .addChildObjects ("buffer", new Fields .SFTime ());
+		this .addChildObjects ("buffer", new Fields .MFString ());
 	}
 
 	ImageTexture3D .prototype = Object .assign (Object .create (X3DTexture3DNode .prototype),
@@ -125,10 +127,12 @@ function (Fields,
 
 			this .setLoadState (X3DConstants .IN_PROGRESS_STATE);
 
-			this .buffer_ .addEvent ();
+			this .buffer_ = this .url_;
 		},
-		getInternalType: function (gl, components)
+		getInternalType: function (components)
 		{
+			var gl = this .getBrowser () .getContext ();
+
 			switch (components)
 			{
 				case 1:
@@ -143,7 +147,7 @@ function (Fields,
 		},
 		set_buffer__: function ()
 		{
-			new FileLoader (this) .loadBinaryDocument (this .url_,
+			new FileLoader (this) .loadBinaryDocument (this .buffer_,
 			function (data)
 			{
 				if (data === null)
@@ -154,13 +158,29 @@ function (Fields,
 				}
 				else
 				{
-					var
-						gl           = this .getBrowser () .getContext (),
-						nrrd         = new NRRDParser () .parse (data),
-						internalType = this .getInternalType (gl, nrrd .components);
+					var nrrd = new NRRDParser () .parse (data);
 
-					this .setTexture (nrrd .width, nrrd .height, nrrd .depth, false, internalType, nrrd .data);
-					this .setLoadState (X3DConstants .COMPLETE_STATE);
+					if (nrrd .nrrd)
+					{
+						var internalType = this .getInternalType (nrrd .components);
+
+						this .setTexture (nrrd .width, nrrd .height, nrrd .depth, false, internalType, nrrd .data);
+						this .setLoadState (X3DConstants .COMPLETE_STATE);
+						return;
+					}
+
+					var dicom = new DICOMParser () .parse (data);
+
+					if (dicom .dicom)
+					{
+						var internalType = this .getInternalType (dicom .components);
+
+						this .setTexture (dicom .width, dicom .height, dicom .depth, false, internalType, dicom .data);
+						this .setLoadState (X3DConstants .COMPLETE_STATE);
+						return;
+					}
+
+					throw new Error ("ImageTexture3D: no appropriate file type handler found.");
 				}
 			}
 			.bind (this));
