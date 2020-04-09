@@ -1,4 +1,4 @@
-/* X_ITE v4.6.10a-981 */
+/* X_ITE v4.6.10-985 */
 
 (function () {
 
@@ -25263,7 +25263,7 @@ function (SFBool,
 
 define ('x_ite/Browser/VERSION',[],function ()
 {
-	return "4.6.10a";
+	return "4.6.10";
 });
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
@@ -40989,7 +40989,7 @@ function (URI,
 				return this .scriptUrl .transform ("assets/components/" + file + ".js") .toString ();
 			}
 
-			return "http://create3000.de/x_ite";
+			return "https://github.com/create3000/x_ite";
 		},
 		getShaderUrl: function (file)
 		{
@@ -47527,7 +47527,7 @@ function ($,
 			try
 			{
 				var
-					field      = node .getField (this .fieldToCamelCase (xmlAttribute .name)),
+					field      = node .getField (this .attributeToCamelCase (xmlAttribute .name)),
 					accessType = field .getAccessType ();
 
 				if (accessType & X3DConstants .initializeOnly)
@@ -47635,8 +47635,9 @@ function ($,
 
 			return true;
 		},
-		fieldToCamelCase: function (name)
+		attributeToCamelCase: function (name)
 		{
+			// Function also needed by X_ITE DOM.
 			return HTMLSupport .fields .get (name);
 		},
 	});
@@ -115047,7 +115048,7 @@ define ('x_ite/Components/Texturing/TextureCoordinateGenerator',[
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DTextureCoordinateNode, 
+          X3DTextureCoordinateNode,
           X3DConstants,
           ModeType)
 {
@@ -115082,10 +115083,6 @@ function (Fields,
 		getContainerField: function ()
 		{
 			return "texCoord";
-		},
-		getTexCoord: function (array)
-		{
-			return array;
 		},
 		initialize: function ()
 		{
@@ -115149,8 +115146,6 @@ function (Fields,
 
 	return TextureCoordinateGenerator;
 });
-
-
 
 /*******************************************************************************
  *
