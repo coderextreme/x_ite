@@ -316,7 +316,7 @@ if (typeof exports === 'object' && typeof module === 'object')
  ******************************************************************************/
 
 
-define ('lib/ammojs/Ammo',[
+define ('lib/ammojs/AmmoJS',[
 	"lib/ammojs/ammo",
 ],
 function (Ammo)
@@ -325,8 +325,6 @@ function (Ammo)
 
 	return new Ammo ();
 });
-
-
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
  *******************************************************************************
@@ -385,13 +383,13 @@ define ('x_ite/Components/RigidBodyPhysics/BallJoint',[
 	"x_ite/Components/RigidBodyPhysics/X3DRigidJointNode",
 	"x_ite/Bits/X3DConstants",
 	"standard/Math/Numbers/Vector3",
-	"lib/ammojs/Ammo",
+	"lib/ammojs/AmmoJS",
 ],
 function ($,
           Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DRigidJointNode, 
+          X3DRigidJointNode,
           X3DConstants,
           Vector3,
           Ammo)
@@ -439,7 +437,7 @@ function ($,
 		initialize: function ()
 		{
 			X3DRigidJointNode .prototype .initialize .call (this);
-		
+
 			this .anchorPoint_ .addInterest ("set_anchorPoint__", this);
 		},
 		addJoint: function ()
@@ -449,13 +447,13 @@ function ($,
 
 			if (! this .getBody1 ())
 				return;
-	
+
 			if (! this .getBody2 ())
 				return;
-		
+
 		   if (this .getBody1 () .getCollection () !== this .getCollection ())
 				return;
-		
+
 		   if (this .getBody2 () .getCollection () !== this .getCollection ())
 				return;
 
@@ -463,7 +461,7 @@ function ($,
 			                                                 this .getBody2 () .getRigidBody (),
 			                                                 new Ammo .btVector3 (),
 			                                                 new Ammo .btVector3 ());
-	
+
 			this .set_anchorPoint__ ();
 
 			this .getCollection () .getDynamicsWorld () .addConstraint (this .joint, true);
@@ -511,7 +509,7 @@ function ($,
 
 				this .getInitialInverseMatrix1 () .multVecMatrix (localAnchorPoint1 .assign (this .anchorPoint_ .getValue ()));
 				this .getInitialInverseMatrix2 () .multVecMatrix (localAnchorPoint2 .assign (this .anchorPoint_ .getValue ()));
-		
+
 				this .joint .setPivotA (new Ammo .btVector3 (localAnchorPoint1 .x, localAnchorPoint1 .y, localAnchorPoint1 .z));
 				this .joint .setPivotB (new Ammo .btVector3 (localAnchorPoint2 .x, localAnchorPoint2 .y, localAnchorPoint2 .z));
 			}
@@ -540,8 +538,6 @@ function ($,
 
 	return BallJoint;
 });
-
-
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
  *******************************************************************************
@@ -599,11 +595,11 @@ define ('x_ite/Components/RigidBodyPhysics/X3DNBodyCollidableNode',[
 	"x_ite/Bits/X3DConstants",
 	"standard/Math/Numbers/Vector3",
 	"standard/Math/Numbers/Matrix4",
-	"lib/ammojs/Ammo",
+	"lib/ammojs/AmmoJS",
 ],
 function (Fields,
-          X3DChildNode, 
-          X3DBoundedObject, 
+          X3DChildNode,
+          X3DBoundedObject,
           X3DConstants,
           Vector3,
           Matrix4,
@@ -621,7 +617,7 @@ function (Fields,
 		this .addChildObjects ("body", new Fields .SFNode ());
 
 		// Units
-	
+
 		this .translation_ .setUnit ("length");
 
 		// Members
@@ -665,7 +661,7 @@ function (Fields,
 				                          m [2], m [6], m [10]);
 
 				l .setOrigin (o);
-	
+
 				return l;
 			};
 		})(),
@@ -700,13 +696,11 @@ function (Fields,
 
 			if (this .compoundShape .getNumChildShapes ())
 				this .compoundShape .updateChildTransform (0, this .getLocalTransform (), true);
-		},	
+		},
 	});
 
 	return X3DNBodyCollidableNode;
 });
-
-
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
  *******************************************************************************
@@ -972,12 +966,12 @@ define ('x_ite/Components/RigidBodyPhysics/CollidableShape',[
 	"x_ite/Bits/X3DCast",
 	"x_ite/Bits/TraverseType",
 	"standard/Math/Numbers/Vector3",
-	"lib/ammojs/Ammo",
+	"lib/ammojs/AmmoJS",
 ],
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DNBodyCollidableNode, 
+          X3DNBodyCollidableNode,
           X3DConstants,
           X3DCast,
           TraverseType,
@@ -1037,13 +1031,13 @@ function (Fields,
 			if (this .bboxSize_ .getValue () .equals (this .getDefaultBBoxSize ()))
 			{
 				var boundedObject = X3DCast (X3DConstants .X3DBoundedObject, this .shape_);
-		
+
 				if (boundedObject)
 					return boundedObject .getBBox (bbox);
-		
+
 				return bbox .set ();
 			}
-		
+
 			return bbox .set (this .bboxSize_ .getValue (), this .bboxCenter_ .getValue ());
 		},
 		setConvex: function (value)
@@ -1061,19 +1055,19 @@ function (Fields,
 			return function ()
 			{
 				var vertices = this .geometryNode .getVertices () .getValue ();
-	
+
 				if (vertices .length === 0)
 					return null;
-	
+
 				var convexHull = new Ammo .btConvexHullShape ();
-	
+
 				for (var i = 0, length = vertices .length; i < length; i += 4)
 				{
 					p .setValue (vertices [i], vertices [i + 1], vertices [i + 2]);
 					convexHull .addPoint (p, false);
 				}
 
-				convexHull .recalcLocalAabb ();	
+				convexHull .recalcLocalAabb ();
 
 				return convexHull;
 			};
@@ -1088,21 +1082,21 @@ function (Fields,
 			return function ()
 			{
 				var vertices = this .geometryNode .getVertices () .getValue ();
-	
+
 				if (vertices .length === 0)
 					return null;
-	
+
 				this .triangleMesh = new Ammo .btTriangleMesh ();
-	
+
 				for (var i = 0, length = vertices .length; i < length; i += 12)
 				{
 					p1 .setValue (vertices [i],     vertices [i + 1], vertices [i + 2]);
 					p2 .setValue (vertices [i + 4], vertices [i + 5], vertices [i + 6]);
 					p3 .setValue (vertices [i + 8], vertices [i + 9], vertices [i + 10]);
 
-					this .triangleMesh .addTriangle (p1, p2, p3);	
+					this .triangleMesh .addTriangle (p1, p2, p3);
 				}
-	
+
 				return new Ammo .btBvhTriangleMeshShape (this .triangleMesh, false);
 			};
 		})(),
@@ -1163,15 +1157,15 @@ function (Fields,
 			{
 				var ls = this .getCompoundShape () .getLocalScaling ();
 				localScaling .setValue (ls .x (), ls .y (), ls .z ());
-	
+
 				this .removeCollidableGeometry ();
 				this .setOffset (0, 0, 0);
 				this .getCompoundShape () .setLocalScaling (defaultScaling);
-	
+
 				if (this .enabled_ .getValue () && this .geometryNode && this .geometryNode .getGeometryType () > 1)
 				{
 					var type = this .geometryNode .getType ();
-	
+
 					for (var t = type .length - 1; t >= 0; -- t)
 					{
 						switch (type [t])
@@ -1181,19 +1175,19 @@ function (Fields,
 								var
 									box  = this .geometryNode,
 									size = box .size_ .getValue ();
-		
+
 								this .collisionShape = new Ammo .btBoxShape (new Ammo .btVector3 (size .x / 2, size .y / 2, size .z / 2));
 								break;
 							}
 							case X3DConstants .Cone:
 							{
 								var cone = this .geometryNode;
-				
+
 								if (cone .side_ .getValue () && cone .bottom_ .getValue ())
 									this .collisionShape = new Ammo .btConeShape (cone .bottomRadius_ .getValue (), cone .height_ .getValue ());
 								else
 									this .collisionShape = this .createConcaveGeometry ();
-		
+
 								break;
 							}
 							case X3DConstants .Cylinder:
@@ -1202,18 +1196,18 @@ function (Fields,
 									cylinder  = this .geometryNode,
 									radius    = cylinder .radius_ .getValue (),
 									height1_2 = cylinder .height_ .getValue () * 0.5;
-				
+
 								if (cylinder .side_ .getValue () && cylinder .top_ .getValue () && cylinder .bottom_ .getValue ())
 									this .collisionShape = new Ammo .btCylinderShape (new Ammo .btVector3 (radius, height1_2, radius));
 								else
 									this .collisionShape = this .createConcaveGeometry ();
-		
+
 								break;
 							}
 							case X3DConstants .ElevationGrid:
 							{
 								var elevationGrid = this .geometryNode;
-				
+
 								if (elevationGrid .xDimension_ .getValue () > 1 && elevationGrid .zDimension_ .getValue () > 1)
 								{
 									var
@@ -1221,19 +1215,19 @@ function (Fields,
 										max         = Number .NEGATIVE_INFINITY,
 										heightField = this .heightField = Ammo ._malloc (4 * elevationGrid .xDimension_ .getValue () * elevationGrid .zDimension_ .getValue ()),
 										i4          = 0;
-		
+
 									for (var i = 0, length = elevationGrid .height_ .length; i < length; ++ i)
 									{
 										var value = elevationGrid .height_ [i];
-		
+
 										min = Math .min (min, value);
 										max = Math .max (max, value);
-		
+
 										Ammo .HEAPF32 [heightField + i4 >> 2] = elevationGrid .height_ [i];
-		
+
 										i4 += 4;
 									}
-		
+
 									this .collisionShape = new Ammo .btHeightfieldTerrainShape (elevationGrid .xDimension_ .getValue (),
 									                                                            elevationGrid .zDimension_ .getValue (),
 									                                                            heightField,
@@ -1243,20 +1237,20 @@ function (Fields,
 									                                                            1,
 									                                                            "PHY_FLOAT",
 									                                                            true);
-					
+
 									this .collisionShape .setLocalScaling (new Ammo .btVector3 (elevationGrid .xSpacing_ .getValue (), 1, elevationGrid .zSpacing_ .getValue ()));
-		
+
 									this .setOffset (elevationGrid .xSpacing_ .getValue () * (elevationGrid .xDimension_ .getValue () - 1) * 0.5,
 									                 (min + max) * 0.5,
 									                 elevationGrid .zSpacing_ .getValue () * (elevationGrid .zDimension_ .getValue () - 1) * 0.5);
 								}
-				
+
 								break;
 							}
 							case X3DConstants .Sphere:
 							{
 								var sphere = this .geometryNode;
-				
+
 								this .collisionShape = new Ammo .btSphereShape (sphere .radius_ .getValue ());
 								break;
 							}
@@ -1266,7 +1260,7 @@ function (Fields,
 									this .collisionShape = this .createConvexGeometry ();
 								else
 									this .collisionShape = this .createConcaveGeometry ();
-	
+
 								break;
 							}
 							default:
@@ -1282,7 +1276,7 @@ function (Fields,
 				{
 					this .collisionShape = null;
 				}
-	
+
 				if (this .collisionShape)
 					this .getCompoundShape () .addChildShape (this .getLocalTransform (), this .collisionShape);
 
@@ -1297,7 +1291,7 @@ function (Fields,
 			{
 				this .getCompoundShape () .removeChildShapeByIndex (0);
 				Ammo .destroy (this .collisionShape);
-				this .collisionShape = null;;	
+				this .collisionShape = null;;
 			}
 
 			if (this .heightField)
@@ -1322,13 +1316,13 @@ function (Fields,
 						browser          = renderObject .getBrowser (),
 						pickingHierarchy = browser .getPickingHierarchy (),
 						modelViewMatrix  = renderObject .getModelViewMatrix ();
-		
+
 					pickingHierarchy .push (this);
 					modelViewMatrix .push ();
 					modelViewMatrix .multLeft (this .getMatrix ());
-			
+
 					this .shapeNode .traverse (type, renderObject);
-				
+
 					modelViewMatrix .pop ();
 					pickingHierarchy .pop ();
 					break;
@@ -1336,12 +1330,12 @@ function (Fields,
 				default:
 				{
 					var modelViewMatrix = renderObject .getModelViewMatrix ();
-		
+
 					modelViewMatrix .push ();
 					modelViewMatrix .multLeft (this .getMatrix ());
-			
+
 					this .shapeNode .traverse (type, renderObject);
-				
+
 					modelViewMatrix .pop ();
 					break;
 				}
@@ -1357,8 +1351,6 @@ function (Fields,
 
 	return CollidableShape;
 });
-
-
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
  *******************************************************************************
@@ -1989,8 +1981,8 @@ define ('x_ite/Components/RigidBodyPhysics/X3DNBodyCollisionSpaceNode',[
 	"x_ite/Components/Grouping/X3DBoundedObject",
 	"x_ite/Bits/X3DConstants",
 ],
-function (X3DNode, 
-          X3DBoundedObject, 
+function (X3DNode,
+          X3DBoundedObject,
           X3DConstants)
 {
 "use strict";
@@ -2011,8 +2003,6 @@ function (X3DNode,
 
 	return X3DNBodyCollisionSpaceNode;
 });
-
-
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
  *******************************************************************************
@@ -2074,7 +2064,7 @@ define ('x_ite/Components/RigidBodyPhysics/CollisionSpace',[
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DNBodyCollisionSpaceNode, 
+          X3DNBodyCollisionSpaceNode,
           X3DConstants,
           X3DCast)
 {
@@ -2121,6 +2111,14 @@ function (Fields,
 
 			this .set_collidables__ ();
 		},
+		getBBox: function (bbox)
+		{
+			// TODO: add space node.
+			if (this .bboxSize_ .getValue () .equals (this .getDefaultBBoxSize ()))
+				return X3DBoundedObject .prototype .getBBox .call (this, this .collidableNodes, bbox);
+
+			return bbox;
+		},
 		getCollidables: function ()
 		{
 			return this .collidableNodes;
@@ -2145,7 +2143,7 @@ function (Fields,
 					collisionSpaceNodes .push (collisionSpaceNode);
 				}
 			}
-	
+
 			this .collect ();
 		},
 		collect: function ()
@@ -2182,8 +2180,6 @@ function (Fields,
 
 	return CollisionSpace;
 });
-
-
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
  *******************************************************************************
@@ -2364,13 +2360,13 @@ define ('x_ite/Components/RigidBodyPhysics/DoubleAxisHingeJoint',[
 	"standard/Math/Numbers/Vector3",
 	"standard/Math/Numbers/Rotation4",
 	"standard/Math/Numbers/Matrix4",
-	"lib/ammojs/Ammo",
+	"lib/ammojs/AmmoJS",
 ],
 function ($,
           Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DRigidJointNode, 
+          X3DRigidJointNode,
           X3DConstants,
           Vector3,
           Rotation4,
@@ -2447,7 +2443,7 @@ function ($,
 		initialize: function ()
 		{
 			X3DRigidJointNode .prototype .initialize .call (this);
-		
+
 			this .anchorPoint_ .addInterest ("set_joint__", this);
 			this .axis1_       .addInterest ("set_joint__", this);
 			this .axis2_       .addInterest ("set_joint__", this);
@@ -2464,16 +2460,16 @@ function ($,
 			{
 				if (! this .getCollection ())
 					return;
-	
+
 				if (! this .getBody1 ())
 					return;
-		
+
 				if (! this .getBody2 ())
 					return;
-			
+
 			   if (this .getBody1 () .getCollection () !== this .getCollection ())
 					return;
-			
+
 			   if (this .getBody2 () .getCollection () !== this .getCollection ())
 					return;
 
@@ -2552,14 +2548,14 @@ function ($,
 
 				if (this .outputs .body1Axis)
 					this .body1Axis_ = this .getInitialInverseMatrix1 () .multDirMatrix (this .getBody1 () .getMatrix () .multDirMatrix (localAxis1 .assign (this .localAxis1))) .normalize ();
-	
+
 				if (this .outputs .hinge1Angle)
 				{
 					var lastAngle  = this .hinge1Angle_ .getValue ();
 
 					difference .assign (this .getInitialInverseMatrix1 ()) .multRight (this .getBody1 () .getMatrix ());
 					difference .get (null, rotation);
-			
+
 					this .hinge1Angle_ = rotation .angle;
 
 					if (this .outputs .angleRate)
@@ -2582,14 +2578,14 @@ function ($,
 
 				if (this .outputs .body2Axis)
 					this .body2Axis_ = this .getInitialInverseMatrix2 () .multDirMatrix (this .getBody2 () .getMatrix () .multDirMatrix (localAxis2 .assign (this .localAxis2))) .normalize ();
-	
+
 				if (this .outputs .hinge2Angle)
 				{
 					var lastAngle  = this .hinge2Angle_ .getValue ();
 
 					difference .assign (this .getInitialInverseMatrix2 ()) .multRight (this .getBody2 () .getMatrix ());
 					difference .get (null, rotation);
-			
+
 					this .hinge2Angle_ = rotation .angle;
 
 					if (this .outputs .angleRate)
@@ -2601,8 +2597,6 @@ function ($,
 
 	return DoubleAxisHingeJoint;
 });
-
-
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
  *******************************************************************************
@@ -2798,12 +2792,12 @@ define ('x_ite/Components/RigidBodyPhysics/RigidBody',[
 	"standard/Math/Numbers/Rotation4",
 	"standard/Math/Numbers/Quaternion",
 	"standard/Math/Numbers/Matrix4",
-	"lib/ammojs/Ammo",
+	"lib/ammojs/AmmoJS",
 ],
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DNode, 
+          X3DNode,
           X3DConstants,
           X3DCast,
           Vector3,
@@ -2955,7 +2949,7 @@ function (Fields,
 				var m = this .matrix;
 
 				m .set (this .position_ .getValue (), this .orientation_ .getValue ());
-		
+
 				//t .setFromOpenGLMatrix (m);
 
 				o .setValue (m [12], m [13], m [14]);
@@ -2970,7 +2964,7 @@ function (Fields,
 
 				im .assign (m);
 				im .inverse ();
-		
+
 				//it .setFromOpenGLMatrix (im);
 
 				io .setValue (im [12], im [13], im [14]);
@@ -2980,15 +2974,15 @@ function (Fields,
 				                           im [2], im [6], im [10]);
 
 				it .setOrigin (io);
-			
+
 				var compoundShape = this .compoundShape;
 
 				for (var i = 0, length = this .compoundShape .getNumChildShapes (); i < length; ++ i)
 					compoundShape .updateChildTransform (i, it, false);
-	
+
 				this .compoundShape .recalculateLocalAabb ();
 				this .motionState .setWorldTransform (t);
-			
+
 				this .rigidBody .setMotionState (this .motionState);
 			};
 		})(),
@@ -3042,7 +3036,7 @@ function (Fields,
 				this .rigidBody .setDamping (this .linearDampingFactor_ .getValue (), this .angularDampingFactor_ .getValue ());
 			else
 				this .rigidBody .setDamping (0, 0);
-		
+
 			this .rigidBody .activate ();
 		},
 		set_centerOfMass__: (function ()
@@ -3073,7 +3067,7 @@ function (Fields,
 				                        inertia [6] + inertia [7] + inertia [8]);
 
 				this .compoundShape .calculateLocalInertia (this .fixed_ .getValue () ? 0 : this .mass_ .getValue (), localInertia);
-			
+
 				this .rigidBody .setMassProps (this .fixed_ .getValue () ? 0 : this .mass_ .getValue (), localInertia);
 			};
 		})(),
@@ -3111,12 +3105,12 @@ function (Fields,
 				var geometryNode = geometryNodes [i];
 
 				geometryNode .removeInterest ("addEvent", this .transform_);
-		
+
 				geometryNode .setBody (null);
-		
+
 				geometryNode .translation_ .removeFieldInterest (this .position_);
 				geometryNode .rotation_    .removeFieldInterest (this .orientation_);
-		
+
 				this .position_    .removeFieldInterest (geometryNode .translation_);
 				this .orientation_ .removeFieldInterest (geometryNode .rotation_);
 			}
@@ -3129,22 +3123,22 @@ function (Fields,
 			for (var i = 0, length = this .geometry_ .length; i < length; ++ i)
 			{
 				var geometryNode = X3DCast (X3DConstants .X3DNBodyCollidableNode, this .geometry_ [i]);
-				
+
 				if (! geometryNode)
 					continue;
-		
+
 				if (geometryNode .getBody ())
 				{
 					geometryNode .body_ .addInterest ("set_body__", this);
 					this .otherGeometryNodes .push (geometryNode);
 					continue;
 				}
-		
+
 				geometryNode .setBody (this);
-		
+
 				geometryNodes .push (geometryNode);
 			}
-		
+
 			for (var i = 0, length = geometryNodes .length; i < length; ++ i)
 			{
 				var geometryNode = geometryNodes [i];
@@ -3167,17 +3161,17 @@ function (Fields,
 		set_compoundShape__: (function ()
 		{
 			var transform = new Ammo .btTransform ();
-		
+
 			return function ()
 			{
 				var compoundShape = this .compoundShape;
-	
+
 				for (var i = compoundShape .getNumChildShapes () - 1; i >= 0; -- i)
 					compoundShape .removeChildShapeByIndex (i);
-			
+
 				for (var i = 0, length = this .geometryNodes .length; i < length; ++ i)
 					compoundShape .addChildShape (transform, this .geometryNodes [i] .getCompoundShape ());
-	
+
 				this .set_position__ ();
 				this .set_orientation__ ();
 				this .set_transform__ ();
@@ -3228,13 +3222,13 @@ function (Fields,
 			return function ()
 			{
 				this .motionState .getWorldTransform (transform);
-			
+
 				var
 					btOrigin          = transform .getOrigin (),
 					btQuaternion      = transform .getRotation (),
 					btLinearVeloctity = this .rigidBody .getLinearVelocity (),
 					btAngularVelocity = this .rigidBody .getAngularVelocity ();
-			
+
 				orientation .value .set (btQuaternion .x (), btQuaternion .y (), btQuaternion .z (), btQuaternion .w ());
 
 				this .position_        = position .set (btOrigin .x (), btOrigin .y (), btOrigin .z ());
@@ -3256,8 +3250,6 @@ function (Fields,
 
 	return RigidBody;
 });
-
-
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
  *******************************************************************************
@@ -3316,12 +3308,12 @@ define ('x_ite/Components/RigidBodyPhysics/RigidBodyCollection',[
 	"x_ite/Bits/X3DConstants",
 	"x_ite/Bits/X3DCast",
 	"x_ite/Browser/RigidBodyPhysics/AppliedParametersType",
-	"lib/ammojs/Ammo",
+	"lib/ammojs/AmmoJS",
 ],
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DChildNode, 
+          X3DChildNode,
           X3DConstants,
           X3DCast,
           AppliedParametersType,
@@ -3336,7 +3328,7 @@ function (Fields,
 		this .addType (X3DConstants .RigidBodyCollection);
 
 		// Units
-	
+
 		this .gravity_                 .setUnit ("acceleration");
 		this .constantForceMix_        .setUnit ("force");
 		this .maxCorrectionSpeed_      .setUnit ("speed");
@@ -3421,11 +3413,11 @@ function (Fields,
 		getTimeStep: function ()
 		{
 			const DELAY = 15; // Delay in frames when dt full applies.
-		
+
 			var
 				dt        = 1 / Math .max (10, this .getBrowser () .getCurrentFrameRate ()),
 				deltaTime = this .deltaTime = ((DELAY - 1) * this .deltaTime + dt) / DELAY; // Moving average about DELAY frames.
-		
+
 			return deltaTime;
 		},
 		set_enabled__: function ()
@@ -3479,7 +3471,7 @@ function (Fields,
 						else
 							rigidBody .setRestitution (0);
 					}
-		
+
 					return;
 				}
 			}
@@ -3500,7 +3492,7 @@ function (Fields,
 						rigidBody .setFriction (this .colliderNode .frictionCoefficients_ .x);
 						rigidBody .setRollingFriction (this .colliderNode .frictionCoefficients_ .y);
 					}
-		
+
 					return;
 				}
 			}
@@ -3534,16 +3526,16 @@ function (Fields,
 
 				if (! bodyNode)
 					continue;
-		
+
 				if (bodyNode .getCollection ())
 				{
 					bodyNode .collection_ .addInterest ("set_bodies__", this);
 					this .otherBodyNodes .push (bodyNode);
 					continue;
 				}
-		
+
 				bodyNode .setCollection (this);
-		
+
 				this .bodyNodes .push (bodyNode);
 			}
 
@@ -3567,10 +3559,10 @@ function (Fields,
 
 				if (! bodyNode .enabled_ .getValue ())
 					continue;
-		
+
 				this .rigidBodies .push (bodyNode .getRigidBody ());
 			}
-		
+
 			for (var i = 0, length = this .rigidBodies .length; i < length; ++ i)
 				this .dynamicsWorld .addRigidBody (this .rigidBodies [i]);
 		},
@@ -3578,17 +3570,17 @@ function (Fields,
 		{
 			for (var i = 0, length = this .jointNodes .length; i < length; ++ i)
 				this .jointNodes [i] .setCollection (null);
-		
+
 			for (var i = 0, length = this .otherJointNodes .length; i < length; ++ i)
 				this .otherJointNodes [i] .collection_ .removeInterest ("set_joints__", this);
 
 			for (var i = 0, length = this .joints_ .length; i < length; ++ i)
 			{
 				var jointNode = X3DCast (X3DConstants .X3DRigidJointNode, this .joints_ [i]);
-		
+
 				if (! jointNode)
 					continue;
-		
+
 				if (jointNode .getCollection ())
 				{
 					jointNode .collection_ .addInterest ("set_joints__", this);
@@ -3609,19 +3601,19 @@ function (Fields,
 					deltaTime  = this .getTimeStep (),
 					iterations = this .iterations_ .getValue (),
 					gravity    = this .gravity_ .getValue ();
-			
+
 				this .set_bounce__ ();
 				this .set_frictionCoefficients__ ();
-			
+
 				if (this .preferAccuracy_ .getValue ())
 				{
 					deltaTime /= iterations;
-			
+
 					for (var i = 0; i < iterations; ++ i)
 					{
 						for (var i = 0, length = this .bodyNodes .length; i < length; ++ i)
 							this .bodyNodes [i] .applyForces (gravity);
-			
+
 						this .dynamicsWorld .stepSimulation (deltaTime, 0);
 					}
 				}
@@ -3629,10 +3621,10 @@ function (Fields,
 				{
 					for (var i = 0, length = this .bodyNodes .length; i < length; ++ i)
 						this .bodyNodes [i] .applyForces (gravity);
-			
+
 					this .dynamicsWorld .stepSimulation (deltaTime, iterations + 2, deltaTime / iterations);
 				}
-			
+
 				for (var i = 0, length = this .bodyNodes .length; i < length; ++ i)
 					this .bodyNodes [i] .update ();
 			}
@@ -3645,8 +3637,6 @@ function (Fields,
 
 	return RigidBodyCollection;
 });
-
-
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
  *******************************************************************************
@@ -3707,13 +3697,13 @@ define ('x_ite/Components/RigidBodyPhysics/SingleAxisHingeJoint',[
 	"standard/Math/Numbers/Vector3",
 	"standard/Math/Numbers/Rotation4",
 	"standard/Math/Numbers/Matrix4",
-	"lib/ammojs/Ammo",
+	"lib/ammojs/AmmoJS",
 ],
 function ($,
           Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DRigidJointNode, 
+          X3DRigidJointNode,
           X3DConstants,
           Vector3,
           Rotation4,
@@ -3776,7 +3766,7 @@ function ($,
 		initialize: function ()
 		{
 			X3DRigidJointNode .prototype .initialize .call (this);
-		
+
 			this .anchorPoint_ .addInterest ("set_joint__", this);
 			this .axis_        .addInterest ("set_joint__", this);
 		},
@@ -3790,16 +3780,16 @@ function ($,
 			{
 				if (! this .getCollection ())
 					return;
-	
+
 				if (! this .getBody1 ())
 					return;
-		
+
 				if (! this .getBody2 ())
 					return;
-			
+
 			   if (this .getBody1 () .getCollection () !== this .getCollection ())
 					return;
-			
+
 			   if (this .getBody2 () .getCollection () !== this .getCollection ())
 					return;
 
@@ -3884,14 +3874,14 @@ function ($,
 			{
 				if (this .outputs .body2AnchorPoint)
 					this .body2AnchorPoint_ = this .getBody2 () .getMatrix () .multVecMatrix (this .getInitialInverseMatrix2 () .multVecMatrix (localAnchorPoint2 .assign (this .localAnchorPoint2)));
-	
+
 				if (this .outputs .angle)
 				{
 					var lastAngle  = this .angle_ .getValue ();
 
 					difference .assign (this .getInitialInverseMatrix2 ()) .multRight (this .getBody2 () .getMatrix ());
 					difference .get (null, rotation);
-			
+
 					this .angle_ = rotation .angle;
 
 					if (this .outputs .angleRate)
@@ -3903,8 +3893,6 @@ function ($,
 
 	return SingleAxisHingeJoint;
 });
-
-
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
  *******************************************************************************
@@ -3965,13 +3953,13 @@ define ('x_ite/Components/RigidBodyPhysics/SliderJoint',[
 	"standard/Math/Numbers/Vector3",
 	"standard/Math/Numbers/Rotation4",
 	"standard/Math/Numbers/Matrix4",
-	"lib/ammojs/Ammo",
+	"lib/ammojs/AmmoJS"
 ],
 function ($,
           Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DRigidJointNode, 
+          X3DRigidJointNode,
           X3DConstants,
           Vector3,
           Rotation4,
@@ -4028,7 +4016,7 @@ function ($,
 		initialize: function ()
 		{
 			X3DRigidJointNode .prototype .initialize .call (this);
-		
+
 			this .axis_          .addInterest ("set_joint__",       this);
 			this .minSeparation_ .addInterest ("set_separation__",  this);
 			this .maxSeparation_ .addInterest ("set_separation__",  this);
@@ -4047,16 +4035,16 @@ function ($,
 			{
 				if (! this .getCollection ())
 					return;
-	
+
 				if (! this .getBody1 ())
 					return;
-		
+
 				if (! this .getBody2 ())
 					return;
-			
+
 			   if (this .getBody1 () .getCollection () !== this .getCollection ())
 					return;
-			
+
 			   if (this .getBody2 () .getCollection () !== this .getCollection ())
 					return;
 
@@ -4086,7 +4074,7 @@ function ($,
 				                                            frameInA,
 				                                            frameInB,
 				                                            true);
-				
+
 				this .joint .setLowerAngLimit (0);
 				this .joint .setUpperAngLimit (0);
 
@@ -4140,8 +4128,6 @@ function ($,
 
 	return SliderJoint;
 });
-
-
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
  *******************************************************************************
@@ -4327,7 +4313,7 @@ define ([
 	"x_ite/Components/RigidBodyPhysics/X3DNBodyCollidableNode",
 	"x_ite/Components/RigidBodyPhysics/X3DNBodyCollisionSpaceNode",
 	"x_ite/Components/RigidBodyPhysics/X3DRigidJointNode",
-	"lib/ammojs/Ammo",
+	"lib/ammojs/AmmoJS",
 ],
 function (Components,
           BallJoint,
@@ -4382,7 +4368,6 @@ function (Components,
 		Ammo: Ammo,
 	};
 });
-
 
 
 }());

@@ -66,14 +66,14 @@ function (Vector3)
 				A = (r + l) / r_l,
 				B = (t + b) / t_b,
 				C = -(f + n) / f_n,
-				D = -n_2 * f / f_n,
+				D = -(n_2 * f) / f_n,
 				E = n_2 / r_l,
 				F = n_2 / t_b;
 
 			return matrix .set (E, 0, 0, 0,
 			                    0, F, 0, 0,
 			                    A, B, C, -1,
-			                    0, 0, D, 0);
+									  0, 0, D, 0);
 		},
 		perspective: function (fieldOfView, zNear, zFar, width, height, matrix)
 		{
@@ -124,7 +124,7 @@ function (Vector3)
 			return function (box, matrix)
 			{
 				box .getExtents (min, max);
-	
+
 				return this .ortho (min .x, max .x, min .y, max .y, -max .z, -min .z, matrix);
 			};
 		})(),

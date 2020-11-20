@@ -54,27 +54,14 @@ function (X3DBaseNode)
 {
 "use strict";
 
-	function equals (lhs, rhs)
-	{
-		if (lhs .length !== rhs .length)
-			return false;
-
-		for (var i = 0; i < lhs .length; ++ i)
-		{
-			if (lhs [i] !== rhs [i])
-				return false
-		}
-
-		return true;
-	}
-
 	function BindableList (executionContext, layer, defaultNode)
 	{
 		X3DBaseNode .call (this, executionContext);
 
-		this .layer     = layer;
-		this .collected = [ defaultNode ];
-		this .array     = [ defaultNode ];
+		this .collected    = [ defaultNode ];
+		this .array        = [ defaultNode ];
+		this .updateTime   = 0;
+		this .removedNodes = [ ];
 	}
 
 	BindableList .prototype = Object .assign (Object .create (X3DBaseNode .prototype),
@@ -154,8 +141,12 @@ function (X3DBaseNode)
 		{
 			return this .collected .push (node);
 		},
-		update: function ()
+		update: function (layer, stack)
 		{
+			var
+				changedNodes = this .collected .filter (node => node .updateTime > this .updateTime),
+				removedNodes = this .removedNodes;
+
 			if (! equals (this .collected, this .array))
 			{
 				// Unbind nodes not in current list (collected);
@@ -166,8 +157,7 @@ function (X3DBaseNode)
 
 					if (this .collected .indexOf (node) < 0)
 					{
-						if (node .isBound_ .getValue ())
-							node .set_bind_ = false;
+						removedNodes .push (node);
 					}
 				}
 
@@ -179,9 +169,35 @@ function (X3DBaseNode)
 				this .collected = tmp;
 			}
 
+			// Clear collected array.
+
 			this .collected .length = 1;
+
+			// Update stack.
+
+			stack .update (layer, removedNodes, changedNodes)
+
+			removedNodes .length = 0;
+
+			// Advance update time.
+
+			this .updateTime = performance .now () / 1000;
 		},
 	});
+
+	function equals (lhs, rhs)
+	{
+		if (lhs .length !== rhs .length)
+			return false;
+
+		for (var i = 0; i < lhs .length; ++ i)
+		{
+			if (lhs [i] !== rhs [i])
+				return false
+		}
+
+		return true;
+	}
 
 	return BindableList;
 });

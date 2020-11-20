@@ -1,8 +1,13 @@
 #ifdef X3D_LOGARITHMIC_DEPTH_BUFFER
 #extension GL_EXT_frag_depth : enable
 #endif
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+precision highp int;
+#else
 precision mediump float;
 precision mediump int;
+#endif
 uniform int x3d_GeometryType;
 uniform bool x3d_Lighting; 
 uniform bool x3d_ColorMaterial; 
@@ -174,7 +179,7 @@ break;
 vec4 texCoord = getTextureCoordinate (x3d_TextureCoordinateGenerator [i], i);
 vec4 textureColor = vec4 (1.0);
 texCoord .stp /= texCoord .q;
-if (x3d_GeometryType == x3d_Geometry2D && ! gl_FrontFacing)
+if ((x3d_GeometryType == x3d_Geometry2D) && (gl_FrontFacing ? false : true))
 texCoord .s = 1.0 - texCoord .s;
 if (x3d_TextureType [i] == x3d_TextureType2D)
 {
@@ -423,7 +428,7 @@ getTextureColor (const in vec4 diffuseColor, const in vec4 specularColor)
 vec4 texCoord = texCoord0;
 vec4 textureColor = vec4 (1.0);
 texCoord .stp /= texCoord .q;
-if (x3d_GeometryType == x3d_Geometry2D && ! gl_FrontFacing)
+if ((x3d_GeometryType == x3d_Geometry2D) && (gl_FrontFacing ? false : true))
 texCoord .s = 1.0 - texCoord .s;
 if (x3d_TextureType [0] == x3d_TextureType2D)
 {

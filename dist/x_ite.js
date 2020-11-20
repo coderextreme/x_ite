@@ -1,4 +1,4 @@
-/* X_ITE v4.6.10-985 */
+/* X_ITE v4.6.15-1012 */
 
 (function () {
 
@@ -2157,7 +2157,7 @@ var requirejs, require, define;
 define("../node_modules/requirejs/require.js", function(){});
 
 /*!
- * jQuery JavaScript Library v3.4.1
+ * jQuery JavaScript Library v3.5.1
  * https://jquery.com/
  *
  * Includes Sizzle.js
@@ -2167,7 +2167,7 @@ define("../node_modules/requirejs/require.js", function(){});
  * Released under the MIT license
  * https://jquery.org/license
  *
- * Date: 2019-05-01T21:04Z
+ * Date: 2020-05-04T22:49Z
  */
 ( function( global, factory ) {
 
@@ -2205,13 +2205,16 @@ define("../node_modules/requirejs/require.js", function(){});
 
 var arr = [];
 
-var document = window.document;
-
 var getProto = Object.getPrototypeOf;
 
 var slice = arr.slice;
 
-var concat = arr.concat;
+var flat = arr.flat ? function( array ) {
+	return arr.flat.call( array );
+} : function( array ) {
+	return arr.concat.apply( [], array );
+};
+
 
 var push = arr.push;
 
@@ -2243,6 +2246,8 @@ var isWindow = function isWindow( obj ) {
 		return obj != null && obj === obj.window;
 	};
 
+
+var document = window.document;
 
 
 
@@ -2300,7 +2305,7 @@ function toType( obj ) {
 
 
 var
-	version = "3.4.1",
+	version = "3.5.1",
 
 	// Define a local copy of jQuery
 	jQuery = function( selector, context ) {
@@ -2308,11 +2313,7 @@ var
 		// The jQuery object is actually just the init constructor 'enhanced'
 		// Need init if jQuery is called (just allow error to be thrown if not included)
 		return new jQuery.fn.init( selector, context );
-	},
-
-	// Support: Android <=4.0 only
-	// Make sure we trim BOM and NBSP
-	rtrim = /^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g;
+	};
 
 jQuery.fn = jQuery.prototype = {
 
@@ -2376,6 +2377,18 @@ jQuery.fn = jQuery.prototype = {
 
 	last: function() {
 		return this.eq( -1 );
+	},
+
+	even: function() {
+		return this.pushStack( jQuery.grep( this, function( _elem, i ) {
+			return ( i + 1 ) % 2;
+		} ) );
+	},
+
+	odd: function() {
+		return this.pushStack( jQuery.grep( this, function( _elem, i ) {
+			return i % 2;
+		} ) );
 	},
 
 	eq: function( i ) {
@@ -2511,9 +2524,10 @@ jQuery.extend( {
 		return true;
 	},
 
-	// Evaluates a script in a global context
-	globalEval: function( code, options ) {
-		DOMEval( code, { nonce: options && options.nonce } );
+	// Evaluates a script in a provided context; falls back to the global one
+	// if not specified.
+	globalEval: function( code, options, doc ) {
+		DOMEval( code, { nonce: options && options.nonce }, doc );
 	},
 
 	each: function( obj, callback ) {
@@ -2535,13 +2549,6 @@ jQuery.extend( {
 		}
 
 		return obj;
-	},
-
-	// Support: Android <=4.0 only
-	trim: function( text ) {
-		return text == null ?
-			"" :
-			( text + "" ).replace( rtrim, "" );
 	},
 
 	// results is for internal usage only
@@ -2630,7 +2637,7 @@ jQuery.extend( {
 		}
 
 		// Flatten any nested arrays
-		return concat.apply( [], ret );
+		return flat( ret );
 	},
 
 	// A global GUID counter for objects
@@ -2647,7 +2654,7 @@ if ( typeof Symbol === "function" ) {
 
 // Populate the class2type map
 jQuery.each( "Boolean Number String Function Array Date RegExp Object Error Symbol".split( " " ),
-function( i, name ) {
+function( _i, name ) {
 	class2type[ "[object " + name + "]" ] = name.toLowerCase();
 } );
 
@@ -2669,17 +2676,16 @@ function isArrayLike( obj ) {
 }
 var Sizzle =
 /*!
- * Sizzle CSS Selector Engine v2.3.4
+ * Sizzle CSS Selector Engine v2.3.5
  * https://sizzlejs.com/
  *
  * Copyright JS Foundation and other contributors
  * Released under the MIT license
  * https://js.foundation/
  *
- * Date: 2019-04-08
+ * Date: 2020-03-14
  */
-(function( window ) {
-
+( function( window ) {
 var i,
 	support,
 	Expr,
@@ -2719,59 +2725,70 @@ var i,
 	},
 
 	// Instance methods
-	hasOwn = ({}).hasOwnProperty,
+	hasOwn = ( {} ).hasOwnProperty,
 	arr = [],
 	pop = arr.pop,
-	push_native = arr.push,
+	pushNative = arr.push,
 	push = arr.push,
 	slice = arr.slice,
+
 	// Use a stripped-down indexOf as it's faster than native
 	// https://jsperf.com/thor-indexof-vs-for/5
 	indexOf = function( list, elem ) {
 		var i = 0,
 			len = list.length;
 		for ( ; i < len; i++ ) {
-			if ( list[i] === elem ) {
+			if ( list[ i ] === elem ) {
 				return i;
 			}
 		}
 		return -1;
 	},
 
-	booleans = "checked|selected|async|autofocus|autoplay|controls|defer|disabled|hidden|ismap|loop|multiple|open|readonly|required|scoped",
+	booleans = "checked|selected|async|autofocus|autoplay|controls|defer|disabled|hidden|" +
+		"ismap|loop|multiple|open|readonly|required|scoped",
 
 	// Regular expressions
 
 	// http://www.w3.org/TR/css3-selectors/#whitespace
 	whitespace = "[\\x20\\t\\r\\n\\f]",
 
-	// http://www.w3.org/TR/CSS21/syndata.html#value-def-identifier
-	identifier = "(?:\\\\.|[\\w-]|[^\0-\\xa0])+",
+	// https://www.w3.org/TR/css-syntax-3/#ident-token-diagram
+	identifier = "(?:\\\\[\\da-fA-F]{1,6}" + whitespace +
+		"?|\\\\[^\\r\\n\\f]|[\\w-]|[^\0-\\x7f])+",
 
 	// Attribute selectors: http://www.w3.org/TR/selectors/#attribute-selectors
 	attributes = "\\[" + whitespace + "*(" + identifier + ")(?:" + whitespace +
+
 		// Operator (capture 2)
 		"*([*^$|!~]?=)" + whitespace +
-		// "Attribute values must be CSS identifiers [capture 5] or strings [capture 3 or capture 4]"
-		"*(?:'((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\"|(" + identifier + "))|)" + whitespace +
-		"*\\]",
+
+		// "Attribute values must be CSS identifiers [capture 5]
+		// or strings [capture 3 or capture 4]"
+		"*(?:'((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\"|(" + identifier + "))|)" +
+		whitespace + "*\\]",
 
 	pseudos = ":(" + identifier + ")(?:\\((" +
+
 		// To reduce the number of selectors needing tokenize in the preFilter, prefer arguments:
 		// 1. quoted (capture 3; capture 4 or capture 5)
 		"('((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\")|" +
+
 		// 2. simple (capture 6)
 		"((?:\\\\.|[^\\\\()[\\]]|" + attributes + ")*)|" +
+
 		// 3. anything else (capture 2)
 		".*" +
 		")\\)|)",
 
 	// Leading and non-escaped trailing whitespace, capturing some non-whitespace characters preceding the latter
 	rwhitespace = new RegExp( whitespace + "+", "g" ),
-	rtrim = new RegExp( "^" + whitespace + "+|((?:^|[^\\\\])(?:\\\\.)*)" + whitespace + "+$", "g" ),
+	rtrim = new RegExp( "^" + whitespace + "+|((?:^|[^\\\\])(?:\\\\.)*)" +
+		whitespace + "+$", "g" ),
 
 	rcomma = new RegExp( "^" + whitespace + "*," + whitespace + "*" ),
-	rcombinators = new RegExp( "^" + whitespace + "*([>+~]|" + whitespace + ")" + whitespace + "*" ),
+	rcombinators = new RegExp( "^" + whitespace + "*([>+~]|" + whitespace + ")" + whitespace +
+		"*" ),
 	rdescend = new RegExp( whitespace + "|>" ),
 
 	rpseudo = new RegExp( pseudos ),
@@ -2783,14 +2800,16 @@ var i,
 		"TAG": new RegExp( "^(" + identifier + "|[*])" ),
 		"ATTR": new RegExp( "^" + attributes ),
 		"PSEUDO": new RegExp( "^" + pseudos ),
-		"CHILD": new RegExp( "^:(only|first|last|nth|nth-last)-(child|of-type)(?:\\(" + whitespace +
-			"*(even|odd|(([+-]|)(\\d*)n|)" + whitespace + "*(?:([+-]|)" + whitespace +
-			"*(\\d+)|))" + whitespace + "*\\)|)", "i" ),
+		"CHILD": new RegExp( "^:(only|first|last|nth|nth-last)-(child|of-type)(?:\\(" +
+			whitespace + "*(even|odd|(([+-]|)(\\d*)n|)" + whitespace + "*(?:([+-]|)" +
+			whitespace + "*(\\d+)|))" + whitespace + "*\\)|)", "i" ),
 		"bool": new RegExp( "^(?:" + booleans + ")$", "i" ),
+
 		// For use in libraries implementing .is()
 		// We use this for POS matching in `select`
-		"needsContext": new RegExp( "^" + whitespace + "*[>+~]|:(even|odd|eq|gt|lt|nth|first|last)(?:\\(" +
-			whitespace + "*((?:-\\d)?\\d*)" + whitespace + "*\\)|)(?=[^-]|$)", "i" )
+		"needsContext": new RegExp( "^" + whitespace +
+			"*[>+~]|:(even|odd|eq|gt|lt|nth|first|last)(?:\\(" + whitespace +
+			"*((?:-\\d)?\\d*)" + whitespace + "*\\)|)(?=[^-]|$)", "i" )
 	},
 
 	rhtml = /HTML$/i,
@@ -2806,18 +2825,21 @@ var i,
 
 	// CSS escapes
 	// http://www.w3.org/TR/CSS21/syndata.html#escaped-characters
-	runescape = new RegExp( "\\\\([\\da-f]{1,6}" + whitespace + "?|(" + whitespace + ")|.)", "ig" ),
-	funescape = function( _, escaped, escapedWhitespace ) {
-		var high = "0x" + escaped - 0x10000;
-		// NaN means non-codepoint
-		// Support: Firefox<24
-		// Workaround erroneous numeric interpretation of +"0x"
-		return high !== high || escapedWhitespace ?
-			escaped :
+	runescape = new RegExp( "\\\\[\\da-fA-F]{1,6}" + whitespace + "?|\\\\([^\\r\\n\\f])", "g" ),
+	funescape = function( escape, nonHex ) {
+		var high = "0x" + escape.slice( 1 ) - 0x10000;
+
+		return nonHex ?
+
+			// Strip the backslash prefix from a non-hex escape sequence
+			nonHex :
+
+			// Replace a hexadecimal escape sequence with the encoded Unicode code point
+			// Support: IE <=11+
+			// For values outside the Basic Multilingual Plane (BMP), manually construct a
+			// surrogate pair
 			high < 0 ?
-				// BMP codepoint
 				String.fromCharCode( high + 0x10000 ) :
-				// Supplemental Plane codepoint (surrogate pair)
 				String.fromCharCode( high >> 10 | 0xD800, high & 0x3FF | 0xDC00 );
 	},
 
@@ -2833,7 +2855,8 @@ var i,
 			}
 
 			// Control characters and (dependent upon position) numbers get escaped as code points
-			return ch.slice( 0, -1 ) + "\\" + ch.charCodeAt( ch.length - 1 ).toString( 16 ) + " ";
+			return ch.slice( 0, -1 ) + "\\" +
+				ch.charCodeAt( ch.length - 1 ).toString( 16 ) + " ";
 		}
 
 		// Other potentially-special ASCII characters get backslash-escaped
@@ -2858,18 +2881,20 @@ var i,
 // Optimize for push.apply( _, NodeList )
 try {
 	push.apply(
-		(arr = slice.call( preferredDoc.childNodes )),
+		( arr = slice.call( preferredDoc.childNodes ) ),
 		preferredDoc.childNodes
 	);
+
 	// Support: Android<4.0
 	// Detect silently failing push.apply
+	// eslint-disable-next-line no-unused-expressions
 	arr[ preferredDoc.childNodes.length ].nodeType;
 } catch ( e ) {
 	push = { apply: arr.length ?
 
 		// Leverage slice if possible
 		function( target, els ) {
-			push_native.apply( target, slice.call(els) );
+			pushNative.apply( target, slice.call( els ) );
 		} :
 
 		// Support: IE<9
@@ -2877,8 +2902,9 @@ try {
 		function( target, els ) {
 			var j = target.length,
 				i = 0;
+
 			// Can't trust NodeList.length
-			while ( (target[j++] = els[i++]) ) {}
+			while ( ( target[ j++ ] = els[ i++ ] ) ) {}
 			target.length = j - 1;
 		}
 	};
@@ -2902,24 +2928,21 @@ function Sizzle( selector, context, results, seed ) {
 
 	// Try to shortcut find operations (as opposed to filters) in HTML documents
 	if ( !seed ) {
-
-		if ( ( context ? context.ownerDocument || context : preferredDoc ) !== document ) {
-			setDocument( context );
-		}
+		setDocument( context );
 		context = context || document;
 
 		if ( documentIsHTML ) {
 
 			// If the selector is sufficiently simple, try using a "get*By*" DOM method
 			// (excepting DocumentFragment context, where the methods don't exist)
-			if ( nodeType !== 11 && (match = rquickExpr.exec( selector )) ) {
+			if ( nodeType !== 11 && ( match = rquickExpr.exec( selector ) ) ) {
 
 				// ID selector
-				if ( (m = match[1]) ) {
+				if ( ( m = match[ 1 ] ) ) {
 
 					// Document context
 					if ( nodeType === 9 ) {
-						if ( (elem = context.getElementById( m )) ) {
+						if ( ( elem = context.getElementById( m ) ) ) {
 
 							// Support: IE, Opera, Webkit
 							// TODO: identify versions
@@ -2938,7 +2961,7 @@ function Sizzle( selector, context, results, seed ) {
 						// Support: IE, Opera, Webkit
 						// TODO: identify versions
 						// getElementById can match elements by name instead of ID
-						if ( newContext && (elem = newContext.getElementById( m )) &&
+						if ( newContext && ( elem = newContext.getElementById( m ) ) &&
 							contains( context, elem ) &&
 							elem.id === m ) {
 
@@ -2948,12 +2971,12 @@ function Sizzle( selector, context, results, seed ) {
 					}
 
 				// Type selector
-				} else if ( match[2] ) {
+				} else if ( match[ 2 ] ) {
 					push.apply( results, context.getElementsByTagName( selector ) );
 					return results;
 
 				// Class selector
-				} else if ( (m = match[3]) && support.getElementsByClassName &&
+				} else if ( ( m = match[ 3 ] ) && support.getElementsByClassName &&
 					context.getElementsByClassName ) {
 
 					push.apply( results, context.getElementsByClassName( m ) );
@@ -2964,11 +2987,11 @@ function Sizzle( selector, context, results, seed ) {
 			// Take advantage of querySelectorAll
 			if ( support.qsa &&
 				!nonnativeSelectorCache[ selector + " " ] &&
-				(!rbuggyQSA || !rbuggyQSA.test( selector )) &&
+				( !rbuggyQSA || !rbuggyQSA.test( selector ) ) &&
 
 				// Support: IE 8 only
 				// Exclude object elements
-				(nodeType !== 1 || context.nodeName.toLowerCase() !== "object") ) {
+				( nodeType !== 1 || context.nodeName.toLowerCase() !== "object" ) ) {
 
 				newSelector = selector;
 				newContext = context;
@@ -2977,27 +3000,36 @@ function Sizzle( selector, context, results, seed ) {
 				// descendant combinators, which is not what we want.
 				// In such cases, we work around the behavior by prefixing every selector in the
 				// list with an ID selector referencing the scope context.
+				// The technique has to be used as well when a leading combinator is used
+				// as such selectors are not recognized by querySelectorAll.
 				// Thanks to Andrew Dupont for this technique.
-				if ( nodeType === 1 && rdescend.test( selector ) ) {
+				if ( nodeType === 1 &&
+					( rdescend.test( selector ) || rcombinators.test( selector ) ) ) {
 
-					// Capture the context ID, setting it first if necessary
-					if ( (nid = context.getAttribute( "id" )) ) {
-						nid = nid.replace( rcssescape, fcssescape );
-					} else {
-						context.setAttribute( "id", (nid = expando) );
+					// Expand context for sibling selectors
+					newContext = rsibling.test( selector ) && testContext( context.parentNode ) ||
+						context;
+
+					// We can use :scope instead of the ID hack if the browser
+					// supports it & if we're not changing the context.
+					if ( newContext !== context || !support.scope ) {
+
+						// Capture the context ID, setting it first if necessary
+						if ( ( nid = context.getAttribute( "id" ) ) ) {
+							nid = nid.replace( rcssescape, fcssescape );
+						} else {
+							context.setAttribute( "id", ( nid = expando ) );
+						}
 					}
 
 					// Prefix every selector in the list
 					groups = tokenize( selector );
 					i = groups.length;
 					while ( i-- ) {
-						groups[i] = "#" + nid + " " + toSelector( groups[i] );
+						groups[ i ] = ( nid ? "#" + nid : ":scope" ) + " " +
+							toSelector( groups[ i ] );
 					}
 					newSelector = groups.join( "," );
-
-					// Expand context for sibling selectors
-					newContext = rsibling.test( selector ) && testContext( context.parentNode ) ||
-						context;
 				}
 
 				try {
@@ -3030,12 +3062,14 @@ function createCache() {
 	var keys = [];
 
 	function cache( key, value ) {
+
 		// Use (key + " ") to avoid collision with native prototype properties (see Issue #157)
 		if ( keys.push( key + " " ) > Expr.cacheLength ) {
+
 			// Only keep the most recent entries
 			delete cache[ keys.shift() ];
 		}
-		return (cache[ key + " " ] = value);
+		return ( cache[ key + " " ] = value );
 	}
 	return cache;
 }
@@ -3054,17 +3088,19 @@ function markFunction( fn ) {
  * @param {Function} fn Passed the created element and returns a boolean result
  */
 function assert( fn ) {
-	var el = document.createElement("fieldset");
+	var el = document.createElement( "fieldset" );
 
 	try {
 		return !!fn( el );
-	} catch (e) {
+	} catch ( e ) {
 		return false;
 	} finally {
+
 		// Remove from its parent by default
 		if ( el.parentNode ) {
 			el.parentNode.removeChild( el );
 		}
+
 		// release memory in IE
 		el = null;
 	}
@@ -3076,11 +3112,11 @@ function assert( fn ) {
  * @param {Function} handler The method that will be applied
  */
 function addHandle( attrs, handler ) {
-	var arr = attrs.split("|"),
+	var arr = attrs.split( "|" ),
 		i = arr.length;
 
 	while ( i-- ) {
-		Expr.attrHandle[ arr[i] ] = handler;
+		Expr.attrHandle[ arr[ i ] ] = handler;
 	}
 }
 
@@ -3102,7 +3138,7 @@ function siblingCheck( a, b ) {
 
 	// Check if b follows a
 	if ( cur ) {
-		while ( (cur = cur.nextSibling) ) {
+		while ( ( cur = cur.nextSibling ) ) {
 			if ( cur === b ) {
 				return -1;
 			}
@@ -3130,7 +3166,7 @@ function createInputPseudo( type ) {
 function createButtonPseudo( type ) {
 	return function( elem ) {
 		var name = elem.nodeName.toLowerCase();
-		return (name === "input" || name === "button") && elem.type === type;
+		return ( name === "input" || name === "button" ) && elem.type === type;
 	};
 }
 
@@ -3173,7 +3209,7 @@ function createDisabledPseudo( disabled ) {
 					// Where there is no isDisabled, check manually
 					/* jshint -W018 */
 					elem.isDisabled !== !disabled &&
-						inDisabledFieldset( elem ) === disabled;
+					inDisabledFieldset( elem ) === disabled;
 			}
 
 			return elem.disabled === disabled;
@@ -3195,21 +3231,21 @@ function createDisabledPseudo( disabled ) {
  * @param {Function} fn
  */
 function createPositionalPseudo( fn ) {
-	return markFunction(function( argument ) {
+	return markFunction( function( argument ) {
 		argument = +argument;
-		return markFunction(function( seed, matches ) {
+		return markFunction( function( seed, matches ) {
 			var j,
 				matchIndexes = fn( [], seed.length, argument ),
 				i = matchIndexes.length;
 
 			// Match elements found at the specified indexes
 			while ( i-- ) {
-				if ( seed[ (j = matchIndexes[i]) ] ) {
-					seed[j] = !(matches[j] = seed[j]);
+				if ( seed[ ( j = matchIndexes[ i ] ) ] ) {
+					seed[ j ] = !( matches[ j ] = seed[ j ] );
 				}
 			}
-		});
-	});
+		} );
+	} );
 }
 
 /**
@@ -3231,7 +3267,7 @@ support = Sizzle.support = {};
  */
 isXML = Sizzle.isXML = function( elem ) {
 	var namespace = elem.namespaceURI,
-		docElem = (elem.ownerDocument || elem).documentElement;
+		docElem = ( elem.ownerDocument || elem ).documentElement;
 
 	// Support: IE <=8
 	// Assume HTML when documentElement doesn't yet exist, such as inside loading iframes
@@ -3249,7 +3285,11 @@ setDocument = Sizzle.setDocument = function( node ) {
 		doc = node ? node.ownerDocument || node : preferredDoc;
 
 	// Return early if doc is invalid or already selected
-	if ( doc === document || doc.nodeType !== 9 || !doc.documentElement ) {
+	// Support: IE 11+, Edge 17 - 18+
+	// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+	// two documents; shallow comparisons work.
+	// eslint-disable-next-line eqeqeq
+	if ( doc == document || doc.nodeType !== 9 || !doc.documentElement ) {
 		return document;
 	}
 
@@ -3258,10 +3298,14 @@ setDocument = Sizzle.setDocument = function( node ) {
 	docElem = document.documentElement;
 	documentIsHTML = !isXML( document );
 
-	// Support: IE 9-11, Edge
+	// Support: IE 9 - 11+, Edge 12 - 18+
 	// Accessing iframe documents after unload throws "permission denied" errors (jQuery #13936)
-	if ( preferredDoc !== document &&
-		(subWindow = document.defaultView) && subWindow.top !== subWindow ) {
+	// Support: IE 11+, Edge 17 - 18+
+	// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+	// two documents; shallow comparisons work.
+	// eslint-disable-next-line eqeqeq
+	if ( preferredDoc != document &&
+		( subWindow = document.defaultView ) && subWindow.top !== subWindow ) {
 
 		// Support: IE 11, Edge
 		if ( subWindow.addEventListener ) {
@@ -3273,25 +3317,36 @@ setDocument = Sizzle.setDocument = function( node ) {
 		}
 	}
 
+	// Support: IE 8 - 11+, Edge 12 - 18+, Chrome <=16 - 25 only, Firefox <=3.6 - 31 only,
+	// Safari 4 - 5 only, Opera <=11.6 - 12.x only
+	// IE/Edge & older browsers don't support the :scope pseudo-class.
+	// Support: Safari 6.0 only
+	// Safari 6.0 supports :scope but it's an alias of :root there.
+	support.scope = assert( function( el ) {
+		docElem.appendChild( el ).appendChild( document.createElement( "div" ) );
+		return typeof el.querySelectorAll !== "undefined" &&
+			!el.querySelectorAll( ":scope fieldset div" ).length;
+	} );
+
 	/* Attributes
 	---------------------------------------------------------------------- */
 
 	// Support: IE<8
 	// Verify that getAttribute really returns attributes and not properties
 	// (excepting IE8 booleans)
-	support.attributes = assert(function( el ) {
+	support.attributes = assert( function( el ) {
 		el.className = "i";
-		return !el.getAttribute("className");
-	});
+		return !el.getAttribute( "className" );
+	} );
 
 	/* getElement(s)By*
 	---------------------------------------------------------------------- */
 
 	// Check if getElementsByTagName("*") returns only elements
-	support.getElementsByTagName = assert(function( el ) {
-		el.appendChild( document.createComment("") );
-		return !el.getElementsByTagName("*").length;
-	});
+	support.getElementsByTagName = assert( function( el ) {
+		el.appendChild( document.createComment( "" ) );
+		return !el.getElementsByTagName( "*" ).length;
+	} );
 
 	// Support: IE<9
 	support.getElementsByClassName = rnative.test( document.getElementsByClassName );
@@ -3300,38 +3355,38 @@ setDocument = Sizzle.setDocument = function( node ) {
 	// Check if getElementById returns elements by name
 	// The broken getElementById methods don't pick up programmatically-set names,
 	// so use a roundabout getElementsByName test
-	support.getById = assert(function( el ) {
+	support.getById = assert( function( el ) {
 		docElem.appendChild( el ).id = expando;
 		return !document.getElementsByName || !document.getElementsByName( expando ).length;
-	});
+	} );
 
 	// ID filter and find
 	if ( support.getById ) {
-		Expr.filter["ID"] = function( id ) {
+		Expr.filter[ "ID" ] = function( id ) {
 			var attrId = id.replace( runescape, funescape );
 			return function( elem ) {
-				return elem.getAttribute("id") === attrId;
+				return elem.getAttribute( "id" ) === attrId;
 			};
 		};
-		Expr.find["ID"] = function( id, context ) {
+		Expr.find[ "ID" ] = function( id, context ) {
 			if ( typeof context.getElementById !== "undefined" && documentIsHTML ) {
 				var elem = context.getElementById( id );
 				return elem ? [ elem ] : [];
 			}
 		};
 	} else {
-		Expr.filter["ID"] =  function( id ) {
+		Expr.filter[ "ID" ] =  function( id ) {
 			var attrId = id.replace( runescape, funescape );
 			return function( elem ) {
 				var node = typeof elem.getAttributeNode !== "undefined" &&
-					elem.getAttributeNode("id");
+					elem.getAttributeNode( "id" );
 				return node && node.value === attrId;
 			};
 		};
 
 		// Support: IE 6 - 7 only
 		// getElementById is not reliable as a find shortcut
-		Expr.find["ID"] = function( id, context ) {
+		Expr.find[ "ID" ] = function( id, context ) {
 			if ( typeof context.getElementById !== "undefined" && documentIsHTML ) {
 				var node, i, elems,
 					elem = context.getElementById( id );
@@ -3339,7 +3394,7 @@ setDocument = Sizzle.setDocument = function( node ) {
 				if ( elem ) {
 
 					// Verify the id attribute
-					node = elem.getAttributeNode("id");
+					node = elem.getAttributeNode( "id" );
 					if ( node && node.value === id ) {
 						return [ elem ];
 					}
@@ -3347,8 +3402,8 @@ setDocument = Sizzle.setDocument = function( node ) {
 					// Fall back on getElementsByName
 					elems = context.getElementsByName( id );
 					i = 0;
-					while ( (elem = elems[i++]) ) {
-						node = elem.getAttributeNode("id");
+					while ( ( elem = elems[ i++ ] ) ) {
+						node = elem.getAttributeNode( "id" );
 						if ( node && node.value === id ) {
 							return [ elem ];
 						}
@@ -3361,7 +3416,7 @@ setDocument = Sizzle.setDocument = function( node ) {
 	}
 
 	// Tag
-	Expr.find["TAG"] = support.getElementsByTagName ?
+	Expr.find[ "TAG" ] = support.getElementsByTagName ?
 		function( tag, context ) {
 			if ( typeof context.getElementsByTagName !== "undefined" ) {
 				return context.getElementsByTagName( tag );
@@ -3376,12 +3431,13 @@ setDocument = Sizzle.setDocument = function( node ) {
 			var elem,
 				tmp = [],
 				i = 0,
+
 				// By happy coincidence, a (broken) gEBTN appears on DocumentFragment nodes too
 				results = context.getElementsByTagName( tag );
 
 			// Filter out possible comments
 			if ( tag === "*" ) {
-				while ( (elem = results[i++]) ) {
+				while ( ( elem = results[ i++ ] ) ) {
 					if ( elem.nodeType === 1 ) {
 						tmp.push( elem );
 					}
@@ -3393,7 +3449,7 @@ setDocument = Sizzle.setDocument = function( node ) {
 		};
 
 	// Class
-	Expr.find["CLASS"] = support.getElementsByClassName && function( className, context ) {
+	Expr.find[ "CLASS" ] = support.getElementsByClassName && function( className, context ) {
 		if ( typeof context.getElementsByClassName !== "undefined" && documentIsHTML ) {
 			return context.getElementsByClassName( className );
 		}
@@ -3414,10 +3470,14 @@ setDocument = Sizzle.setDocument = function( node ) {
 	// See https://bugs.jquery.com/ticket/13378
 	rbuggyQSA = [];
 
-	if ( (support.qsa = rnative.test( document.querySelectorAll )) ) {
+	if ( ( support.qsa = rnative.test( document.querySelectorAll ) ) ) {
+
 		// Build QSA regex
 		// Regex strategy adopted from Diego Perini
-		assert(function( el ) {
+		assert( function( el ) {
+
+			var input;
+
 			// Select is set to empty string on purpose
 			// This is to test IE's treatment of not explicitly
 			// setting a boolean content attribute,
@@ -3431,78 +3491,98 @@ setDocument = Sizzle.setDocument = function( node ) {
 			// Nothing should be selected when empty strings follow ^= or $= or *=
 			// The test attribute must be unknown in Opera but "safe" for WinRT
 			// https://msdn.microsoft.com/en-us/library/ie/hh465388.aspx#attribute_section
-			if ( el.querySelectorAll("[msallowcapture^='']").length ) {
+			if ( el.querySelectorAll( "[msallowcapture^='']" ).length ) {
 				rbuggyQSA.push( "[*^$]=" + whitespace + "*(?:''|\"\")" );
 			}
 
 			// Support: IE8
 			// Boolean attributes and "value" are not treated correctly
-			if ( !el.querySelectorAll("[selected]").length ) {
+			if ( !el.querySelectorAll( "[selected]" ).length ) {
 				rbuggyQSA.push( "\\[" + whitespace + "*(?:value|" + booleans + ")" );
 			}
 
 			// Support: Chrome<29, Android<4.4, Safari<7.0+, iOS<7.0+, PhantomJS<1.9.8+
 			if ( !el.querySelectorAll( "[id~=" + expando + "-]" ).length ) {
-				rbuggyQSA.push("~=");
+				rbuggyQSA.push( "~=" );
+			}
+
+			// Support: IE 11+, Edge 15 - 18+
+			// IE 11/Edge don't find elements on a `[name='']` query in some cases.
+			// Adding a temporary attribute to the document before the selection works
+			// around the issue.
+			// Interestingly, IE 10 & older don't seem to have the issue.
+			input = document.createElement( "input" );
+			input.setAttribute( "name", "" );
+			el.appendChild( input );
+			if ( !el.querySelectorAll( "[name='']" ).length ) {
+				rbuggyQSA.push( "\\[" + whitespace + "*name" + whitespace + "*=" +
+					whitespace + "*(?:''|\"\")" );
 			}
 
 			// Webkit/Opera - :checked should return selected option elements
 			// http://www.w3.org/TR/2011/REC-css3-selectors-20110929/#checked
 			// IE8 throws error here and will not see later tests
-			if ( !el.querySelectorAll(":checked").length ) {
-				rbuggyQSA.push(":checked");
+			if ( !el.querySelectorAll( ":checked" ).length ) {
+				rbuggyQSA.push( ":checked" );
 			}
 
 			// Support: Safari 8+, iOS 8+
 			// https://bugs.webkit.org/show_bug.cgi?id=136851
 			// In-page `selector#id sibling-combinator selector` fails
 			if ( !el.querySelectorAll( "a#" + expando + "+*" ).length ) {
-				rbuggyQSA.push(".#.+[+~]");
+				rbuggyQSA.push( ".#.+[+~]" );
 			}
-		});
 
-		assert(function( el ) {
+			// Support: Firefox <=3.6 - 5 only
+			// Old Firefox doesn't throw on a badly-escaped identifier.
+			el.querySelectorAll( "\\\f" );
+			rbuggyQSA.push( "[\\r\\n\\f]" );
+		} );
+
+		assert( function( el ) {
 			el.innerHTML = "<a href='' disabled='disabled'></a>" +
 				"<select disabled='disabled'><option/></select>";
 
 			// Support: Windows 8 Native Apps
 			// The type and name attributes are restricted during .innerHTML assignment
-			var input = document.createElement("input");
+			var input = document.createElement( "input" );
 			input.setAttribute( "type", "hidden" );
 			el.appendChild( input ).setAttribute( "name", "D" );
 
 			// Support: IE8
 			// Enforce case-sensitivity of name attribute
-			if ( el.querySelectorAll("[name=d]").length ) {
+			if ( el.querySelectorAll( "[name=d]" ).length ) {
 				rbuggyQSA.push( "name" + whitespace + "*[*^$|!~]?=" );
 			}
 
 			// FF 3.5 - :enabled/:disabled and hidden elements (hidden elements are still enabled)
 			// IE8 throws error here and will not see later tests
-			if ( el.querySelectorAll(":enabled").length !== 2 ) {
+			if ( el.querySelectorAll( ":enabled" ).length !== 2 ) {
 				rbuggyQSA.push( ":enabled", ":disabled" );
 			}
 
 			// Support: IE9-11+
 			// IE's :disabled selector does not pick up the children of disabled fieldsets
 			docElem.appendChild( el ).disabled = true;
-			if ( el.querySelectorAll(":disabled").length !== 2 ) {
+			if ( el.querySelectorAll( ":disabled" ).length !== 2 ) {
 				rbuggyQSA.push( ":enabled", ":disabled" );
 			}
 
+			// Support: Opera 10 - 11 only
 			// Opera 10-11 does not throw on post-comma invalid pseudos
-			el.querySelectorAll("*,:x");
-			rbuggyQSA.push(",.*:");
-		});
+			el.querySelectorAll( "*,:x" );
+			rbuggyQSA.push( ",.*:" );
+		} );
 	}
 
-	if ( (support.matchesSelector = rnative.test( (matches = docElem.matches ||
+	if ( ( support.matchesSelector = rnative.test( ( matches = docElem.matches ||
 		docElem.webkitMatchesSelector ||
 		docElem.mozMatchesSelector ||
 		docElem.oMatchesSelector ||
-		docElem.msMatchesSelector) )) ) {
+		docElem.msMatchesSelector ) ) ) ) {
 
-		assert(function( el ) {
+		assert( function( el ) {
+
 			// Check to see if it's possible to do matchesSelector
 			// on a disconnected node (IE 9)
 			support.disconnectedMatch = matches.call( el, "*" );
@@ -3511,11 +3591,11 @@ setDocument = Sizzle.setDocument = function( node ) {
 			// Gecko does not error, returns false instead
 			matches.call( el, "[s!='']:x" );
 			rbuggyMatches.push( "!=", pseudos );
-		});
+		} );
 	}
 
-	rbuggyQSA = rbuggyQSA.length && new RegExp( rbuggyQSA.join("|") );
-	rbuggyMatches = rbuggyMatches.length && new RegExp( rbuggyMatches.join("|") );
+	rbuggyQSA = rbuggyQSA.length && new RegExp( rbuggyQSA.join( "|" ) );
+	rbuggyMatches = rbuggyMatches.length && new RegExp( rbuggyMatches.join( "|" ) );
 
 	/* Contains
 	---------------------------------------------------------------------- */
@@ -3532,11 +3612,11 @@ setDocument = Sizzle.setDocument = function( node ) {
 				adown.contains ?
 					adown.contains( bup ) :
 					a.compareDocumentPosition && a.compareDocumentPosition( bup ) & 16
-			));
+			) );
 		} :
 		function( a, b ) {
 			if ( b ) {
-				while ( (b = b.parentNode) ) {
+				while ( ( b = b.parentNode ) ) {
 					if ( b === a ) {
 						return true;
 					}
@@ -3565,7 +3645,11 @@ setDocument = Sizzle.setDocument = function( node ) {
 		}
 
 		// Calculate position if both inputs belong to the same document
-		compare = ( a.ownerDocument || a ) === ( b.ownerDocument || b ) ?
+		// Support: IE 11+, Edge 17 - 18+
+		// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+		// two documents; shallow comparisons work.
+		// eslint-disable-next-line eqeqeq
+		compare = ( a.ownerDocument || a ) == ( b.ownerDocument || b ) ?
 			a.compareDocumentPosition( b ) :
 
 			// Otherwise we know they are disconnected
@@ -3573,13 +3657,24 @@ setDocument = Sizzle.setDocument = function( node ) {
 
 		// Disconnected nodes
 		if ( compare & 1 ||
-			(!support.sortDetached && b.compareDocumentPosition( a ) === compare) ) {
+			( !support.sortDetached && b.compareDocumentPosition( a ) === compare ) ) {
 
 			// Choose the first element that is related to our preferred document
-			if ( a === document || a.ownerDocument === preferredDoc && contains(preferredDoc, a) ) {
+			// Support: IE 11+, Edge 17 - 18+
+			// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+			// two documents; shallow comparisons work.
+			// eslint-disable-next-line eqeqeq
+			if ( a == document || a.ownerDocument == preferredDoc &&
+				contains( preferredDoc, a ) ) {
 				return -1;
 			}
-			if ( b === document || b.ownerDocument === preferredDoc && contains(preferredDoc, b) ) {
+
+			// Support: IE 11+, Edge 17 - 18+
+			// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+			// two documents; shallow comparisons work.
+			// eslint-disable-next-line eqeqeq
+			if ( b == document || b.ownerDocument == preferredDoc &&
+				contains( preferredDoc, b ) ) {
 				return 1;
 			}
 
@@ -3592,6 +3687,7 @@ setDocument = Sizzle.setDocument = function( node ) {
 		return compare & 4 ? -1 : 1;
 	} :
 	function( a, b ) {
+
 		// Exit early if the nodes are identical
 		if ( a === b ) {
 			hasDuplicate = true;
@@ -3607,8 +3703,14 @@ setDocument = Sizzle.setDocument = function( node ) {
 
 		// Parentless nodes are either documents or disconnected
 		if ( !aup || !bup ) {
-			return a === document ? -1 :
-				b === document ? 1 :
+
+			// Support: IE 11+, Edge 17 - 18+
+			// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+			// two documents; shallow comparisons work.
+			/* eslint-disable eqeqeq */
+			return a == document ? -1 :
+				b == document ? 1 :
+				/* eslint-enable eqeqeq */
 				aup ? -1 :
 				bup ? 1 :
 				sortInput ?
@@ -3622,26 +3724,32 @@ setDocument = Sizzle.setDocument = function( node ) {
 
 		// Otherwise we need full lists of their ancestors for comparison
 		cur = a;
-		while ( (cur = cur.parentNode) ) {
+		while ( ( cur = cur.parentNode ) ) {
 			ap.unshift( cur );
 		}
 		cur = b;
-		while ( (cur = cur.parentNode) ) {
+		while ( ( cur = cur.parentNode ) ) {
 			bp.unshift( cur );
 		}
 
 		// Walk down the tree looking for a discrepancy
-		while ( ap[i] === bp[i] ) {
+		while ( ap[ i ] === bp[ i ] ) {
 			i++;
 		}
 
 		return i ?
+
 			// Do a sibling check if the nodes have a common ancestor
-			siblingCheck( ap[i], bp[i] ) :
+			siblingCheck( ap[ i ], bp[ i ] ) :
 
 			// Otherwise nodes in our document sort first
-			ap[i] === preferredDoc ? -1 :
-			bp[i] === preferredDoc ? 1 :
+			// Support: IE 11+, Edge 17 - 18+
+			// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+			// two documents; shallow comparisons work.
+			/* eslint-disable eqeqeq */
+			ap[ i ] == preferredDoc ? -1 :
+			bp[ i ] == preferredDoc ? 1 :
+			/* eslint-enable eqeqeq */
 			0;
 	};
 
@@ -3653,10 +3761,7 @@ Sizzle.matches = function( expr, elements ) {
 };
 
 Sizzle.matchesSelector = function( elem, expr ) {
-	// Set document vars if needed
-	if ( ( elem.ownerDocument || elem ) !== document ) {
-		setDocument( elem );
-	}
+	setDocument( elem );
 
 	if ( support.matchesSelector && documentIsHTML &&
 		!nonnativeSelectorCache[ expr + " " ] &&
@@ -3668,12 +3773,13 @@ Sizzle.matchesSelector = function( elem, expr ) {
 
 			// IE 9's matchesSelector returns false on disconnected nodes
 			if ( ret || support.disconnectedMatch ||
-					// As well, disconnected nodes are said to be in a document
-					// fragment in IE 9
-					elem.document && elem.document.nodeType !== 11 ) {
+
+				// As well, disconnected nodes are said to be in a document
+				// fragment in IE 9
+				elem.document && elem.document.nodeType !== 11 ) {
 				return ret;
 			}
-		} catch (e) {
+		} catch ( e ) {
 			nonnativeSelectorCache( expr, true );
 		}
 	}
@@ -3682,20 +3788,31 @@ Sizzle.matchesSelector = function( elem, expr ) {
 };
 
 Sizzle.contains = function( context, elem ) {
+
 	// Set document vars if needed
-	if ( ( context.ownerDocument || context ) !== document ) {
+	// Support: IE 11+, Edge 17 - 18+
+	// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+	// two documents; shallow comparisons work.
+	// eslint-disable-next-line eqeqeq
+	if ( ( context.ownerDocument || context ) != document ) {
 		setDocument( context );
 	}
 	return contains( context, elem );
 };
 
 Sizzle.attr = function( elem, name ) {
+
 	// Set document vars if needed
-	if ( ( elem.ownerDocument || elem ) !== document ) {
+	// Support: IE 11+, Edge 17 - 18+
+	// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+	// two documents; shallow comparisons work.
+	// eslint-disable-next-line eqeqeq
+	if ( ( elem.ownerDocument || elem ) != document ) {
 		setDocument( elem );
 	}
 
 	var fn = Expr.attrHandle[ name.toLowerCase() ],
+
 		// Don't get fooled by Object.prototype properties (jQuery #13807)
 		val = fn && hasOwn.call( Expr.attrHandle, name.toLowerCase() ) ?
 			fn( elem, name, !documentIsHTML ) :
@@ -3705,13 +3822,13 @@ Sizzle.attr = function( elem, name ) {
 		val :
 		support.attributes || !documentIsHTML ?
 			elem.getAttribute( name ) :
-			(val = elem.getAttributeNode(name)) && val.specified ?
+			( val = elem.getAttributeNode( name ) ) && val.specified ?
 				val.value :
 				null;
 };
 
 Sizzle.escape = function( sel ) {
-	return (sel + "").replace( rcssescape, fcssescape );
+	return ( sel + "" ).replace( rcssescape, fcssescape );
 };
 
 Sizzle.error = function( msg ) {
@@ -3734,7 +3851,7 @@ Sizzle.uniqueSort = function( results ) {
 	results.sort( sortOrder );
 
 	if ( hasDuplicate ) {
-		while ( (elem = results[i++]) ) {
+		while ( ( elem = results[ i++ ] ) ) {
 			if ( elem === results[ i ] ) {
 				j = duplicates.push( i );
 			}
@@ -3762,17 +3879,21 @@ getText = Sizzle.getText = function( elem ) {
 		nodeType = elem.nodeType;
 
 	if ( !nodeType ) {
+
 		// If no nodeType, this is expected to be an array
-		while ( (node = elem[i++]) ) {
+		while ( ( node = elem[ i++ ] ) ) {
+
 			// Do not traverse comment nodes
 			ret += getText( node );
 		}
 	} else if ( nodeType === 1 || nodeType === 9 || nodeType === 11 ) {
+
 		// Use textContent for elements
 		// innerText usage removed for consistency of new lines (jQuery #11153)
 		if ( typeof elem.textContent === "string" ) {
 			return elem.textContent;
 		} else {
+
 			// Traverse its children
 			for ( elem = elem.firstChild; elem; elem = elem.nextSibling ) {
 				ret += getText( elem );
@@ -3781,6 +3902,7 @@ getText = Sizzle.getText = function( elem ) {
 	} else if ( nodeType === 3 || nodeType === 4 ) {
 		return elem.nodeValue;
 	}
+
 	// Do not include comment or processing instruction nodes
 
 	return ret;
@@ -3808,19 +3930,21 @@ Expr = Sizzle.selectors = {
 
 	preFilter: {
 		"ATTR": function( match ) {
-			match[1] = match[1].replace( runescape, funescape );
+			match[ 1 ] = match[ 1 ].replace( runescape, funescape );
 
 			// Move the given value to match[3] whether quoted or unquoted
-			match[3] = ( match[3] || match[4] || match[5] || "" ).replace( runescape, funescape );
+			match[ 3 ] = ( match[ 3 ] || match[ 4 ] ||
+				match[ 5 ] || "" ).replace( runescape, funescape );
 
-			if ( match[2] === "~=" ) {
-				match[3] = " " + match[3] + " ";
+			if ( match[ 2 ] === "~=" ) {
+				match[ 3 ] = " " + match[ 3 ] + " ";
 			}
 
 			return match.slice( 0, 4 );
 		},
 
 		"CHILD": function( match ) {
+
 			/* matches from matchExpr["CHILD"]
 				1 type (only|nth|...)
 				2 what (child|of-type)
@@ -3831,22 +3955,25 @@ Expr = Sizzle.selectors = {
 				7 sign of y-component
 				8 y of y-component
 			*/
-			match[1] = match[1].toLowerCase();
+			match[ 1 ] = match[ 1 ].toLowerCase();
 
-			if ( match[1].slice( 0, 3 ) === "nth" ) {
+			if ( match[ 1 ].slice( 0, 3 ) === "nth" ) {
+
 				// nth-* requires argument
-				if ( !match[3] ) {
-					Sizzle.error( match[0] );
+				if ( !match[ 3 ] ) {
+					Sizzle.error( match[ 0 ] );
 				}
 
 				// numeric x and y parameters for Expr.filter.CHILD
 				// remember that false/true cast respectively to 0/1
-				match[4] = +( match[4] ? match[5] + (match[6] || 1) : 2 * ( match[3] === "even" || match[3] === "odd" ) );
-				match[5] = +( ( match[7] + match[8] ) || match[3] === "odd" );
+				match[ 4 ] = +( match[ 4 ] ?
+					match[ 5 ] + ( match[ 6 ] || 1 ) :
+					2 * ( match[ 3 ] === "even" || match[ 3 ] === "odd" ) );
+				match[ 5 ] = +( ( match[ 7 ] + match[ 8 ] ) || match[ 3 ] === "odd" );
 
-			// other types prohibit arguments
-			} else if ( match[3] ) {
-				Sizzle.error( match[0] );
+				// other types prohibit arguments
+			} else if ( match[ 3 ] ) {
+				Sizzle.error( match[ 0 ] );
 			}
 
 			return match;
@@ -3854,26 +3981,28 @@ Expr = Sizzle.selectors = {
 
 		"PSEUDO": function( match ) {
 			var excess,
-				unquoted = !match[6] && match[2];
+				unquoted = !match[ 6 ] && match[ 2 ];
 
-			if ( matchExpr["CHILD"].test( match[0] ) ) {
+			if ( matchExpr[ "CHILD" ].test( match[ 0 ] ) ) {
 				return null;
 			}
 
 			// Accept quoted arguments as-is
-			if ( match[3] ) {
-				match[2] = match[4] || match[5] || "";
+			if ( match[ 3 ] ) {
+				match[ 2 ] = match[ 4 ] || match[ 5 ] || "";
 
 			// Strip excess characters from unquoted arguments
 			} else if ( unquoted && rpseudo.test( unquoted ) &&
+
 				// Get excess from tokenize (recursively)
-				(excess = tokenize( unquoted, true )) &&
+				( excess = tokenize( unquoted, true ) ) &&
+
 				// advance to the next closing parenthesis
-				(excess = unquoted.indexOf( ")", unquoted.length - excess ) - unquoted.length) ) {
+				( excess = unquoted.indexOf( ")", unquoted.length - excess ) - unquoted.length ) ) {
 
 				// excess is a negative index
-				match[0] = match[0].slice( 0, excess );
-				match[2] = unquoted.slice( 0, excess );
+				match[ 0 ] = match[ 0 ].slice( 0, excess );
+				match[ 2 ] = unquoted.slice( 0, excess );
 			}
 
 			// Return only captures needed by the pseudo filter method (type and argument)
@@ -3886,7 +4015,9 @@ Expr = Sizzle.selectors = {
 		"TAG": function( nodeNameSelector ) {
 			var nodeName = nodeNameSelector.replace( runescape, funescape ).toLowerCase();
 			return nodeNameSelector === "*" ?
-				function() { return true; } :
+				function() {
+					return true;
+				} :
 				function( elem ) {
 					return elem.nodeName && elem.nodeName.toLowerCase() === nodeName;
 				};
@@ -3896,10 +4027,16 @@ Expr = Sizzle.selectors = {
 			var pattern = classCache[ className + " " ];
 
 			return pattern ||
-				(pattern = new RegExp( "(^|" + whitespace + ")" + className + "(" + whitespace + "|$)" )) &&
-				classCache( className, function( elem ) {
-					return pattern.test( typeof elem.className === "string" && elem.className || typeof elem.getAttribute !== "undefined" && elem.getAttribute("class") || "" );
-				});
+				( pattern = new RegExp( "(^|" + whitespace +
+					")" + className + "(" + whitespace + "|$)" ) ) && classCache(
+						className, function( elem ) {
+							return pattern.test(
+								typeof elem.className === "string" && elem.className ||
+								typeof elem.getAttribute !== "undefined" &&
+									elem.getAttribute( "class" ) ||
+								""
+							);
+				} );
 		},
 
 		"ATTR": function( name, operator, check ) {
@@ -3915,6 +4052,8 @@ Expr = Sizzle.selectors = {
 
 				result += "";
 
+				/* eslint-disable max-len */
+
 				return operator === "=" ? result === check :
 					operator === "!=" ? result !== check :
 					operator === "^=" ? check && result.indexOf( check ) === 0 :
@@ -3923,10 +4062,12 @@ Expr = Sizzle.selectors = {
 					operator === "~=" ? ( " " + result.replace( rwhitespace, " " ) + " " ).indexOf( check ) > -1 :
 					operator === "|=" ? result === check || result.slice( 0, check.length + 1 ) === check + "-" :
 					false;
+				/* eslint-enable max-len */
+
 			};
 		},
 
-		"CHILD": function( type, what, argument, first, last ) {
+		"CHILD": function( type, what, _argument, first, last ) {
 			var simple = type.slice( 0, 3 ) !== "nth",
 				forward = type.slice( -4 ) !== "last",
 				ofType = what === "of-type";
@@ -3938,7 +4079,7 @@ Expr = Sizzle.selectors = {
 					return !!elem.parentNode;
 				} :
 
-				function( elem, context, xml ) {
+				function( elem, _context, xml ) {
 					var cache, uniqueCache, outerCache, node, nodeIndex, start,
 						dir = simple !== forward ? "nextSibling" : "previousSibling",
 						parent = elem.parentNode,
@@ -3952,7 +4093,7 @@ Expr = Sizzle.selectors = {
 						if ( simple ) {
 							while ( dir ) {
 								node = elem;
-								while ( (node = node[ dir ]) ) {
+								while ( ( node = node[ dir ] ) ) {
 									if ( ofType ?
 										node.nodeName.toLowerCase() === name :
 										node.nodeType === 1 ) {
@@ -3960,6 +4101,7 @@ Expr = Sizzle.selectors = {
 										return false;
 									}
 								}
+
 								// Reverse direction for :only-* (if we haven't yet done so)
 								start = dir = type === "only" && !start && "nextSibling";
 							}
@@ -3975,22 +4117,22 @@ Expr = Sizzle.selectors = {
 
 							// ...in a gzip-friendly way
 							node = parent;
-							outerCache = node[ expando ] || (node[ expando ] = {});
+							outerCache = node[ expando ] || ( node[ expando ] = {} );
 
 							// Support: IE <9 only
 							// Defend against cloned attroperties (jQuery gh-1709)
 							uniqueCache = outerCache[ node.uniqueID ] ||
-								(outerCache[ node.uniqueID ] = {});
+								( outerCache[ node.uniqueID ] = {} );
 
 							cache = uniqueCache[ type ] || [];
 							nodeIndex = cache[ 0 ] === dirruns && cache[ 1 ];
 							diff = nodeIndex && cache[ 2 ];
 							node = nodeIndex && parent.childNodes[ nodeIndex ];
 
-							while ( (node = ++nodeIndex && node && node[ dir ] ||
+							while ( ( node = ++nodeIndex && node && node[ dir ] ||
 
 								// Fallback to seeking `elem` from the start
-								(diff = nodeIndex = 0) || start.pop()) ) {
+								( diff = nodeIndex = 0 ) || start.pop() ) ) {
 
 								// When found, cache indexes on `parent` and break
 								if ( node.nodeType === 1 && ++diff && node === elem ) {
@@ -4000,16 +4142,18 @@ Expr = Sizzle.selectors = {
 							}
 
 						} else {
+
 							// Use previously-cached element index if available
 							if ( useCache ) {
+
 								// ...in a gzip-friendly way
 								node = elem;
-								outerCache = node[ expando ] || (node[ expando ] = {});
+								outerCache = node[ expando ] || ( node[ expando ] = {} );
 
 								// Support: IE <9 only
 								// Defend against cloned attroperties (jQuery gh-1709)
 								uniqueCache = outerCache[ node.uniqueID ] ||
-									(outerCache[ node.uniqueID ] = {});
+									( outerCache[ node.uniqueID ] = {} );
 
 								cache = uniqueCache[ type ] || [];
 								nodeIndex = cache[ 0 ] === dirruns && cache[ 1 ];
@@ -4019,9 +4163,10 @@ Expr = Sizzle.selectors = {
 							// xml :nth-child(...)
 							// or :nth-last-child(...) or :nth(-last)?-of-type(...)
 							if ( diff === false ) {
+
 								// Use the same loop as above to seek `elem` from the start
-								while ( (node = ++nodeIndex && node && node[ dir ] ||
-									(diff = nodeIndex = 0) || start.pop()) ) {
+								while ( ( node = ++nodeIndex && node && node[ dir ] ||
+									( diff = nodeIndex = 0 ) || start.pop() ) ) {
 
 									if ( ( ofType ?
 										node.nodeName.toLowerCase() === name :
@@ -4030,12 +4175,13 @@ Expr = Sizzle.selectors = {
 
 										// Cache the index of each encountered element
 										if ( useCache ) {
-											outerCache = node[ expando ] || (node[ expando ] = {});
+											outerCache = node[ expando ] ||
+												( node[ expando ] = {} );
 
 											// Support: IE <9 only
 											// Defend against cloned attroperties (jQuery gh-1709)
 											uniqueCache = outerCache[ node.uniqueID ] ||
-												(outerCache[ node.uniqueID ] = {});
+												( outerCache[ node.uniqueID ] = {} );
 
 											uniqueCache[ type ] = [ dirruns, diff ];
 										}
@@ -4056,6 +4202,7 @@ Expr = Sizzle.selectors = {
 		},
 
 		"PSEUDO": function( pseudo, argument ) {
+
 			// pseudo-class names are case-insensitive
 			// http://www.w3.org/TR/selectors/#pseudo-classes
 			// Prioritize by case sensitivity in case custom pseudos are added with uppercase letters
@@ -4075,15 +4222,15 @@ Expr = Sizzle.selectors = {
 			if ( fn.length > 1 ) {
 				args = [ pseudo, pseudo, "", argument ];
 				return Expr.setFilters.hasOwnProperty( pseudo.toLowerCase() ) ?
-					markFunction(function( seed, matches ) {
+					markFunction( function( seed, matches ) {
 						var idx,
 							matched = fn( seed, argument ),
 							i = matched.length;
 						while ( i-- ) {
-							idx = indexOf( seed, matched[i] );
-							seed[ idx ] = !( matches[ idx ] = matched[i] );
+							idx = indexOf( seed, matched[ i ] );
+							seed[ idx ] = !( matches[ idx ] = matched[ i ] );
 						}
-					}) :
+					} ) :
 					function( elem ) {
 						return fn( elem, 0, args );
 					};
@@ -4094,8 +4241,10 @@ Expr = Sizzle.selectors = {
 	},
 
 	pseudos: {
+
 		// Potentially complex pseudos
-		"not": markFunction(function( selector ) {
+		"not": markFunction( function( selector ) {
+
 			// Trim the selector passed to compile
 			// to avoid treating leading and trailing
 			// spaces as combinators
@@ -4104,39 +4253,40 @@ Expr = Sizzle.selectors = {
 				matcher = compile( selector.replace( rtrim, "$1" ) );
 
 			return matcher[ expando ] ?
-				markFunction(function( seed, matches, context, xml ) {
+				markFunction( function( seed, matches, _context, xml ) {
 					var elem,
 						unmatched = matcher( seed, null, xml, [] ),
 						i = seed.length;
 
 					// Match elements unmatched by `matcher`
 					while ( i-- ) {
-						if ( (elem = unmatched[i]) ) {
-							seed[i] = !(matches[i] = elem);
+						if ( ( elem = unmatched[ i ] ) ) {
+							seed[ i ] = !( matches[ i ] = elem );
 						}
 					}
-				}) :
-				function( elem, context, xml ) {
-					input[0] = elem;
+				} ) :
+				function( elem, _context, xml ) {
+					input[ 0 ] = elem;
 					matcher( input, null, xml, results );
+
 					// Don't keep the element (issue #299)
-					input[0] = null;
+					input[ 0 ] = null;
 					return !results.pop();
 				};
-		}),
+		} ),
 
-		"has": markFunction(function( selector ) {
+		"has": markFunction( function( selector ) {
 			return function( elem ) {
 				return Sizzle( selector, elem ).length > 0;
 			};
-		}),
+		} ),
 
-		"contains": markFunction(function( text ) {
+		"contains": markFunction( function( text ) {
 			text = text.replace( runescape, funescape );
 			return function( elem ) {
 				return ( elem.textContent || getText( elem ) ).indexOf( text ) > -1;
 			};
-		}),
+		} ),
 
 		// "Whether an element is represented by a :lang() selector
 		// is based solely on the element's language value
@@ -4146,25 +4296,26 @@ Expr = Sizzle.selectors = {
 		// The identifier C does not have to be a valid language name."
 		// http://www.w3.org/TR/selectors/#lang-pseudo
 		"lang": markFunction( function( lang ) {
+
 			// lang value must be a valid identifier
-			if ( !ridentifier.test(lang || "") ) {
+			if ( !ridentifier.test( lang || "" ) ) {
 				Sizzle.error( "unsupported lang: " + lang );
 			}
 			lang = lang.replace( runescape, funescape ).toLowerCase();
 			return function( elem ) {
 				var elemLang;
 				do {
-					if ( (elemLang = documentIsHTML ?
+					if ( ( elemLang = documentIsHTML ?
 						elem.lang :
-						elem.getAttribute("xml:lang") || elem.getAttribute("lang")) ) {
+						elem.getAttribute( "xml:lang" ) || elem.getAttribute( "lang" ) ) ) {
 
 						elemLang = elemLang.toLowerCase();
 						return elemLang === lang || elemLang.indexOf( lang + "-" ) === 0;
 					}
-				} while ( (elem = elem.parentNode) && elem.nodeType === 1 );
+				} while ( ( elem = elem.parentNode ) && elem.nodeType === 1 );
 				return false;
 			};
-		}),
+		} ),
 
 		// Miscellaneous
 		"target": function( elem ) {
@@ -4177,7 +4328,9 @@ Expr = Sizzle.selectors = {
 		},
 
 		"focus": function( elem ) {
-			return elem === document.activeElement && (!document.hasFocus || document.hasFocus()) && !!(elem.type || elem.href || ~elem.tabIndex);
+			return elem === document.activeElement &&
+				( !document.hasFocus || document.hasFocus() ) &&
+				!!( elem.type || elem.href || ~elem.tabIndex );
 		},
 
 		// Boolean properties
@@ -4185,16 +4338,20 @@ Expr = Sizzle.selectors = {
 		"disabled": createDisabledPseudo( true ),
 
 		"checked": function( elem ) {
+
 			// In CSS3, :checked should return both checked and selected elements
 			// http://www.w3.org/TR/2011/REC-css3-selectors-20110929/#checked
 			var nodeName = elem.nodeName.toLowerCase();
-			return (nodeName === "input" && !!elem.checked) || (nodeName === "option" && !!elem.selected);
+			return ( nodeName === "input" && !!elem.checked ) ||
+				( nodeName === "option" && !!elem.selected );
 		},
 
 		"selected": function( elem ) {
+
 			// Accessing this property makes selected-by-default
 			// options in Safari work properly
 			if ( elem.parentNode ) {
+				// eslint-disable-next-line no-unused-expressions
 				elem.parentNode.selectedIndex;
 			}
 
@@ -4203,6 +4360,7 @@ Expr = Sizzle.selectors = {
 
 		// Contents
 		"empty": function( elem ) {
+
 			// http://www.w3.org/TR/selectors/#empty-pseudo
 			// :empty is negated by element (1) or content nodes (text: 3; cdata: 4; entity ref: 5),
 			//   but not by others (comment: 8; processing instruction: 7; etc.)
@@ -4216,7 +4374,7 @@ Expr = Sizzle.selectors = {
 		},
 
 		"parent": function( elem ) {
-			return !Expr.pseudos["empty"]( elem );
+			return !Expr.pseudos[ "empty" ]( elem );
 		},
 
 		// Element/input types
@@ -4240,39 +4398,40 @@ Expr = Sizzle.selectors = {
 
 				// Support: IE<8
 				// New HTML5 attribute values (e.g., "search") appear with elem.type === "text"
-				( (attr = elem.getAttribute("type")) == null || attr.toLowerCase() === "text" );
+				( ( attr = elem.getAttribute( "type" ) ) == null ||
+					attr.toLowerCase() === "text" );
 		},
 
 		// Position-in-collection
-		"first": createPositionalPseudo(function() {
+		"first": createPositionalPseudo( function() {
 			return [ 0 ];
-		}),
+		} ),
 
-		"last": createPositionalPseudo(function( matchIndexes, length ) {
+		"last": createPositionalPseudo( function( _matchIndexes, length ) {
 			return [ length - 1 ];
-		}),
+		} ),
 
-		"eq": createPositionalPseudo(function( matchIndexes, length, argument ) {
+		"eq": createPositionalPseudo( function( _matchIndexes, length, argument ) {
 			return [ argument < 0 ? argument + length : argument ];
-		}),
+		} ),
 
-		"even": createPositionalPseudo(function( matchIndexes, length ) {
+		"even": createPositionalPseudo( function( matchIndexes, length ) {
 			var i = 0;
 			for ( ; i < length; i += 2 ) {
 				matchIndexes.push( i );
 			}
 			return matchIndexes;
-		}),
+		} ),
 
-		"odd": createPositionalPseudo(function( matchIndexes, length ) {
+		"odd": createPositionalPseudo( function( matchIndexes, length ) {
 			var i = 1;
 			for ( ; i < length; i += 2 ) {
 				matchIndexes.push( i );
 			}
 			return matchIndexes;
-		}),
+		} ),
 
-		"lt": createPositionalPseudo(function( matchIndexes, length, argument ) {
+		"lt": createPositionalPseudo( function( matchIndexes, length, argument ) {
 			var i = argument < 0 ?
 				argument + length :
 				argument > length ?
@@ -4282,19 +4441,19 @@ Expr = Sizzle.selectors = {
 				matchIndexes.push( i );
 			}
 			return matchIndexes;
-		}),
+		} ),
 
-		"gt": createPositionalPseudo(function( matchIndexes, length, argument ) {
+		"gt": createPositionalPseudo( function( matchIndexes, length, argument ) {
 			var i = argument < 0 ? argument + length : argument;
 			for ( ; ++i < length; ) {
 				matchIndexes.push( i );
 			}
 			return matchIndexes;
-		})
+		} )
 	}
 };
 
-Expr.pseudos["nth"] = Expr.pseudos["eq"];
+Expr.pseudos[ "nth" ] = Expr.pseudos[ "eq" ];
 
 // Add button/input type pseudos
 for ( i in { radio: true, checkbox: true, file: true, password: true, image: true } ) {
@@ -4325,37 +4484,39 @@ tokenize = Sizzle.tokenize = function( selector, parseOnly ) {
 	while ( soFar ) {
 
 		// Comma and first run
-		if ( !matched || (match = rcomma.exec( soFar )) ) {
+		if ( !matched || ( match = rcomma.exec( soFar ) ) ) {
 			if ( match ) {
+
 				// Don't consume trailing commas as valid
-				soFar = soFar.slice( match[0].length ) || soFar;
+				soFar = soFar.slice( match[ 0 ].length ) || soFar;
 			}
-			groups.push( (tokens = []) );
+			groups.push( ( tokens = [] ) );
 		}
 
 		matched = false;
 
 		// Combinators
-		if ( (match = rcombinators.exec( soFar )) ) {
+		if ( ( match = rcombinators.exec( soFar ) ) ) {
 			matched = match.shift();
-			tokens.push({
+			tokens.push( {
 				value: matched,
+
 				// Cast descendant combinators to space
-				type: match[0].replace( rtrim, " " )
-			});
+				type: match[ 0 ].replace( rtrim, " " )
+			} );
 			soFar = soFar.slice( matched.length );
 		}
 
 		// Filters
 		for ( type in Expr.filter ) {
-			if ( (match = matchExpr[ type ].exec( soFar )) && (!preFilters[ type ] ||
-				(match = preFilters[ type ]( match ))) ) {
+			if ( ( match = matchExpr[ type ].exec( soFar ) ) && ( !preFilters[ type ] ||
+				( match = preFilters[ type ]( match ) ) ) ) {
 				matched = match.shift();
-				tokens.push({
+				tokens.push( {
 					value: matched,
 					type: type,
 					matches: match
-				});
+				} );
 				soFar = soFar.slice( matched.length );
 			}
 		}
@@ -4372,6 +4533,7 @@ tokenize = Sizzle.tokenize = function( selector, parseOnly ) {
 		soFar.length :
 		soFar ?
 			Sizzle.error( selector ) :
+
 			// Cache the tokens
 			tokenCache( selector, groups ).slice( 0 );
 };
@@ -4381,7 +4543,7 @@ function toSelector( tokens ) {
 		len = tokens.length,
 		selector = "";
 	for ( ; i < len; i++ ) {
-		selector += tokens[i].value;
+		selector += tokens[ i ].value;
 	}
 	return selector;
 }
@@ -4394,9 +4556,10 @@ function addCombinator( matcher, combinator, base ) {
 		doneName = done++;
 
 	return combinator.first ?
+
 		// Check against closest ancestor/preceding element
 		function( elem, context, xml ) {
-			while ( (elem = elem[ dir ]) ) {
+			while ( ( elem = elem[ dir ] ) ) {
 				if ( elem.nodeType === 1 || checkNonElements ) {
 					return matcher( elem, context, xml );
 				}
@@ -4411,7 +4574,7 @@ function addCombinator( matcher, combinator, base ) {
 
 			// We can't set arbitrary data on XML nodes, so they don't benefit from combinator caching
 			if ( xml ) {
-				while ( (elem = elem[ dir ]) ) {
+				while ( ( elem = elem[ dir ] ) ) {
 					if ( elem.nodeType === 1 || checkNonElements ) {
 						if ( matcher( elem, context, xml ) ) {
 							return true;
@@ -4419,27 +4582,29 @@ function addCombinator( matcher, combinator, base ) {
 					}
 				}
 			} else {
-				while ( (elem = elem[ dir ]) ) {
+				while ( ( elem = elem[ dir ] ) ) {
 					if ( elem.nodeType === 1 || checkNonElements ) {
-						outerCache = elem[ expando ] || (elem[ expando ] = {});
+						outerCache = elem[ expando ] || ( elem[ expando ] = {} );
 
 						// Support: IE <9 only
 						// Defend against cloned attroperties (jQuery gh-1709)
-						uniqueCache = outerCache[ elem.uniqueID ] || (outerCache[ elem.uniqueID ] = {});
+						uniqueCache = outerCache[ elem.uniqueID ] ||
+							( outerCache[ elem.uniqueID ] = {} );
 
 						if ( skip && skip === elem.nodeName.toLowerCase() ) {
 							elem = elem[ dir ] || elem;
-						} else if ( (oldCache = uniqueCache[ key ]) &&
+						} else if ( ( oldCache = uniqueCache[ key ] ) &&
 							oldCache[ 0 ] === dirruns && oldCache[ 1 ] === doneName ) {
 
 							// Assign to newCache so results back-propagate to previous elements
-							return (newCache[ 2 ] = oldCache[ 2 ]);
+							return ( newCache[ 2 ] = oldCache[ 2 ] );
 						} else {
+
 							// Reuse newcache so results back-propagate to previous elements
 							uniqueCache[ key ] = newCache;
 
 							// A match means we're done; a fail means we have to keep checking
-							if ( (newCache[ 2 ] = matcher( elem, context, xml )) ) {
+							if ( ( newCache[ 2 ] = matcher( elem, context, xml ) ) ) {
 								return true;
 							}
 						}
@@ -4455,20 +4620,20 @@ function elementMatcher( matchers ) {
 		function( elem, context, xml ) {
 			var i = matchers.length;
 			while ( i-- ) {
-				if ( !matchers[i]( elem, context, xml ) ) {
+				if ( !matchers[ i ]( elem, context, xml ) ) {
 					return false;
 				}
 			}
 			return true;
 		} :
-		matchers[0];
+		matchers[ 0 ];
 }
 
 function multipleContexts( selector, contexts, results ) {
 	var i = 0,
 		len = contexts.length;
 	for ( ; i < len; i++ ) {
-		Sizzle( selector, contexts[i], results );
+		Sizzle( selector, contexts[ i ], results );
 	}
 	return results;
 }
@@ -4481,7 +4646,7 @@ function condense( unmatched, map, filter, context, xml ) {
 		mapped = map != null;
 
 	for ( ; i < len; i++ ) {
-		if ( (elem = unmatched[i]) ) {
+		if ( ( elem = unmatched[ i ] ) ) {
 			if ( !filter || filter( elem, context, xml ) ) {
 				newUnmatched.push( elem );
 				if ( mapped ) {
@@ -4501,14 +4666,18 @@ function setMatcher( preFilter, selector, matcher, postFilter, postFinder, postS
 	if ( postFinder && !postFinder[ expando ] ) {
 		postFinder = setMatcher( postFinder, postSelector );
 	}
-	return markFunction(function( seed, results, context, xml ) {
+	return markFunction( function( seed, results, context, xml ) {
 		var temp, i, elem,
 			preMap = [],
 			postMap = [],
 			preexisting = results.length,
 
 			// Get initial elements from seed or context
-			elems = seed || multipleContexts( selector || "*", context.nodeType ? [ context ] : context, [] ),
+			elems = seed || multipleContexts(
+				selector || "*",
+				context.nodeType ? [ context ] : context,
+				[]
+			),
 
 			// Prefilter to get matcher input, preserving a map for seed-results synchronization
 			matcherIn = preFilter && ( seed || !selector ) ?
@@ -4516,6 +4685,7 @@ function setMatcher( preFilter, selector, matcher, postFilter, postFinder, postS
 				elems,
 
 			matcherOut = matcher ?
+
 				// If we have a postFinder, or filtered seed, or non-seed postFilter or preexisting results,
 				postFinder || ( seed ? preFilter : preexisting || postFilter ) ?
 
@@ -4539,8 +4709,8 @@ function setMatcher( preFilter, selector, matcher, postFilter, postFinder, postS
 			// Un-match failing elements by moving them back to matcherIn
 			i = temp.length;
 			while ( i-- ) {
-				if ( (elem = temp[i]) ) {
-					matcherOut[ postMap[i] ] = !(matcherIn[ postMap[i] ] = elem);
+				if ( ( elem = temp[ i ] ) ) {
+					matcherOut[ postMap[ i ] ] = !( matcherIn[ postMap[ i ] ] = elem );
 				}
 			}
 		}
@@ -4548,25 +4718,27 @@ function setMatcher( preFilter, selector, matcher, postFilter, postFinder, postS
 		if ( seed ) {
 			if ( postFinder || preFilter ) {
 				if ( postFinder ) {
+
 					// Get the final matcherOut by condensing this intermediate into postFinder contexts
 					temp = [];
 					i = matcherOut.length;
 					while ( i-- ) {
-						if ( (elem = matcherOut[i]) ) {
+						if ( ( elem = matcherOut[ i ] ) ) {
+
 							// Restore matcherIn since elem is not yet a final match
-							temp.push( (matcherIn[i] = elem) );
+							temp.push( ( matcherIn[ i ] = elem ) );
 						}
 					}
-					postFinder( null, (matcherOut = []), temp, xml );
+					postFinder( null, ( matcherOut = [] ), temp, xml );
 				}
 
 				// Move matched elements from seed to results to keep them synchronized
 				i = matcherOut.length;
 				while ( i-- ) {
-					if ( (elem = matcherOut[i]) &&
-						(temp = postFinder ? indexOf( seed, elem ) : preMap[i]) > -1 ) {
+					if ( ( elem = matcherOut[ i ] ) &&
+						( temp = postFinder ? indexOf( seed, elem ) : preMap[ i ] ) > -1 ) {
 
-						seed[temp] = !(results[temp] = elem);
+						seed[ temp ] = !( results[ temp ] = elem );
 					}
 				}
 			}
@@ -4584,14 +4756,14 @@ function setMatcher( preFilter, selector, matcher, postFilter, postFinder, postS
 				push.apply( results, matcherOut );
 			}
 		}
-	});
+	} );
 }
 
 function matcherFromTokens( tokens ) {
 	var checkContext, matcher, j,
 		len = tokens.length,
-		leadingRelative = Expr.relative[ tokens[0].type ],
-		implicitRelative = leadingRelative || Expr.relative[" "],
+		leadingRelative = Expr.relative[ tokens[ 0 ].type ],
+		implicitRelative = leadingRelative || Expr.relative[ " " ],
 		i = leadingRelative ? 1 : 0,
 
 		// The foundational matcher ensures that elements are reachable from top-level context(s)
@@ -4603,38 +4775,43 @@ function matcherFromTokens( tokens ) {
 		}, implicitRelative, true ),
 		matchers = [ function( elem, context, xml ) {
 			var ret = ( !leadingRelative && ( xml || context !== outermostContext ) ) || (
-				(checkContext = context).nodeType ?
+				( checkContext = context ).nodeType ?
 					matchContext( elem, context, xml ) :
 					matchAnyContext( elem, context, xml ) );
+
 			// Avoid hanging onto element (issue #299)
 			checkContext = null;
 			return ret;
 		} ];
 
 	for ( ; i < len; i++ ) {
-		if ( (matcher = Expr.relative[ tokens[i].type ]) ) {
-			matchers = [ addCombinator(elementMatcher( matchers ), matcher) ];
+		if ( ( matcher = Expr.relative[ tokens[ i ].type ] ) ) {
+			matchers = [ addCombinator( elementMatcher( matchers ), matcher ) ];
 		} else {
-			matcher = Expr.filter[ tokens[i].type ].apply( null, tokens[i].matches );
+			matcher = Expr.filter[ tokens[ i ].type ].apply( null, tokens[ i ].matches );
 
 			// Return special upon seeing a positional matcher
 			if ( matcher[ expando ] ) {
+
 				// Find the next relative operator (if any) for proper handling
 				j = ++i;
 				for ( ; j < len; j++ ) {
-					if ( Expr.relative[ tokens[j].type ] ) {
+					if ( Expr.relative[ tokens[ j ].type ] ) {
 						break;
 					}
 				}
 				return setMatcher(
 					i > 1 && elementMatcher( matchers ),
 					i > 1 && toSelector(
-						// If the preceding token was a descendant combinator, insert an implicit any-element `*`
-						tokens.slice( 0, i - 1 ).concat({ value: tokens[ i - 2 ].type === " " ? "*" : "" })
+
+					// If the preceding token was a descendant combinator, insert an implicit any-element `*`
+					tokens
+						.slice( 0, i - 1 )
+						.concat( { value: tokens[ i - 2 ].type === " " ? "*" : "" } )
 					).replace( rtrim, "$1" ),
 					matcher,
 					i < j && matcherFromTokens( tokens.slice( i, j ) ),
-					j < len && matcherFromTokens( (tokens = tokens.slice( j )) ),
+					j < len && matcherFromTokens( ( tokens = tokens.slice( j ) ) ),
 					j < len && toSelector( tokens )
 				);
 			}
@@ -4655,28 +4832,40 @@ function matcherFromGroupMatchers( elementMatchers, setMatchers ) {
 				unmatched = seed && [],
 				setMatched = [],
 				contextBackup = outermostContext,
+
 				// We must always have either seed elements or outermost context
-				elems = seed || byElement && Expr.find["TAG"]( "*", outermost ),
+				elems = seed || byElement && Expr.find[ "TAG" ]( "*", outermost ),
+
 				// Use integer dirruns iff this is the outermost matcher
-				dirrunsUnique = (dirruns += contextBackup == null ? 1 : Math.random() || 0.1),
+				dirrunsUnique = ( dirruns += contextBackup == null ? 1 : Math.random() || 0.1 ),
 				len = elems.length;
 
 			if ( outermost ) {
-				outermostContext = context === document || context || outermost;
+
+				// Support: IE 11+, Edge 17 - 18+
+				// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+				// two documents; shallow comparisons work.
+				// eslint-disable-next-line eqeqeq
+				outermostContext = context == document || context || outermost;
 			}
 
 			// Add elements passing elementMatchers directly to results
 			// Support: IE<9, Safari
 			// Tolerate NodeList properties (IE: "length"; Safari: <number>) matching elements by id
-			for ( ; i !== len && (elem = elems[i]) != null; i++ ) {
+			for ( ; i !== len && ( elem = elems[ i ] ) != null; i++ ) {
 				if ( byElement && elem ) {
 					j = 0;
-					if ( !context && elem.ownerDocument !== document ) {
+
+					// Support: IE 11+, Edge 17 - 18+
+					// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+					// two documents; shallow comparisons work.
+					// eslint-disable-next-line eqeqeq
+					if ( !context && elem.ownerDocument != document ) {
 						setDocument( elem );
 						xml = !documentIsHTML;
 					}
-					while ( (matcher = elementMatchers[j++]) ) {
-						if ( matcher( elem, context || document, xml) ) {
+					while ( ( matcher = elementMatchers[ j++ ] ) ) {
+						if ( matcher( elem, context || document, xml ) ) {
 							results.push( elem );
 							break;
 						}
@@ -4688,8 +4877,9 @@ function matcherFromGroupMatchers( elementMatchers, setMatchers ) {
 
 				// Track unmatched elements for set filters
 				if ( bySet ) {
+
 					// They will have gone through all possible matchers
-					if ( (elem = !matcher && elem) ) {
+					if ( ( elem = !matcher && elem ) ) {
 						matchedCount--;
 					}
 
@@ -4713,16 +4903,17 @@ function matcherFromGroupMatchers( elementMatchers, setMatchers ) {
 			// numerically zero.
 			if ( bySet && i !== matchedCount ) {
 				j = 0;
-				while ( (matcher = setMatchers[j++]) ) {
+				while ( ( matcher = setMatchers[ j++ ] ) ) {
 					matcher( unmatched, setMatched, context, xml );
 				}
 
 				if ( seed ) {
+
 					// Reintegrate element matches to eliminate the need for sorting
 					if ( matchedCount > 0 ) {
 						while ( i-- ) {
-							if ( !(unmatched[i] || setMatched[i]) ) {
-								setMatched[i] = pop.call( results );
+							if ( !( unmatched[ i ] || setMatched[ i ] ) ) {
+								setMatched[ i ] = pop.call( results );
 							}
 						}
 					}
@@ -4763,13 +4954,14 @@ compile = Sizzle.compile = function( selector, match /* Internal Use Only */ ) {
 		cached = compilerCache[ selector + " " ];
 
 	if ( !cached ) {
+
 		// Generate a function of recursive functions that can be used to check each element
 		if ( !match ) {
 			match = tokenize( selector );
 		}
 		i = match.length;
 		while ( i-- ) {
-			cached = matcherFromTokens( match[i] );
+			cached = matcherFromTokens( match[ i ] );
 			if ( cached[ expando ] ) {
 				setMatchers.push( cached );
 			} else {
@@ -4778,7 +4970,10 @@ compile = Sizzle.compile = function( selector, match /* Internal Use Only */ ) {
 		}
 
 		// Cache the compiled function
-		cached = compilerCache( selector, matcherFromGroupMatchers( elementMatchers, setMatchers ) );
+		cached = compilerCache(
+			selector,
+			matcherFromGroupMatchers( elementMatchers, setMatchers )
+		);
 
 		// Save selector and tokenization
 		cached.selector = selector;
@@ -4798,7 +4993,7 @@ compile = Sizzle.compile = function( selector, match /* Internal Use Only */ ) {
 select = Sizzle.select = function( selector, context, results, seed ) {
 	var i, tokens, token, type, find,
 		compiled = typeof selector === "function" && selector,
-		match = !seed && tokenize( (selector = compiled.selector || selector) );
+		match = !seed && tokenize( ( selector = compiled.selector || selector ) );
 
 	results = results || [];
 
@@ -4807,11 +5002,12 @@ select = Sizzle.select = function( selector, context, results, seed ) {
 	if ( match.length === 1 ) {
 
 		// Reduce context if the leading compound selector is an ID
-		tokens = match[0] = match[0].slice( 0 );
-		if ( tokens.length > 2 && (token = tokens[0]).type === "ID" &&
-				context.nodeType === 9 && documentIsHTML && Expr.relative[ tokens[1].type ] ) {
+		tokens = match[ 0 ] = match[ 0 ].slice( 0 );
+		if ( tokens.length > 2 && ( token = tokens[ 0 ] ).type === "ID" &&
+			context.nodeType === 9 && documentIsHTML && Expr.relative[ tokens[ 1 ].type ] ) {
 
-			context = ( Expr.find["ID"]( token.matches[0].replace(runescape, funescape), context ) || [] )[0];
+			context = ( Expr.find[ "ID" ]( token.matches[ 0 ]
+				.replace( runescape, funescape ), context ) || [] )[ 0 ];
 			if ( !context ) {
 				return results;
 
@@ -4824,20 +5020,22 @@ select = Sizzle.select = function( selector, context, results, seed ) {
 		}
 
 		// Fetch a seed set for right-to-left matching
-		i = matchExpr["needsContext"].test( selector ) ? 0 : tokens.length;
+		i = matchExpr[ "needsContext" ].test( selector ) ? 0 : tokens.length;
 		while ( i-- ) {
-			token = tokens[i];
+			token = tokens[ i ];
 
 			// Abort if we hit a combinator
-			if ( Expr.relative[ (type = token.type) ] ) {
+			if ( Expr.relative[ ( type = token.type ) ] ) {
 				break;
 			}
-			if ( (find = Expr.find[ type ]) ) {
+			if ( ( find = Expr.find[ type ] ) ) {
+
 				// Search, expanding context for leading sibling combinators
-				if ( (seed = find(
-					token.matches[0].replace( runescape, funescape ),
-					rsibling.test( tokens[0].type ) && testContext( context.parentNode ) || context
-				)) ) {
+				if ( ( seed = find(
+					token.matches[ 0 ].replace( runescape, funescape ),
+					rsibling.test( tokens[ 0 ].type ) && testContext( context.parentNode ) ||
+						context
+				) ) ) {
 
 					// If seed is empty or no tokens remain, we can return early
 					tokens.splice( i, 1 );
@@ -4868,7 +5066,7 @@ select = Sizzle.select = function( selector, context, results, seed ) {
 // One-time assignments
 
 // Sort stability
-support.sortStable = expando.split("").sort( sortOrder ).join("") === expando;
+support.sortStable = expando.split( "" ).sort( sortOrder ).join( "" ) === expando;
 
 // Support: Chrome 14-35+
 // Always assume duplicates if they aren't passed to the comparison function
@@ -4879,58 +5077,59 @@ setDocument();
 
 // Support: Webkit<537.32 - Safari 6.0.3/Chrome 25 (fixed in Chrome 27)
 // Detached nodes confoundingly follow *each other*
-support.sortDetached = assert(function( el ) {
+support.sortDetached = assert( function( el ) {
+
 	// Should return 1, but returns 4 (following)
-	return el.compareDocumentPosition( document.createElement("fieldset") ) & 1;
-});
+	return el.compareDocumentPosition( document.createElement( "fieldset" ) ) & 1;
+} );
 
 // Support: IE<8
 // Prevent attribute/property "interpolation"
 // https://msdn.microsoft.com/en-us/library/ms536429%28VS.85%29.aspx
-if ( !assert(function( el ) {
+if ( !assert( function( el ) {
 	el.innerHTML = "<a href='#'></a>";
-	return el.firstChild.getAttribute("href") === "#" ;
-}) ) {
+	return el.firstChild.getAttribute( "href" ) === "#";
+} ) ) {
 	addHandle( "type|href|height|width", function( elem, name, isXML ) {
 		if ( !isXML ) {
 			return elem.getAttribute( name, name.toLowerCase() === "type" ? 1 : 2 );
 		}
-	});
+	} );
 }
 
 // Support: IE<9
 // Use defaultValue in place of getAttribute("value")
-if ( !support.attributes || !assert(function( el ) {
+if ( !support.attributes || !assert( function( el ) {
 	el.innerHTML = "<input/>";
 	el.firstChild.setAttribute( "value", "" );
 	return el.firstChild.getAttribute( "value" ) === "";
-}) ) {
-	addHandle( "value", function( elem, name, isXML ) {
+} ) ) {
+	addHandle( "value", function( elem, _name, isXML ) {
 		if ( !isXML && elem.nodeName.toLowerCase() === "input" ) {
 			return elem.defaultValue;
 		}
-	});
+	} );
 }
 
 // Support: IE<9
 // Use getAttributeNode to fetch booleans when getAttribute lies
-if ( !assert(function( el ) {
-	return el.getAttribute("disabled") == null;
-}) ) {
+if ( !assert( function( el ) {
+	return el.getAttribute( "disabled" ) == null;
+} ) ) {
 	addHandle( booleans, function( elem, name, isXML ) {
 		var val;
 		if ( !isXML ) {
 			return elem[ name ] === true ? name.toLowerCase() :
-					(val = elem.getAttributeNode( name )) && val.specified ?
+				( val = elem.getAttributeNode( name ) ) && val.specified ?
 					val.value :
-				null;
+					null;
 		}
-	});
+	} );
 }
 
 return Sizzle;
 
-})( window );
+} )( window );
 
 
 
@@ -5299,7 +5498,7 @@ jQuery.each( {
 	parents: function( elem ) {
 		return dir( elem, "parentNode" );
 	},
-	parentsUntil: function( elem, i, until ) {
+	parentsUntil: function( elem, _i, until ) {
 		return dir( elem, "parentNode", until );
 	},
 	next: function( elem ) {
@@ -5314,10 +5513,10 @@ jQuery.each( {
 	prevAll: function( elem ) {
 		return dir( elem, "previousSibling" );
 	},
-	nextUntil: function( elem, i, until ) {
+	nextUntil: function( elem, _i, until ) {
 		return dir( elem, "nextSibling", until );
 	},
-	prevUntil: function( elem, i, until ) {
+	prevUntil: function( elem, _i, until ) {
 		return dir( elem, "previousSibling", until );
 	},
 	siblings: function( elem ) {
@@ -5327,7 +5526,13 @@ jQuery.each( {
 		return siblings( elem.firstChild );
 	},
 	contents: function( elem ) {
-		if ( typeof elem.contentDocument !== "undefined" ) {
+		if ( elem.contentDocument != null &&
+
+			// Support: IE 11+
+			// <object> elements with no `data` attribute has an object
+			// `contentDocument` with a `null` prototype.
+			getProto( elem.contentDocument ) ) {
+
 			return elem.contentDocument;
 		}
 
@@ -5670,7 +5875,7 @@ jQuery.extend( {
 					var fns = arguments;
 
 					return jQuery.Deferred( function( newDefer ) {
-						jQuery.each( tuples, function( i, tuple ) {
+						jQuery.each( tuples, function( _i, tuple ) {
 
 							// Map tuples (progress, done, fail) to arguments (done, fail, progress)
 							var fn = isFunction( fns[ tuple[ 4 ] ] ) && fns[ tuple[ 4 ] ];
@@ -6123,7 +6328,7 @@ var access = function( elems, fn, key, value, chainable, emptyGet, raw ) {
 			// ...except when executing function values
 			} else {
 				bulk = fn;
-				fn = function( elem, key, value ) {
+				fn = function( elem, _key, value ) {
 					return bulk.call( jQuery( elem ), value );
 				};
 			}
@@ -6158,7 +6363,7 @@ var rmsPrefix = /^-ms-/,
 	rdashAlpha = /-([a-z])/g;
 
 // Used by camelCase as callback to replace()
-function fcamelCase( all, letter ) {
+function fcamelCase( _all, letter ) {
 	return letter.toUpperCase();
 }
 
@@ -6686,27 +6891,6 @@ var isHiddenWithinTree = function( elem, el ) {
 			jQuery.css( elem, "display" ) === "none";
 	};
 
-var swap = function( elem, options, callback, args ) {
-	var ret, name,
-		old = {};
-
-	// Remember the old values, and insert the new ones
-	for ( name in options ) {
-		old[ name ] = elem.style[ name ];
-		elem.style[ name ] = options[ name ];
-	}
-
-	ret = callback.apply( elem, args || [] );
-
-	// Revert the old values
-	for ( name in options ) {
-		elem.style[ name ] = old[ name ];
-	}
-
-	return ret;
-};
-
-
 
 
 function adjustCSS( elem, prop, valueParts, tween ) {
@@ -6877,11 +7061,40 @@ var rscriptType = ( /^$|^module$|\/(?:java|ecma)script/i );
 
 
 
-// We have to close these tags to support XHTML (#13200)
-var wrapMap = {
+( function() {
+	var fragment = document.createDocumentFragment(),
+		div = fragment.appendChild( document.createElement( "div" ) ),
+		input = document.createElement( "input" );
+
+	// Support: Android 4.0 - 4.3 only
+	// Check state lost if the name is set (#11217)
+	// Support: Windows Web Apps (WWA)
+	// `name` and `type` must use .setAttribute for WWA (#14901)
+	input.setAttribute( "type", "radio" );
+	input.setAttribute( "checked", "checked" );
+	input.setAttribute( "name", "t" );
+
+	div.appendChild( input );
+
+	// Support: Android <=4.1 only
+	// Older WebKit doesn't clone checked state correctly in fragments
+	support.checkClone = div.cloneNode( true ).cloneNode( true ).lastChild.checked;
+
+	// Support: IE <=11 only
+	// Make sure textarea (and checkbox) defaultValue is properly cloned
+	div.innerHTML = "<textarea>x</textarea>";
+	support.noCloneChecked = !!div.cloneNode( true ).lastChild.defaultValue;
 
 	// Support: IE <=9 only
-	option: [ 1, "<select multiple='multiple'>", "</select>" ],
+	// IE <=9 replaces <option> tags with their contents when inserted outside of
+	// the select element.
+	div.innerHTML = "<option></option>";
+	support.option = !!div.lastChild;
+} )();
+
+
+// We have to close these tags to support XHTML (#13200)
+var wrapMap = {
 
 	// XHTML parsers do not magically insert elements in the
 	// same way that tag soup parsers do. So we cannot shorten
@@ -6894,11 +7107,13 @@ var wrapMap = {
 	_default: [ 0, "", "" ]
 };
 
-// Support: IE <=9 only
-wrapMap.optgroup = wrapMap.option;
-
 wrapMap.tbody = wrapMap.tfoot = wrapMap.colgroup = wrapMap.caption = wrapMap.thead;
 wrapMap.th = wrapMap.td;
+
+// Support: IE <=9 only
+if ( !support.option ) {
+	wrapMap.optgroup = wrapMap.option = [ 1, "<select multiple='multiple'>", "</select>" ];
+}
 
 
 function getAll( context, tag ) {
@@ -7032,32 +7247,6 @@ function buildFragment( elems, context, scripts, selection, ignored ) {
 }
 
 
-( function() {
-	var fragment = document.createDocumentFragment(),
-		div = fragment.appendChild( document.createElement( "div" ) ),
-		input = document.createElement( "input" );
-
-	// Support: Android 4.0 - 4.3 only
-	// Check state lost if the name is set (#11217)
-	// Support: Windows Web Apps (WWA)
-	// `name` and `type` must use .setAttribute for WWA (#14901)
-	input.setAttribute( "type", "radio" );
-	input.setAttribute( "checked", "checked" );
-	input.setAttribute( "name", "t" );
-
-	div.appendChild( input );
-
-	// Support: Android <=4.1 only
-	// Older WebKit doesn't clone checked state correctly in fragments
-	support.checkClone = div.cloneNode( true ).cloneNode( true ).lastChild.checked;
-
-	// Support: IE <=11 only
-	// Make sure textarea (and checkbox) defaultValue is properly cloned
-	div.innerHTML = "<textarea>x</textarea>";
-	support.noCloneChecked = !!div.cloneNode( true ).lastChild.defaultValue;
-} )();
-
-
 var
 	rkeyEvent = /^key/,
 	rmouseEvent = /^(?:mouse|pointer|contextmenu|drag|drop)|click/,
@@ -7166,8 +7355,8 @@ jQuery.event = {
 			special, handlers, type, namespaces, origType,
 			elemData = dataPriv.get( elem );
 
-		// Don't attach events to noData or text/comment nodes (but allow plain objects)
-		if ( !elemData ) {
+		// Only attach events to objects that accept data
+		if ( !acceptData( elem ) ) {
 			return;
 		}
 
@@ -7191,7 +7380,7 @@ jQuery.event = {
 
 		// Init the element's event structure and main handler, if this is the first
 		if ( !( events = elemData.events ) ) {
-			events = elemData.events = {};
+			events = elemData.events = Object.create( null );
 		}
 		if ( !( eventHandle = elemData.handle ) ) {
 			eventHandle = elemData.handle = function( e ) {
@@ -7349,12 +7538,15 @@ jQuery.event = {
 
 	dispatch: function( nativeEvent ) {
 
-		// Make a writable jQuery.Event from the native event object
-		var event = jQuery.event.fix( nativeEvent );
-
 		var i, j, ret, matched, handleObj, handlerQueue,
 			args = new Array( arguments.length ),
-			handlers = ( dataPriv.get( this, "events" ) || {} )[ event.type ] || [],
+
+			// Make a writable jQuery.Event from the native event object
+			event = jQuery.event.fix( nativeEvent ),
+
+			handlers = (
+					dataPriv.get( this, "events" ) || Object.create( null )
+				)[ event.type ] || [],
 			special = jQuery.event.special[ event.type ] || {};
 
 		// Use the fix-ed jQuery.Event rather than the (read-only) native event
@@ -7929,13 +8121,6 @@ jQuery.fn.extend( {
 
 var
 
-	/* eslint-disable max-len */
-
-	// See https://github.com/eslint/eslint/issues/3229
-	rxhtmlTag = /<(?!area|br|col|embed|hr|img|input|link|meta|param)(([a-z][^\/\0>\x20\t\r\n\f]*)[^>]*)\/>/gi,
-
-	/* eslint-enable */
-
 	// Support: IE <=10 - 11, Edge 12 - 13 only
 	// In IE/Edge using regex groups here causes severe slowdowns.
 	// See https://connect.microsoft.com/IE/feedback/details/1736512/
@@ -7972,7 +8157,7 @@ function restoreScript( elem ) {
 }
 
 function cloneCopyEvent( src, dest ) {
-	var i, l, type, pdataOld, pdataCur, udataOld, udataCur, events;
+	var i, l, type, pdataOld, udataOld, udataCur, events;
 
 	if ( dest.nodeType !== 1 ) {
 		return;
@@ -7980,13 +8165,11 @@ function cloneCopyEvent( src, dest ) {
 
 	// 1. Copy private data: events, handlers, etc.
 	if ( dataPriv.hasData( src ) ) {
-		pdataOld = dataPriv.access( src );
-		pdataCur = dataPriv.set( dest, pdataOld );
+		pdataOld = dataPriv.get( src );
 		events = pdataOld.events;
 
 		if ( events ) {
-			delete pdataCur.handle;
-			pdataCur.events = {};
+			dataPriv.remove( dest, "handle events" );
 
 			for ( type in events ) {
 				for ( i = 0, l = events[ type ].length; i < l; i++ ) {
@@ -8022,7 +8205,7 @@ function fixInput( src, dest ) {
 function domManip( collection, args, callback, ignored ) {
 
 	// Flatten any nested arrays
-	args = concat.apply( [], args );
+	args = flat( args );
 
 	var fragment, first, scripts, hasScripts, node, doc,
 		i = 0,
@@ -8097,7 +8280,7 @@ function domManip( collection, args, callback, ignored ) {
 							if ( jQuery._evalUrl && !node.noModule ) {
 								jQuery._evalUrl( node.src, {
 									nonce: node.nonce || node.getAttribute( "nonce" )
-								} );
+								}, doc );
 							}
 						} else {
 							DOMEval( node.textContent.replace( rcleanScript, "" ), node, doc );
@@ -8134,7 +8317,7 @@ function remove( elem, selector, keepData ) {
 
 jQuery.extend( {
 	htmlPrefilter: function( html ) {
-		return html.replace( rxhtmlTag, "<$1></$2>" );
+		return html;
 	},
 
 	clone: function( elem, dataAndEvents, deepDataAndEvents ) {
@@ -8396,6 +8579,27 @@ var getStyles = function( elem ) {
 		return view.getComputedStyle( elem );
 	};
 
+var swap = function( elem, options, callback ) {
+	var ret, name,
+		old = {};
+
+	// Remember the old values, and insert the new ones
+	for ( name in options ) {
+		old[ name ] = elem.style[ name ];
+		elem.style[ name ] = options[ name ];
+	}
+
+	ret = callback.call( elem );
+
+	// Revert the old values
+	for ( name in options ) {
+		elem.style[ name ] = old[ name ];
+	}
+
+	return ret;
+};
+
+
 var rboxStyle = new RegExp( cssExpand.join( "|" ), "i" );
 
 
@@ -8453,7 +8657,7 @@ var rboxStyle = new RegExp( cssExpand.join( "|" ), "i" );
 	}
 
 	var pixelPositionVal, boxSizingReliableVal, scrollboxSizeVal, pixelBoxStylesVal,
-		reliableMarginLeftVal,
+		reliableTrDimensionsVal, reliableMarginLeftVal,
 		container = document.createElement( "div" ),
 		div = document.createElement( "div" );
 
@@ -8488,6 +8692,35 @@ var rboxStyle = new RegExp( cssExpand.join( "|" ), "i" );
 		scrollboxSize: function() {
 			computeStyleTests();
 			return scrollboxSizeVal;
+		},
+
+		// Support: IE 9 - 11+, Edge 15 - 18+
+		// IE/Edge misreport `getComputedStyle` of table rows with width/height
+		// set in CSS while `offset*` properties report correct values.
+		// Behavior in IE 9 is more subtle than in newer versions & it passes
+		// some versions of this test; make sure not to make it pass there!
+		reliableTrDimensions: function() {
+			var table, tr, trChild, trStyle;
+			if ( reliableTrDimensionsVal == null ) {
+				table = document.createElement( "table" );
+				tr = document.createElement( "tr" );
+				trChild = document.createElement( "div" );
+
+				table.style.cssText = "position:absolute;left:-11111px";
+				tr.style.height = "1px";
+				trChild.style.height = "9px";
+
+				documentElement
+					.appendChild( table )
+					.appendChild( tr )
+					.appendChild( trChild );
+
+				trStyle = window.getComputedStyle( tr );
+				reliableTrDimensionsVal = parseInt( trStyle.height ) > 3;
+
+				documentElement.removeChild( table );
+			}
+			return reliableTrDimensionsVal;
 		}
 	} );
 } )();
@@ -8612,7 +8845,7 @@ var
 		fontWeight: "400"
 	};
 
-function setPositiveNumber( elem, value, subtract ) {
+function setPositiveNumber( _elem, value, subtract ) {
 
 	// Any relative (+/-) values have already been
 	// normalized at this point
@@ -8717,17 +8950,26 @@ function getWidthOrHeight( elem, dimension, extra ) {
 	}
 
 
-	// Fall back to offsetWidth/offsetHeight when value is "auto"
-	// This happens for inline elements with no explicit setting (gh-3571)
-	// Support: Android <=4.1 - 4.3 only
-	// Also use offsetWidth/offsetHeight for misreported inline dimensions (gh-3602)
-	// Support: IE 9-11 only
-	// Also use offsetWidth/offsetHeight for when box sizing is unreliable
-	// We use getClientRects() to check for hidden/disconnected.
-	// In those cases, the computed value can be trusted to be border-box
+	// Support: IE 9 - 11 only
+	// Use offsetWidth/offsetHeight for when box sizing is unreliable.
+	// In those cases, the computed value can be trusted to be border-box.
 	if ( ( !support.boxSizingReliable() && isBorderBox ||
+
+		// Support: IE 10 - 11+, Edge 15 - 18+
+		// IE/Edge misreport `getComputedStyle` of table rows with width/height
+		// set in CSS while `offset*` properties report correct values.
+		// Interestingly, in some cases IE 9 doesn't suffer from this issue.
+		!support.reliableTrDimensions() && nodeName( elem, "tr" ) ||
+
+		// Fall back to offsetWidth/offsetHeight when value is "auto"
+		// This happens for inline elements with no explicit setting (gh-3571)
 		val === "auto" ||
+
+		// Support: Android <=4.1 - 4.3 only
+		// Also use offsetWidth/offsetHeight for misreported inline dimensions (gh-3602)
 		!parseFloat( val ) && jQuery.css( elem, "display", false, styles ) === "inline" ) &&
+
+		// Make sure the element is visible & connected
 		elem.getClientRects().length ) {
 
 		isBorderBox = jQuery.css( elem, "boxSizing", false, styles ) === "border-box";
@@ -8922,7 +9164,7 @@ jQuery.extend( {
 	}
 } );
 
-jQuery.each( [ "height", "width" ], function( i, dimension ) {
+jQuery.each( [ "height", "width" ], function( _i, dimension ) {
 	jQuery.cssHooks[ dimension ] = {
 		get: function( elem, computed, extra ) {
 			if ( computed ) {
@@ -9695,7 +9937,7 @@ jQuery.fn.extend( {
 			clearQueue = type;
 			type = undefined;
 		}
-		if ( clearQueue && type !== false ) {
+		if ( clearQueue ) {
 			this.queue( type || "fx", [] );
 		}
 
@@ -9778,7 +10020,7 @@ jQuery.fn.extend( {
 	}
 } );
 
-jQuery.each( [ "toggle", "show", "hide" ], function( i, name ) {
+jQuery.each( [ "toggle", "show", "hide" ], function( _i, name ) {
 	var cssFn = jQuery.fn[ name ];
 	jQuery.fn[ name ] = function( speed, easing, callback ) {
 		return speed == null || typeof speed === "boolean" ?
@@ -9999,7 +10241,7 @@ boolHook = {
 	}
 };
 
-jQuery.each( jQuery.expr.match.bool.source.match( /\w+/g ), function( i, name ) {
+jQuery.each( jQuery.expr.match.bool.source.match( /\w+/g ), function( _i, name ) {
 	var getter = attrHandle[ name ] || jQuery.find.attr;
 
 	attrHandle[ name ] = function( elem, name, isXML ) {
@@ -10623,7 +10865,9 @@ jQuery.extend( jQuery.event, {
 				special.bindType || type;
 
 			// jQuery handler
-			handle = ( dataPriv.get( cur, "events" ) || {} )[ event.type ] &&
+			handle = (
+					dataPriv.get( cur, "events" ) || Object.create( null )
+				)[ event.type ] &&
 				dataPriv.get( cur, "handle" );
 			if ( handle ) {
 				handle.apply( cur, data );
@@ -10734,7 +10978,10 @@ if ( !support.focusin ) {
 
 		jQuery.event.special[ fix ] = {
 			setup: function() {
-				var doc = this.ownerDocument || this,
+
+				// Handle: regular nodes (via `this.ownerDocument`), window
+				// (via `this.document`) & document (via `this`).
+				var doc = this.ownerDocument || this.document || this,
 					attaches = dataPriv.access( doc, fix );
 
 				if ( !attaches ) {
@@ -10743,7 +10990,7 @@ if ( !support.focusin ) {
 				dataPriv.access( doc, fix, ( attaches || 0 ) + 1 );
 			},
 			teardown: function() {
-				var doc = this.ownerDocument || this,
+				var doc = this.ownerDocument || this.document || this,
 					attaches = dataPriv.access( doc, fix ) - 1;
 
 				if ( !attaches ) {
@@ -10759,7 +11006,7 @@ if ( !support.focusin ) {
 }
 var location = window.location;
 
-var nonce = Date.now();
+var nonce = { guid: Date.now() };
 
 var rquery = ( /\?/ );
 
@@ -10891,7 +11138,7 @@ jQuery.fn.extend( {
 				rsubmittable.test( this.nodeName ) && !rsubmitterTypes.test( type ) &&
 				( this.checked || !rcheckableType.test( type ) );
 		} )
-		.map( function( i, elem ) {
+		.map( function( _i, elem ) {
 			var val = jQuery( this ).val();
 
 			if ( val == null ) {
@@ -11504,7 +11751,8 @@ jQuery.extend( {
 			// Add or update anti-cache param if needed
 			if ( s.cache === false ) {
 				cacheURL = cacheURL.replace( rantiCache, "$1" );
-				uncached = ( rquery.test( cacheURL ) ? "&" : "?" ) + "_=" + ( nonce++ ) + uncached;
+				uncached = ( rquery.test( cacheURL ) ? "&" : "?" ) + "_=" + ( nonce.guid++ ) +
+					uncached;
 			}
 
 			// Put hash and anti-cache on the URL that will be requested (gh-1732)
@@ -11637,6 +11885,11 @@ jQuery.extend( {
 				response = ajaxHandleResponses( s, jqXHR, responses );
 			}
 
+			// Use a noop converter for missing script
+			if ( !isSuccess && jQuery.inArray( "script", s.dataTypes ) > -1 ) {
+				s.converters[ "text script" ] = function() {};
+			}
+
 			// Convert no matter what (that way responseXXX fields are always set)
 			response = ajaxConvert( s, response, jqXHR, isSuccess );
 
@@ -11727,7 +11980,7 @@ jQuery.extend( {
 	}
 } );
 
-jQuery.each( [ "get", "post" ], function( i, method ) {
+jQuery.each( [ "get", "post" ], function( _i, method ) {
 	jQuery[ method ] = function( url, data, callback, type ) {
 
 		// Shift arguments if data argument was omitted
@@ -11748,8 +12001,17 @@ jQuery.each( [ "get", "post" ], function( i, method ) {
 	};
 } );
 
+jQuery.ajaxPrefilter( function( s ) {
+	var i;
+	for ( i in s.headers ) {
+		if ( i.toLowerCase() === "content-type" ) {
+			s.contentType = s.headers[ i ] || "";
+		}
+	}
+} );
 
-jQuery._evalUrl = function( url, options ) {
+
+jQuery._evalUrl = function( url, options, doc ) {
 	return jQuery.ajax( {
 		url: url,
 
@@ -11767,7 +12029,7 @@ jQuery._evalUrl = function( url, options ) {
 			"text script": function() {}
 		},
 		dataFilter: function( response ) {
-			jQuery.globalEval( response, options );
+			jQuery.globalEval( response, options, doc );
 		}
 	} );
 };
@@ -12089,7 +12351,7 @@ var oldCallbacks = [],
 jQuery.ajaxSetup( {
 	jsonp: "callback",
 	jsonpCallback: function() {
-		var callback = oldCallbacks.pop() || ( jQuery.expando + "_" + ( nonce++ ) );
+		var callback = oldCallbacks.pop() || ( jQuery.expando + "_" + ( nonce.guid++ ) );
 		this[ callback ] = true;
 		return callback;
 	}
@@ -12306,23 +12568,6 @@ jQuery.fn.load = function( url, params, callback ) {
 
 
 
-// Attach a bunch of functions for handling common AJAX events
-jQuery.each( [
-	"ajaxStart",
-	"ajaxStop",
-	"ajaxComplete",
-	"ajaxError",
-	"ajaxSuccess",
-	"ajaxSend"
-], function( i, type ) {
-	jQuery.fn[ type ] = function( fn ) {
-		return this.on( type, fn );
-	};
-} );
-
-
-
-
 jQuery.expr.pseudos.animated = function( elem ) {
 	return jQuery.grep( jQuery.timers, function( fn ) {
 		return elem === fn.elem;
@@ -12379,6 +12624,12 @@ jQuery.offset = {
 			options.using.call( elem, props );
 
 		} else {
+			if ( typeof props.top === "number" ) {
+				props.top += "px";
+			}
+			if ( typeof props.left === "number" ) {
+				props.left += "px";
+			}
 			curElem.css( props );
 		}
 	}
@@ -12529,7 +12780,7 @@ jQuery.each( { scrollLeft: "pageXOffset", scrollTop: "pageYOffset" }, function( 
 // Blink bug: https://bugs.chromium.org/p/chromium/issues/detail?id=589347
 // getComputedStyle returns percent when specified for top/left/bottom/right;
 // rather than make the css module depend on the offset module, just check for it here
-jQuery.each( [ "top", "left" ], function( i, prop ) {
+jQuery.each( [ "top", "left" ], function( _i, prop ) {
 	jQuery.cssHooks[ prop ] = addGetHookIf( support.pixelPosition,
 		function( elem, computed ) {
 			if ( computed ) {
@@ -12592,23 +12843,17 @@ jQuery.each( { Height: "height", Width: "width" }, function( name, type ) {
 } );
 
 
-jQuery.each( ( "blur focus focusin focusout resize scroll click dblclick " +
-	"mousedown mouseup mousemove mouseover mouseout mouseenter mouseleave " +
-	"change select submit keydown keypress keyup contextmenu" ).split( " " ),
-	function( i, name ) {
-
-	// Handle event binding
-	jQuery.fn[ name ] = function( data, fn ) {
-		return arguments.length > 0 ?
-			this.on( name, null, data, fn ) :
-			this.trigger( name );
+jQuery.each( [
+	"ajaxStart",
+	"ajaxStop",
+	"ajaxComplete",
+	"ajaxError",
+	"ajaxSuccess",
+	"ajaxSend"
+], function( _i, type ) {
+	jQuery.fn[ type ] = function( fn ) {
+		return this.on( type, fn );
 	};
-} );
-
-jQuery.fn.extend( {
-	hover: function( fnOver, fnOut ) {
-		return this.mouseenter( fnOver ).mouseleave( fnOut || fnOver );
-	}
 } );
 
 
@@ -12632,8 +12877,32 @@ jQuery.fn.extend( {
 		return arguments.length === 1 ?
 			this.off( selector, "**" ) :
 			this.off( types, selector || "**", fn );
+	},
+
+	hover: function( fnOver, fnOut ) {
+		return this.mouseenter( fnOver ).mouseleave( fnOut || fnOver );
 	}
 } );
+
+jQuery.each( ( "blur focus focusin focusout resize scroll click dblclick " +
+	"mousedown mouseup mousemove mouseover mouseout mouseenter mouseleave " +
+	"change select submit keydown keypress keyup contextmenu" ).split( " " ),
+	function( _i, name ) {
+
+		// Handle event binding
+		jQuery.fn[ name ] = function( data, fn ) {
+			return arguments.length > 0 ?
+				this.on( name, null, data, fn ) :
+				this.trigger( name );
+		};
+	} );
+
+
+
+
+// Support: Android <=4.0 only
+// Make sure we trim BOM and NBSP
+var rtrim = /^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g;
 
 // Bind a function to a context, optionally partially applying any
 // arguments.
@@ -12697,6 +12966,11 @@ jQuery.isNumeric = function( obj ) {
 		!isNaN( obj - parseFloat( obj ) );
 };
 
+jQuery.trim = function( text ) {
+	return text == null ?
+		"" :
+		( text + "" ).replace( rtrim, "" );
+};
 
 
 
@@ -12745,7 +13019,7 @@ jQuery.noConflict = function( deep ) {
 // Expose jQuery and $ identifiers, even in AMD
 // (#7102#comment:10, https://github.com/jquery/jquery/pull/557)
 // and CommonJS for browser emulators (#13566)
-if ( !noGlobal ) {
+if ( typeof noGlobal === "undefined" ) {
 	window.jQuery = window.$ = jQuery;
 }
 
@@ -20482,7 +20756,7 @@ function (Quaternion,
 				           arg0 .y,
 				           arg0 .z,
 				           arg1);
-			
+
 			   return;
 			}
 			case 4:
@@ -20568,7 +20842,7 @@ function (Quaternion,
 			{
 				var value = this .value;
 
-				if (Math .abs (value .w > 1))
+				if (Math .abs (value .w) > 1)
 				{
 					return Vector4 .zAxis;
 				}
@@ -20609,35 +20883,35 @@ function (Quaternion,
 			return function (fromVec, toVec)
 			{
 				// https://bitbucket.org/Coin3D/coin/src/abc9f50968c9/src/base/SbRotation.cpp
-	
+
 				from .assign (fromVec) .normalize ();
 				to   .assign (toVec)   .normalize ();
-	
+
 				var
 					cos_angle = Algorithm .clamp (from .dot (to), -1, 1),
 					crossvec  = cv .assign (from) .cross (to) .normalize (),
 					crosslen  = crossvec .abs ();
-	
+
 				if (crosslen === 0)
 				{
 					// Parallel vectors
 					// Check if they are pointing in the same direction.
 					if (cos_angle > 0)
 						this .value .set (0, 0, 0, 1); // standard rotation
-	
+
 					// Ok, so they are parallel and pointing in the opposite direction
 					// of each other.
 					else
 					{
 						// Try crossing with x axis.
 						t .assign (from) .cross (Vector3 .xAxis);
-	
+
 						// If not ok, cross with y axis.
 						if (t .norm () === 0)
 							t .assign (from) .cross (Vector3 .yAxis);
-	
+
 						t .normalize ();
-	
+
 						this .value .set (t .x, t .y, t .z, 0);
 					}
 				}
@@ -20647,15 +20921,15 @@ function (Quaternion,
 					// The abs () wrapping is to avoid problems when `dot' "overflows" a tiny wee bit,
 					// which can lead to sqrt () returning NaN.
 					crossvec .multiply (Math .sqrt (Math .abs (1 - cos_angle) / 2));
-	
+
 					this .value .set (crossvec .x,
 					                  crossvec .y,
 					                  crossvec .z,
 					                  Math .sqrt (Math .abs (1 + cos_angle) / 2));
 				}
-	
+
 				this .update ();
-	
+
 				return this;
 			};
 		})(),
@@ -22840,14 +23114,14 @@ function (X3DField,
 "use strict";
 
 	var
-		unescape = /\\([\\"])/g,
+		unescape = /\\(.)/g,
 		escape   = /([\\"])/g;
 
 	function SFString (value)
 	{
 		return X3DField .call (this, arguments .length ? "" + value : "");
 	}
-	
+
 	Object .assign (SFString,
 	{
 		unescape: function (string)
@@ -25263,7 +25537,7 @@ function (SFBool,
 
 define ('x_ite/Browser/VERSION',[],function ()
 {
-	return "4.6.10";
+	return "4.6.15";
 });
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
@@ -28528,19 +28802,19 @@ function ($,
 });
 
 /**
- * jQuery contextMenu v2.9.0 - Plugin for simple contextMenu handling
+ * jQuery contextMenu v2.9.2 - Plugin for simple contextMenu handling
  *
- * Version: v2.9.0
+ * Version: v2.9.2
  *
  * Authors: Björn Brala (SWIS.nl), Rodney Rehm, Addy Osmani (patches for FF)
  * Web: http://swisnl.github.io/jQuery-contextMenu/
  *
- * Copyright (c) 2011-2019 SWIS BV and contributors
+ * Copyright (c) 2011-2020 SWIS BV and contributors
  *
  * Licensed under
  *   MIT License http://www.opensource.org/licenses/mit-license
  *
- * Date: 2019-10-13T13:09:56.900Z
+ * Date: 2020-05-13T13:55:36.983Z
  */
 
 // jscs:disable
@@ -28990,7 +29264,7 @@ function ($,
 
                         // also need to try and focus this element if we're in a contenteditable area,
                         // as the layer will prevent the browser mouse action we want
-                        if (target.isContentEditable) {
+                        if (target !== null && target.isContentEditable) {
                             var range = document.createRange(),
                                 sel = window.getSelection();
                             range.selectNode(target);
@@ -30034,7 +30308,7 @@ function ($,
                         width: $win.width(),
                         display: 'block',
                         position: 'fixed',
-                        'z-index': zIndex,
+                        'z-index': zIndex - 1,
                         top: 0,
                         left: 0,
                         opacity: 0,
@@ -30042,7 +30316,7 @@ function ($,
                         'background-color': '#000'
                     })
                     .data('contextMenuRoot', opt)
-                    .insertBefore(this)
+                    .appendTo(document.body)
                     .on('contextmenu', handle.abortevent)
                     .on('mousedown', handle.layerClick);
 
@@ -31021,7 +31295,7 @@ function ($,
 						{
 							$("body > ul.context-menu-list") .fadeOut (500);
 
-							window .open ("http://create3000.de/x_ite/");
+							window .open (browser .getProviderUrl ());
 						},
 					},
 				}
@@ -31614,6 +31888,10 @@ define ('x_ite/Configuration/X3DInfoArray',[],function ()
 			this .array .push (value);
 			this .index .set (key, value);
 		},
+		addAlias: function (key, value)
+		{
+			this .index .set (key, this .index .get (value));
+		},
 		get: function (key)
 		{
 			return this .index .get (key);
@@ -31629,7 +31907,7 @@ define ('x_ite/Configuration/X3DInfoArray',[],function ()
 				try
 				{
 					value .toVRMLStream (stream);
-	
+
 					stream .string += "\n";
 				}
 				catch (error)
@@ -31645,7 +31923,7 @@ define ('x_ite/Configuration/X3DInfoArray',[],function ()
 				try
 				{
 					value .toXMLStream (stream);
-	
+
 					stream .string += "\n";
 				}
 				catch (error)
@@ -33283,7 +33561,7 @@ function (ComponentInfo,
 	function ComponentInfoArray (array)
 	{
 		var proxy = X3DInfoArray .call (this);
-	
+
 		if (array)
 		{
 			for (var i = 0, length = array .length; i < length; ++ i)
@@ -34626,7 +34904,7 @@ function (Fields,
 			   case "length":
 			   case "mass":
 					return value / this .getUnits () .get (category) .conversionFactor;
-			
+
 				// Derived units
 
 				case "acceleration:":
@@ -34754,7 +35032,7 @@ function (Fields,
 
 			if (specificationVersion === "2.0")
 				specificationVersion = "3.3";
-		
+
 			stream .string += "#X3D V";
 			stream .string += specificationVersion;
 			stream .string += " ";
@@ -34801,7 +35079,7 @@ function (Fields,
 						empty = false;
 
 						unit .toVRMLStream (stream);
-	
+
 						stream .string += "\n";
 					}
 				}
@@ -34834,7 +35112,7 @@ function (Fields,
 			generator .ExportedNodes (exportedNodes);
 
 			X3DExecutionContext .prototype .toVRMLStream .call (this, stream);
-		
+
 			if (exportedNodes .size)
 			{
 				stream .string += "\n";
@@ -34844,7 +35122,7 @@ function (Fields,
 					try
 					{
 						exportedNode .toVRMLStream (stream);
-	
+
 						stream .string += "\n";
 					}
 					catch (error)
@@ -34865,14 +35143,14 @@ function (Fields,
 
 			if (specificationVersion === "2.0")
 				specificationVersion = "3.3";
-		
+
 			stream .string += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
 			stream .string += "<!DOCTYPE X3D PUBLIC \"ISO//Web3D//DTD X3D ";
 			stream .string += specificationVersion;
 			stream .string += "//EN\" \"http://www.web3d.org/specifications/x3d-";
 			stream .string += specificationVersion;
 			stream .string += ".dtd\">\n";
-		
+
 			stream .string += "<X3D";
 			stream .string += " ";
 			stream .string += "profile='";
@@ -34895,7 +35173,7 @@ function (Fields,
 			stream .string += "<head>\n";
 
 			generator .IncIndent ();
-		
+
 			// <head>
 
 			this .getComponents () .toXMLStream (stream);
@@ -34928,7 +35206,7 @@ function (Fields,
 				stream .string += "'";
 				stream .string += "/>\n";
 			});
-		
+
 			// </head>
 
 			generator .DecIndent ();
@@ -34939,7 +35217,7 @@ function (Fields,
 			stream .string += "<Scene>\n";
 
 			generator .IncIndent ();
-		
+
 			// <Scene>
 
 			var exportedNodes = this .getExportedNodes ();
@@ -34949,7 +35227,7 @@ function (Fields,
 			generator .ExportedNodes (exportedNodes);
 
 			X3DExecutionContext .prototype .toXMLStream .call (this, stream);
-		
+
 			exportedNodes .forEach (function (exportedNode)
 			{
 				try
@@ -38389,24 +38667,10 @@ function (Fields,
 												{
 													var field = baseNode .getField (fieldId);
 
-													if (reference .getType () === field .getType ())
+													if (! (accessType === field .getAccessType () && reference .getType () === field .getType ()))
 													{
-														if (accessType === field .getAccessType ())
-															;
-														else if (field .getAccessType () === X3DConstants .inputOutput)
-														{
-															if (accessType !== field .getAccessType ())
-																field = this .createUserDefinedField (baseNode, accessType, fieldId, supportedField);
-														}
-														else
-														{
-															this .exception ("Field '" + fieldId + "' must have access type " + accessTypeToString (field .getAccessType ()) + ".");
-
-															return true;
-														}
-													}
-													else
 														field = this .createUserDefinedField (baseNode, accessType, fieldId, supportedField);
+													}
 												}
 												catch (error)
 												{
@@ -40989,7 +41253,7 @@ function (URI,
 				return this .scriptUrl .transform ("assets/components/" + file + ".js") .toString ();
 			}
 
-			return "https://github.com/create3000/x_ite";
+			return "https://github.com/create3000/x_ite/wiki";
 		},
 		getShaderUrl: function (file)
 		{
@@ -41428,13 +41692,15 @@ define ('x_ite/Bits/TraverseType',[],function ()
 
 
 define ('x_ite/Components/Shaders/X3DShaderNode',[
+	"x_ite/Fields",
 	"x_ite/Browser/Core/Shading",
 	"x_ite/Components/Shape/X3DAppearanceChildNode",
 	"x_ite/Bits/X3DConstants",
 	"x_ite/Bits/TraverseType",
 ],
-function (Shading,
-          X3DAppearanceChildNode, 
+function (Fields,
+          Shading,
+          X3DAppearanceChildNode,
           X3DConstants,
           TraverseType)
 {
@@ -41446,6 +41712,8 @@ function (Shading,
 
 		this .addType (X3DConstants .X3DShaderNode);
 
+		this .addChildObjects ("activationTime", new Fields .SFTime ());
+
 		this .valid    = false;
 		this .selected = 0;
 	}
@@ -41453,6 +41721,16 @@ function (Shading,
 	X3DShaderNode .prototype = Object .assign (Object .create (X3DAppearanceChildNode .prototype),
 	{
 		constructor: X3DShaderNode,
+		initialize: function ()
+		{
+			X3DAppearanceChildNode .prototype .initialize .call (this);
+
+			this .activate_ .addInterest ("set_activate__", this);
+		},
+		set_activate__: function ()
+		{
+			this .activationTime_ = this .getBrowser () .getCurrentTime ();
+		},
 		custom: true,
 		setCustom: function (value)
 		{
@@ -41498,7 +41776,7 @@ function (Shading,
 					this .wireframe     = false;
 					break;
 				}
-			}	
+			}
 		},
 		select: function ()
 		{
@@ -41509,7 +41787,7 @@ function (Shading,
 		},
 		deselect: function ()
 		{
-			++ this .selected;
+			-- this .selected;
 
 			if (this .selected === 0)
 			{
@@ -41528,8 +41806,6 @@ function (Shading,
 
 	return X3DShaderNode;
 });
-
-
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
  *******************************************************************************
@@ -41699,7 +41975,7 @@ function (X3DChildNode,
 
 		this .addType (X3DConstants .X3DBindableNode);
 
-		this .layers = [ ];
+		this .updateTime = 0;
 	}
 
 	X3DBindableNode .prototype = Object .assign (Object .create (X3DChildNode .prototype),
@@ -41715,29 +41991,13 @@ function (X3DChildNode,
 		{
 		   return true;
 		},
-		addLayer: function (layer)
-		{
-			this .layers .push (layer);
-		},
 		transitionStart: function ()
 		{ },
 		set_bind__: function ()
 		{
-			if (this .set_bind_ .getValue ())
+			if (this .set_bind_ .getValue () != this .isBound_ .getValue)
 			{
-				this .layers = this .getLayers ();
-
-				// Bind
-
-				for (var i = 0; i < this .layers .length; ++ i)
-					this .bindToLayer (this .layers [i]);
-			}
-			else
-			{
-				// Unbind
-
-				for (var i = 0; i < this .layers .length; ++ i)
-					this .unbindFromLayer (this .layers [i]);
+				this .updateTime = performance .now () / 1000;
 			}
 		},
 	});
@@ -43035,12 +43295,12 @@ function (Fields,
 		                       "centerOfRotationOffset", new Fields .SFVec3f (),
 		                       "fieldOfViewScale",       new Fields .SFFloat (1));
 
-	   this .userPosition             = new Vector3 (0, 1, 0);
-	   this .userOrientation          = new Rotation4 (0, 0, 1, 0);
-	   this .userCenterOfRotation     = new Vector3 (0, 0, 0);
-		this .modelMatrix              = new Matrix4 ();
-		this .cameraSpaceMatrix        = new Matrix4 (1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0,  10, 1);
-		this .inverseCameraSpaceMatrix = new Matrix4 (1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -10, 1);
+	   this .userPosition         = new Vector3 (0, 1, 0);
+	   this .userOrientation      = new Rotation4 (0, 0, 1, 0);
+	   this .userCenterOfRotation = new Vector3 (0, 0, 0);
+		this .modelMatrix          = new Matrix4 ();
+		this .cameraSpaceMatrix    = new Matrix4 (1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0,  10, 1);
+		this .viewMatrix           = new Matrix4 (1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -10, 1);
 
 		var browser = this .getBrowser ();
 
@@ -43095,18 +43355,6 @@ function (Fields,
 			return this .easeInEaseOut;
 		},
 		setInterpolators: function () { },
-		bindToLayer: function (layer)
-		{
-			layer .getViewpointStack () .push (this);
-		},
-		unbindFromLayer: function (layer)
-		{
-			layer .getViewpointStack () .pop (this);
-		},
-		removeFromLayer: function (layer)
-		{
-			layer .getViewpointStack () .remove (this);
-		},
 		getPosition: function ()
 		{
 			return this .position_ .getValue ();
@@ -43143,9 +43391,9 @@ function (Fields,
 		{
 			return this .cameraSpaceMatrix;
 		},
-		getInverseCameraSpaceMatrix: function ()
+		getViewMatrix: function ()
 		{
-			return this .inverseCameraSpaceMatrix;
+			return this .viewMatrix;
 		},
 		getModelMatrix: function ()
 		{
@@ -43183,7 +43431,7 @@ function (Fields,
 				relativeScale            = new Vector3 (0, 0, 0),
 				relativeScaleOrientation = new Rotation4 (0, 0, 1, 0);
 
-			return function (fromViewpoint)
+			return function (layer, fromViewpoint)
 			{
 				try
 				{
@@ -43295,7 +43543,7 @@ function (Fields,
 		getRelativeTransformation: function (fromViewpoint, relativePosition, relativeOrientation, relativeScale, relativeScaleOrientation)
 		// throw
 		{
-			var differenceMatrix = this .modelMatrix .copy () .multRight (fromViewpoint .getInverseCameraSpaceMatrix ()) .inverse ();
+			var differenceMatrix = this .modelMatrix .copy () .multRight (fromViewpoint .getViewMatrix ()) .inverse ();
 
 			differenceMatrix .get (relativePosition, relativeOrientation, relativeScale, relativeScaleOrientation);
 
@@ -43460,19 +43708,19 @@ function (Fields,
 			try
 			{
 				this .cameraSpaceMatrix .set (this .getUserPosition (),
-				                              this .getUserOrientation (),
-				                              this .scaleOffset_ .getValue (),
-				                              this .scaleOrientationOffset_ .getValue ());
+														this .getUserOrientation (),
+														this .scaleOffset_ .getValue (),
+														this .scaleOrientationOffset_ .getValue ());
 
 				this .cameraSpaceMatrix .multRight (this .modelMatrix);
 
-				this .inverseCameraSpaceMatrix .assign (this .cameraSpaceMatrix) .inverse ();
+				this .viewMatrix .assign (this .cameraSpaceMatrix) .inverse ();
 			}
 			catch (error)
 			{
-			   console .log (error);
+				console .log (error);
 			}
-		},
+		}
 	});
 
 	return X3DViewpointNode;
@@ -43667,14 +43915,14 @@ function (Vector3)
 				A = (r + l) / r_l,
 				B = (t + b) / t_b,
 				C = -(f + n) / f_n,
-				D = -n_2 * f / f_n,
+				D = -(n_2 * f) / f_n,
 				E = n_2 / r_l,
 				F = n_2 / t_b;
 
 			return matrix .set (E, 0, 0, 0,
 			                    0, F, 0, 0,
 			                    A, B, C, -1,
-			                    0, 0, D, 0);
+									  0, 0, D, 0);
 		},
 		perspective: function (fieldOfView, zNear, zFar, width, height, matrix)
 		{
@@ -43725,7 +43973,7 @@ function (Vector3)
 			return function (box, matrix)
 			{
 				box .getExtents (min, max);
-	
+
 				return this .ortho (min .x, max .x, min .y, max .y, -max .z, -min .z, matrix);
 			};
 		})(),
@@ -43796,8 +44044,8 @@ define ('x_ite/Components/Navigation/OrthoViewpoint',[
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DViewpointNode, 
-          ScalarInterpolator, 
+          X3DViewpointNode,
+          ScalarInterpolator,
           X3DConstants,
           Camera,
           Vector2,
@@ -43892,7 +44140,7 @@ function (Fields,
 			else
 			{
 				this .fieldOfViewInterpolator .keyValue_ = new Fields .MFFloat (this .fromFieldOfViewScale, this .fieldOfViewScale_ .getValue ());
-	
+
 				this .fieldOfViewScale_ = this .fromFieldOfViewScale;
 			}
 		},
@@ -43936,16 +44184,16 @@ function (Fields,
 					sizeX  = this .sizeX,
 					sizeY  = this .sizeY,
 					aspect = width / height;
-	
+
 				if (aspect > sizeX / sizeY)
 				{
 					var s = sizeY / height;
-	
+
 					return screenScale .set (s, s, s);
 				}
-	
+
 				var s = sizeX / width;
-	
+
 				return screenScale .set (s, s, s);
 			};
 		})(),
@@ -43961,10 +44209,10 @@ function (Fields,
 					sizeX  = this .sizeX,
 					sizeY  = this .sizeY,
 					aspect = width / height;
-	
+
 				if (aspect > sizeX / sizeY)
 					return viewportSize .set (sizeY * aspect, sizeY);
-	
+
 				return viewportSize .set (sizeX, sizeX / aspect);
 			};
 		})(),
@@ -44000,8 +44248,6 @@ function (Fields,
 
 	return OrthoViewpoint;
 });
-
-
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
  *******************************************************************************
@@ -45813,8 +46059,7 @@ function (Fields,
 
 			this .isLive () .addInterest ("set_live__", this);
 
-			this .activate_ .addInterest ("set_activate__", this);
-			this .parts_    .addFieldInterest (this .loadSensor .watchList_);
+			this .parts_ .addFieldInterest (this .loadSensor .watchList_);
 
 			this .loadSensor .isLoaded_ .addInterest ("set_loaded__", this);
 			this .loadSensor .watchList_ = this .parts_;
@@ -45849,11 +46094,6 @@ function (Fields,
 					this .disable (gl);
 				}
 			}
-		},
-		set_activate__: function ()
-		{
-			if (this .activate_ .getValue ())
-				this .set_loaded__ ();
 		},
 		set_loaded__: function ()
 		{
@@ -47320,6 +47560,11 @@ function ($,
 
 				if (accessType & X3DConstants .initializeOnly)
 				{
+					if (field .getType () === X3DConstants .MFNode)
+					{
+						field .length = 0
+					}
+
 					this .fieldValue (field, xmlElement .getAttribute ("value"));
 
 					this .pushParent (field);
@@ -47676,7 +47921,7 @@ function ($,
 	XMLParser .prototype .fieldTypes [X3DConstants .MFMatrix3f]  = Parser .prototype .sfmatrix3fValues;
 	XMLParser .prototype .fieldTypes [X3DConstants .MFMatrix4d]  = Parser .prototype .sfmatrix4dValues;
 	XMLParser .prototype .fieldTypes [X3DConstants .MFMatrix4f]  = Parser .prototype .sfmatrix4fValues;
-	XMLParser .prototype .fieldTypes [X3DConstants .MFNode]      = function () { };
+	XMLParser .prototype .fieldTypes [X3DConstants .MFNode]      = function (field) { field .length = 0; };
 	XMLParser .prototype .fieldTypes [X3DConstants .MFRotation]  = Parser .prototype .sfrotationValues;
 	XMLParser .prototype .fieldTypes [X3DConstants .MFString]    = Parser .prototype .sfstringValues;
 	XMLParser .prototype .fieldTypes [X3DConstants .MFTime]      = Parser .prototype .sftimeValues;
@@ -48256,7 +48501,7 @@ define ('standard/Networking/BinaryTransport',[],function ()
 		});
 	};
 });
-/* pako 1.0.10 nodeca/pako */(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define('pako_inflate/dist/pako_inflate',[],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.pako = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+/* pako 1.0.11 nodeca/pako */(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define('pako_inflate/dist/pako_inflate',[],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.pako = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 'use strict';
 
 
@@ -58854,6 +59099,13 @@ function (Shading,
             return globalWindow.setTimeout(fn, 20);
         };
 
+    var cancelAnimationFrame = globalWindow.cancelAnimationFrame ||
+        globalWindow.mozCancelAnimationFrame ||
+        globalWindow.webkitCancelAnimationFrame ||
+        function (timer) {
+            globalWindow.clearTimeout(timer);
+        };
+
     /**
      * Iterate over each of the provided element(s).
      *
@@ -58920,6 +59172,9 @@ function (Shading,
      * @constructor
      */
     var ResizeSensor = function(element, callback) {
+        //Is used when checking in reset() only for invisible elements
+        var lastAnimationFrameForInvisibleCheck = 0;
+
         /**
          *
          * @constructor
@@ -59013,16 +59268,19 @@ function (Shading,
 
             var computedStyle = window.getComputedStyle(element);
             var position = computedStyle ? computedStyle.getPropertyValue('position') : null;
-            if ('absolute' !== position && 'relative' !== position && 'fixed' !== position) {
+            if ('absolute' !== position && 'relative' !== position && 'fixed' !== position && 'sticky' !== position) {
                 element.style.position = 'relative';
             }
 
-            var dirty, rafId;
+            var dirty = false;
+
+            //last request animation frame id used in onscroll event
+            var rafId = 0;
             var size = getElementSize(element);
             var lastWidth = 0;
             var lastHeight = 0;
             var initialHiddenCheck = true;
-            var lastAnimationFrame = 0;
+            lastAnimationFrameForInvisibleCheck = 0;
 
             var resetExpandShrink = function () {
                 var width = element.offsetWidth;
@@ -59044,10 +59302,9 @@ function (Shading,
                     var invisible = element.offsetWidth === 0 && element.offsetHeight === 0;
                     if (invisible) {
                         // Check in next frame
-                        if (!lastAnimationFrame){
-                            lastAnimationFrame = requestAnimationFrame(function(){
-                                lastAnimationFrame = 0;
-
+                        if (!lastAnimationFrameForInvisibleCheck){
+                            lastAnimationFrameForInvisibleCheck = requestAnimationFrame(function(){
+                                lastAnimationFrameForInvisibleCheck = 0;
                                 reset();
                             });
                         }
@@ -59098,8 +59355,11 @@ function (Shading,
             addEvent(expand, 'scroll', onScroll);
             addEvent(shrink, 'scroll', onScroll);
 
-            // Fix for custom Elements
-            requestAnimationFrame(reset);
+            // Fix for custom Elements and invisible elements
+            lastAnimationFrameForInvisibleCheck = requestAnimationFrame(function(){
+                lastAnimationFrameForInvisibleCheck = 0;
+                reset();
+            });
         }
 
         forEachElement(element, function(elem){
@@ -59107,6 +59367,11 @@ function (Shading,
         });
 
         this.detach = function(ev) {
+            // clean up the unfinished animation frame to prevent a potential endless requestAnimationFrame of reset
+            if (!lastAnimationFrameForInvisibleCheck) {
+                cancelAnimationFrame(lastAnimationFrameForInvisibleCheck);
+                lastAnimationFrameForInvisibleCheck = 0;
+            }
             ResizeSensor.detach(element, ev);
         };
 
@@ -59320,19 +59585,21 @@ function ($,
 		reshape: function ()
 		{
 			var
+				gl     = this .getContext (),
 				canvas = this .getCanvas (),
 				width  = canvas .width (),
 				height = canvas .height ();
 
 			canvas = canvas [0];
 
-			canvas .width       = width;
-			canvas .height      = height;
+			canvas .width  = width;
+			canvas .height = height;
+
 			this .viewport_ [2] = width;
 			this .viewport_ [3] = height;
 
-			this .context .viewport (0, 0, width, height);
-			this .context .scissor  (0, 0, width, height);
+			gl .viewport (0, 0, width, height);
+			gl .scissor  (0, 0, width, height);
 
 			this .addBrowserEvent ();
 		},
@@ -59662,7 +59929,12 @@ function (Fields,
 				shaderNodes = this .shaderNodes;
 
 			for (var i = 0, length = shaderNodes .length; i < length; ++ i)
-				shaderNodes [i] .isValid_ .removeInterest ("set_shader__", this);
+			{
+				var shaderNode = shaderNodes [i];
+
+				shaderNode .isValid_        .removeInterest ("set_shader__", this);
+				shaderNode .activationTime_ .removeInterest ("set_shader__", this);
+			}
 
 			shaderNodes .length = 0;
 
@@ -59673,7 +59945,8 @@ function (Fields,
 				if (shaderNode)
 				{
 					shaderNodes .push (shaderNode);
-					shaderNode .isValid_ .addInterest ("set_shader__", this);
+					shaderNode .isValid_        .addInterest ("set_shader__", this);
+					shaderNode .activationTime_ .addInterest ("set_shader__", this);
 				}
 			}
 
@@ -59693,10 +59966,29 @@ function (Fields,
 
 			for (var i = 0, length = shaderNodes .length; i < length; ++ i)
 			{
-				if (shaderNodes [i] .isValid_ .getValue ())
+				var shaderNode = shaderNodes [i];
+
+				if (shaderNode .isValid_ .getValue ())
 				{
-					this .shaderNode = shaderNodes [i];
-					break;
+					if (shaderNode .activationTime_ .getValue () === this .getBrowser () .getCurrentTime ())
+					{
+						this .shaderNode = shaderNode;
+						break;
+					}
+				}
+			}
+
+			if (!this .shaderNode)
+			{
+				for (var i = 0, length = shaderNodes .length; i < length; ++ i)
+				{
+					var shaderNode = shaderNodes [i];
+
+					if (shaderNode .isValid_ .getValue ())
+					{
+						this .shaderNode = shaderNode;
+						break;
+					}
 				}
 			}
 
@@ -61351,10 +61643,10 @@ function (Triangle3,
 		{
 			case 0:
 			{
-				this .matrix = new Matrix4 (0.5, 0,   0,   0,
-				                            0,   0.5, 0,   0,
-				                            0,   0,   0.5, 0,
-				                            0,   0,   0,   0);
+				this .matrix = new Matrix4 (0, 0, 0, 0,
+				                            0, 0, 0, 0,
+				                            0, 0, 0, 0,
+				                            0, 0, 0, 0);
 				return;
 			}
 			case 2:
@@ -61441,7 +61733,7 @@ function (Triangle3,
 						cx  = (max .x + min .x) / 2,
 						cy  = (max .y + min .y) / 2,
 						cz  = (max .z + min .z) / 2;
-	
+
 					this .matrix .set (sx, 0,  0,  0,
 					                   0,  sy, 0,  0,
 					                   0,  0,  sz, 0,
@@ -61488,29 +61780,29 @@ function (Triangle3,
 					x = m .xAxis,
 					y = m .yAxis,
 					z = m .zAxis;
-	
+
 				r1 .assign (y) .add (z);
-	
+
 				var r2 = z .subtract (y);
-	
+
 				p1 .assign (x) .add (r1),
 				p4 .assign (x) .add (r2);
-				
+
 				var
 					p2 = r1 .subtract (x),
 					p3 = r2 .subtract (x);
-	
+
 				min .assign (p1);
 				max .assign (p1);
-	
+
 				min .min (p2, p3, p4);
 				max .max (p2, p3, p4);
-	
+
 				p1 .negate ();
 				p2 .negate ();
 				p3 .negate ();
 				p4 .negate ();
-	
+
 				min .min (p1, p2, p3, p4);
 				max .max (p1, p2, p3, p4);
 			};
@@ -61536,39 +61828,39 @@ function (Triangle3,
 				 *   \|            \|
 				 *    p3 ---------- p4
 				 */
-			
+
 				var m = this .matrix;
-	
+
 				x .assign (m .xAxis);
 				y .assign (m .yAxis);
 				z .assign (m .zAxis);
-			
+
 				r1 .assign (y) .add (z);
-	
+
 				var r2 = z .subtract (y);
-			
+
 				points [0] .assign (x)  .add (r1);
 				points [1] .assign (r1) .subtract (x);
 				points [2] .assign (r2) .subtract (x);
 				points [3] .assign (x)  .add (r2);
-			
+
 				points [4] .assign (points [2]) .negate ();
 				points [5] .assign (points [3]) .negate ();
 				points [6] .assign (points [0]) .negate ();
 				points [7] .assign (points [1]) .negate ();
-			
+
 				var center = this .center;
-	
+
 				points [0] .add (center);
 				points [1] .add (center);
 				points [2] .add (center);
 				points [3] .add (center);
-			
+
 				points [4] .add (center);
 				points [5] .add (center);
 				points [6] .add (center);
 				points [7] .add (center);
-			
+
 				return points;
 			};
 		})(),
@@ -61719,7 +62011,7 @@ function (Triangle3,
 				planes [0] .assign (y) .cross (z) .normalize ();
 				planes [1] .assign (z) .cross (x) .normalize ();
 				planes [2] .assign (x) .cross (y) .normalize ();
-			
+
 				return planes;
 			};
 		})(),
@@ -61739,10 +62031,10 @@ function (Triangle3,
 			{
 				if (this .isEmpty ())
 					return this .assign (box);
-	
+
 				if (box .isEmpty ())
 					return this;
-	
+
 				this .getExtents (lhs_min, lhs_max);
 				box  .getExtents (rhs_min, rhs_max);
 
@@ -61768,7 +62060,7 @@ function (Triangle3,
 			return function (point)
 			{
 				this .getExtents (min, max);
-	
+
 				return min .x <= point .x &&
 				       max .x >= point .x &&
 				       min .y <= point .y &&
@@ -61784,7 +62076,7 @@ function (Triangle3,
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
-		
+
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
@@ -61796,7 +62088,7 @@ function (Triangle3,
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
-		
+
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
@@ -61819,11 +62111,11 @@ function (Triangle3,
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
-		
+
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
-		
+
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
@@ -61838,44 +62130,44 @@ function (Triangle3,
 			return function (other)
 			{
 				// Test special cases.
-			
+
 				if (this .isEmpty ())
 					return false;
-			
+
 				if (other .isEmpty ())
 					return false;
-			
+
 				// Get points.
-			
+
 				this  .getPoints (points1);
 				other .getPoints (points2);
-			
+
 				// Test the three planes spanned by the normal vectors of the faces of the first parallelepiped.
-			
+
 				if (SAT .isSeparated (this .getNormals (planes), points1, points2))
 					return false;
-			
+
 				// Test the three planes spanned by the normal vectors of the faces of the second parallelepiped.
-			
+
 				if (SAT .isSeparated (other .getNormals (planes), points1, points2))
 					return false;
-	
+
 				// Test the nine other planes spanned by the edges of each parallelepiped.
-			
+
 				this  .getAxes (axes1);
 				other .getAxes (axes2);
-	
+
 				for (var i1 = 0; i1 < 3; ++ i1)
 				{
 					for (var i2 = 0; i2 < 3; ++ i2)
 						axes9 [i1 * 3 + i2] .assign (axes1 [i1]) .cross (axes2 [i2]);
 				}
-			
+
 				if (SAT .isSeparated (axes9, points1, points2))
 					return false;
-			
+
 				// Both boxes intersect.
-			
+
 				return true;
 			};
 		})(),
@@ -61886,7 +62178,7 @@ function (Triangle3,
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
-		
+
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
@@ -61903,11 +62195,11 @@ function (Triangle3,
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
-		
+
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
-		
+
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
 				new Vector3 (0, 0, 0),
@@ -61932,49 +62224,49 @@ function (Triangle3,
 			return function (a, b, c)
 			{
 				// Test special cases.
-	
+
 				if (this .isEmpty ())
 					return false;
-	
+
 				// Get points.
-	
+
 				this .getPoints (points1);
-	
+
 				triangle [0] = a;
 				triangle [1] = b;
 				triangle [2] = c;
-	
+
 				// Test the three planes spanned by the normal vectors of the faces of the first parallelepiped.
-	
+
 				if (SAT .isSeparated (this .getNormals (planes), points1, triangle))
 					return false;
-	
+
 				// Test the normal of the triangle.
-	
+
 				Triangle3 .normal (a, b, c, triangleNormal [0]);
-	
+
 				if (SAT .isSeparated (triangleNormal, points1, triangle))
 					return false;
-	
+
 				// Test the nine other planes spanned by the edges of each parallelepiped.
-	
+
 				this .getAxes (axes1);
-	
+
 				triangleEdges [0] .assign (a) .subtract (b);
 				triangleEdges [1] .assign (b) .subtract (c);
 				triangleEdges [2] .assign (c) .subtract (a);
-	
+
 				for (var i1 = 0; i1 < 3; ++ i1)
 				{
 					for (var i2 = 0; i2 < 3; ++ i2)
 						axes9 [i1 * 3 + i2] .assign (axes1 [i1]) .cross (triangleEdges [i2]);
 				}
-	
+
 				if (SAT .isSeparated (axes9, points1, triangle))
 					return false;
-	
+
 				// Box and triangle intersect.
-	
+
 				return true;
 			};
 		})(),
@@ -61995,7 +62287,7 @@ function (Triangle3,
 			return function ()
 			{
 				this .getAbsoluteExtents (min, max);
-	
+
 				return max .subtract (min);
 			};
 		})(),
@@ -62976,11 +63268,15 @@ function (Fields,
 
 						gl .frontFace (positiveScale ? this .frontFace : (this .frontFace === gl .CCW ? gl .CW : gl .CCW));
 
-						if (context .transparent && ! this .solid)
+						if (context .transparent)
 						{
 							gl .enable (gl .CULL_FACE);
-							gl .cullFace (gl .FRONT);
-							gl .drawArrays (shaderNode .primitiveMode, 0, this .vertexCount);
+
+							if (!this .solid)
+							{
+								gl .cullFace (gl .FRONT);
+								gl .drawArrays (shaderNode .primitiveMode, 0, this .vertexCount);
+							}
 
 							gl .cullFace (gl .BACK);
 							gl .drawArrays (shaderNode .primitiveMode, 0, this .vertexCount);
@@ -66671,6 +66967,19 @@ function (X3DBaseNode,
 		{
 			return this .getBrowser () .getActiveLayer () .getViewpoint ();
 		},
+		getButton: function (button)
+		{
+			// If Alt key is pressed and button 0, then emulate button 1 (middle).
+			if (button === 0)
+			{
+				if (this .getBrowser () .getAltKey ())
+				{
+					return 1;
+				}
+			}
+
+			return button;
+		},
 		getPointOnCenterPlane: function (x, y, result)
 		{
 			try
@@ -66708,8 +67017,12 @@ function (X3DBaseNode,
 		},
 		trackballProjectToSphere: function (x, y, vector)
 		{
-			x =  x / this .getBrowser () .getViewport () [2] - 0.5;
-			y = -y / this .getBrowser () .getViewport () [3] + 0.5;
+			var viewport = this .getViewport () .getRectangle (this .getBrowser ());
+
+			y = this .getBrowser () .getViewport () [3] - y;
+
+			x = (x - viewport [0]) / viewport [2] - 0.5;
+			y = (y - viewport [1]) / viewport [3] - 0.5;
 
 			return vector .set (x, y, tbProjectToSphere (0.5, x, y));
 		},
@@ -67700,12 +68013,14 @@ function ($,
 {
 "use strict";
 
+	var macOS = /Mac OS X/i .test (navigator .userAgent)
+
 	var
 		MOTION_TIME       = 0.05 * 1000,
 		SPIN_RELEASE_TIME = 0.04 * 1000,
 		SPIN_ANGLE        = 0.003,
 		SPIN_FACTOR       = 0.6,
-		SCROLL_FACTOR     = 1.0 / 20.0,
+		SCROLL_FACTOR     = macOS ? 1 / 120 : 1 / 20,
 		MOVE_TIME         = 0.2,
 		ROTATE_TIME       = 0.2,
 		MAX_ANGLE         = 0.97;
@@ -67724,6 +68039,7 @@ function ($,
 		this .pressTime                = 0;
 		this .motionTime               = 0;
 
+		this .touchMode                = 0;
 		this .touch1                   = new Vector2 (0, 0);
 		this .touch2                   = new Vector2 (0, 0);
 		this .tapStart                 = 0;
@@ -67797,7 +68113,7 @@ function ($,
 		{
 			if (this .button >= 0)
 				return;
-		
+
 			this .pressTime = performance .now ();
 
 			var
@@ -67805,7 +68121,7 @@ function ($,
 				x      = event .pageX - offset .left,
 				y      = event .pageY - offset .top;
 
-			switch (event .button)
+			switch (this .getButton (event .button))
 			{
 				case 0:
 				{
@@ -67829,7 +68145,7 @@ function ($,
 					this .trackballProjectToSphere (x, y, this .fromVector);
 					this .rotation .assign (Rotation4 .Identity);
 
-					this .motionTime = 0;			
+					this .motionTime = 0;
 
 					this .isActive_ = true;
 					break;
@@ -67848,7 +68164,7 @@ function ($,
 					$(document) .bind ("mousemove.ExamineViewer" + this .getId (), this .mousemove .bind (this));
 					$(document) .bind ("touchend.ExamineViewer"  + this .getId (), this .touchend  .bind (this));
 					$(document) .bind ("touchmove.ExamineViewer" + this .getId (), this .touchmove .bind (this));
-		
+
 					this .disconnect ();
 					this .getActiveViewpoint () .transitionStop ();
 					this .getBrowser () .setCursor ("MOVE");
@@ -67866,10 +68182,10 @@ function ($,
 				return;
 
 			this .button = -1;
-		
+
 			$(document) .unbind (".ExamineViewer" + this .getId ());
 
-			switch (event .button)
+			switch (this .getButton (event .button))
 			{
 				case 0:
 				{
@@ -67916,7 +68232,7 @@ function ($,
 			event .stopImmediatePropagation ();
 
 			var
-				offset = this .getBrowser () .getElement () .offset (), 
+				offset = this .getBrowser () .getElement () .offset (),
 				x      = event .pageX - offset .left,
 				y      = this .getBrowser () .getElement () .height () - (event .pageY - offset .top);
 
@@ -67933,8 +68249,8 @@ function ($,
 					offset = this .getBrowser () .getElement () .offset (),
 					x      = event .pageX - offset .left,
 					y      = event .pageY - offset .top;
-	
-				switch (this .button)
+
+				switch (this .getButton (this .button))
 				{
 					case 0:
 					{
@@ -67943,16 +68259,16 @@ function ($,
 						// Stop event propagation.
 						event .preventDefault ();
 						event .stopImmediatePropagation ();
-	
+
 						var toVector = this .trackballProjectToSphere (x, y, this .toVector);
-	
+
 						this .rotation .setFromToVec (toVector, this .fromVector);
-	
+
 						if (Math .abs (this .rotation .angle) < SPIN_ANGLE && performance .now () - this .pressTime < MOTION_TIME)
 							return;
-	
+
 						this .addRotate (this .rotation);
-	
+
 						this .fromVector .assign (toVector);
 						this .motionTime = performance .now ();
 						break;
@@ -67964,14 +68280,14 @@ function ($,
 						// Stop event propagation.
 						event .preventDefault ();
 						event .stopImmediatePropagation ();
-	
+
 						var
 							viewpoint   = this .getActiveViewpoint (),
 							toPoint     = this .getPointOnCenterPlane (x, y, this .toPoint),
 							translation = viewpoint .getUserOrientation () .multVecRot (fromPoint .assign (this .fromPoint) .subtract (toPoint));
-	
+
 						this .addMove (translation, translation);
-	
+
 						this .fromPoint .assign (toPoint);
 						break;
 					}
@@ -67989,22 +68305,22 @@ function ($,
 				// Stop event propagation.
 				event .preventDefault ();
 				event .stopImmediatePropagation ();
-	
+
 				// Change viewpoint position.
-	
+
 				var
 					browser   = this .getBrowser (),
 					viewpoint = this .getActiveViewpoint ();
-	
+
 				browser .prepareEvents () .removeInterest ("spin", this);
 				viewpoint .transitionStop ();
 
 				step        = this .getDistanceToCenter (step) .multiply (event .zoomFactor || SCROLL_FACTOR),
 				translation = viewpoint .getUserOrientation () .multVecRot (translation .set (0, 0, step .abs ()));
-	
+
 				if (event .deltaY > 0)
-					this .addMove (translation .negate (), Vector3 .Zero);		
-				
+					this .addMove (translation .negate (), Vector3 .Zero);
+
 				else if (event .deltaY < 0)
 					this .addMove (translation, Vector3 .Zero);
 			};
@@ -68022,7 +68338,7 @@ function ($,
 					event .button = 0;
 					event .pageX  = touches [0] .pageX;
 					event .pageY  = touches [0] .pageY;
-		
+
 					this .mousedown (event);
 
 					// Remember tap.
@@ -68065,7 +68381,9 @@ function ($,
 				case 0:
 				{
 					// End rotate (button 0).
+
 					event .button = 0;
+
 					this .mouseup (event);
 
 					// Start dblclick (button 0).
@@ -68085,7 +68403,10 @@ function ($,
 				case 1:
 				{
 					// End move (button 1).
-					event .button = 1;
+
+					this .touchMode = 0;
+					event .button   = 1;
+
 					this .mouseup (event);
 					break;
 				}
@@ -68102,16 +68423,16 @@ function ($,
 			return function (event)
 			{
 				var touches = event .originalEvent .touches;
-	
+
 				switch (touches .length)
 				{
 					case 1:
 					{
 						// Rotate (button 0).
-	
+
 						event .pageX = touches [0] .pageX;
 						event .pageY = touches [0] .pageY;
-			
+
 						this .mousemove (event);
 						break;
 					}
@@ -68122,36 +68443,48 @@ function ($,
 
 						var
 							move = touch1Change .dot (touch2Change) > MOVE_ANGLE,
-							zoom = touch1Change .dot (touch2Change) < ZOOM_ANGLE;
+							zoom = touch1Change .dot (touch2Change) < ZOOM_ANGLE,
+							mode = this .touchMode || (move ? 1 : (zoom ? 2 : 0));
 
-						if (move)
+						switch (mode)
 						{
-							// Move (button 1).
-		
-							event .pageX = (touches [0] .pageX + touches [1] .pageX) / 2;
-							event .pageY = (touches [0] .pageY + touches [1] .pageY) / 2;
-		
-							this .mousemove (event);
-						}
-						else if (zoom)
-						{	
-							// Zoom (mouse wheel).
-		
-							var distance1 = this .touch1 .distance (this .touch2);
-			
-							this .touch1 .set (touches [0] .pageX, touches [0] .pageY);
-							this .touch2 .set (touches [1] .pageX, touches [1] .pageY);
-			
-							var
-								distance2 = this .touch1 .distance (this .touch2),
-								delta     = distance2 - distance1;
-			
-							event .deltaY     = delta;
-							event .zoomFactor = Math .abs (delta) / $(window) .width ();
+							case 1:
+							{
+								// Move (button 1).
 
-							this .mousewheel (event);
+								this .touchMode = 1;
+
+								event .pageX = (touches [0] .pageX + touches [1] .pageX) / 2;
+								event .pageY = (touches [0] .pageY + touches [1] .pageY) / 2;
+
+								this .mousemove (event);
+
+								break;
+							}
+							case 2:
+							{
+								// Zoom (mouse wheel).
+
+								this .touchMode = 2;
+
+								var distance1 = this .touch1 .distance (this .touch2);
+
+								this .touch1 .set (touches [0] .pageX, touches [0] .pageY);
+								this .touch2 .set (touches [1] .pageX, touches [1] .pageY);
+
+								var
+									distance2 = this .touch1 .distance (this .touch2),
+									delta     = distance2 - distance1;
+
+								event .deltaY     = delta;
+								event .zoomFactor = Math .abs (delta) / $(window) .width ();
+
+								this .mousewheel (event);
+
+								break;
+							}
 						}
-		
+
 						this .touch1 .set (touches [0] .pageX, touches [0] .pageY);
 						this .touch2 .set (touches [1] .pageX, touches [1] .pageY);
 						break;
@@ -68183,7 +68516,7 @@ function ($,
 		set_rotation__: function (value)
 		{
 			var viewpoint = this .getActiveViewpoint ();
-	
+
 			viewpoint .orientationOffset_ = this .getOrientationOffset (value .getValue (), this .initialOrientationOffset, false);
 			viewpoint .positionOffset_    = this .getPositionOffset (this .initialPositionOffset, this .initialOrientationOffset, viewpoint .orientationOffset_ .getValue ());
 		},
@@ -68194,14 +68527,14 @@ function ($,
 			return function (rotationChange)
 			{
 				var viewpoint = this .getActiveViewpoint ();
-	
+
 				if (this .rotationChaser .isActive_ .getValue () && this .rotationChaser .value_changed_ .hasInterest ("set_rotation__", this))
 				{
 					try
 					{
 						destination .assign (this .rotationChaser .set_destination_ .getValue ())
 							.multLeft (rotationChange);
-	
+
 						// Check for critical angle.
 						this .getOrientationOffset (destination, this .initialOrientationOffset, true);
 
@@ -68225,10 +68558,10 @@ function ($,
 					{
 						this .initialOrientationOffset .assign (viewpoint .orientationOffset_ .getValue ());
 						this .initialPositionOffset    .assign (viewpoint .positionOffset_    .getValue ());
-	
+
 						// Check for critical angle.
 						this .getOrientationOffset (rotationChange, this .initialOrientationOffset, true);
-	
+
 						this .rotationChaser .set_value_       = Rotation4 .Identity;
 						this .rotationChaser .set_destination_ = rotationChange;
 					}
@@ -68240,7 +68573,7 @@ function ($,
 						this .rotationChaser .set_destination_ = this .getHorizonRotation (rotationChange);
 					}
 				}
-	
+
 				this .disconnect ();
 				this .rotationChaser .value_changed_ .addInterest ("set_rotation__", this);
 			};
@@ -68255,7 +68588,7 @@ function ($,
 				{
 					this .disconnect ();
 					this .getBrowser () .prepareEvents () .addInterest ("spin", this);
-	
+
 					this .rotation .assign (rotation .assign (Rotation4 .Identity) .slerp (rotationChange, SPIN_FACTOR));
 				}
 				catch (error)
@@ -68273,13 +68606,13 @@ function ($,
 			return function (positionOffsetChange, centerOfRotationOffsetChange)
 			{
 				var viewpoint = this .getActiveViewpoint ();
-	
+
 				if (this .positionChaser .isActive_ .getValue () && this .positionChaser .value_changed_ .hasInterest ("set_positionOffset__", this))
 				{
 					positionOffset
 						.assign (this .positionChaser .set_destination_ .getValue ())
 						.add (positionOffsetChange);
-	
+
 					this .positionChaser .set_destination_ = positionOffset;
 				}
 				else
@@ -68287,11 +68620,11 @@ function ($,
 					positionOffset
 						.assign (viewpoint .positionOffset_ .getValue ())
 						.add (positionOffsetChange);
-	
+
 					this .positionChaser .set_value_       = viewpoint .positionOffset_;
 					this .positionChaser .set_destination_ = positionOffset;
 				}
-	
+
 				if (this .centerOfRotationChaser .isActive_ .getValue () && this .centerOfRotationChaser .value_changed_ .hasInterest ("set_centerOfRotationOffset__", this))
 				{
 					centerOfRotationOffset
@@ -68309,7 +68642,7 @@ function ($,
 					this .centerOfRotationChaser .set_value_       = viewpoint .centerOfRotationOffset_;
 					this .centerOfRotationChaser .set_destination_ = centerOfRotationOffset;
 				}
-	
+
 				this .disconnect ();
 				this .positionChaser         .value_changed_ .addInterest ("set_positionOffset__",         this);
 				this .centerOfRotationChaser .value_changed_ .addInterest ("set_centerOfRotationOffset__", this);
@@ -68325,7 +68658,7 @@ function ($,
 			return function (positionOffsetBefore, orientationOffsetBefore, orientationOffsetAfter)
 			{
 				this .getDistanceToCenter (distance, positionOffsetBefore);
-	
+
 				return (oob
 					.assign (orientationOffsetBefore)
 					.inverse ()
@@ -68347,15 +68680,15 @@ function ($,
 				var
 					viewpoint         = this .getActiveViewpoint (),
 					straightenHorizon = this .getBrowser () .getBrowserOption ("StraightenHorizon");
-	
+
 				userOrientation
 					.assign (rotation)
 					.multRight (viewpoint .getOrientation ())
 					.multRight (orientationOffsetBefore);
-	
+
 				if (straightenHorizon && viewpoint .getTypeName () !== "GeoViewpoint")
 					viewpoint .straightenHorizon (userOrientation);
-	
+
 				var orientationOffsetAfter = orientationOffset
 					.assign (viewpoint .getOrientation ())
 					.inverse ()
@@ -68487,7 +68820,9 @@ function ($,
           Camera)
 {
 "use strict";
-	
+
+	var macOS = /Mac OS X/i .test (navigator .userAgent)
+
 	var
 		SPEED_FACTOR           = 0.007,
 		SHIFT_SPEED_FACTOR     = 4 * SPEED_FACTOR,
@@ -68495,13 +68830,13 @@ function ($,
 		ROTATION_LIMIT         = 40,
 		PAN_SPEED_FACTOR       = SPEED_FACTOR,
 		PAN_SHIFT_SPEED_FACTOR = 1.4 * PAN_SPEED_FACTOR,
-		ROLL_ANGLE             = Math .PI / 32,
+		ROLL_ANGLE             = macOS ? Math .PI / 512 : Math .PI / 32,
 		ROTATE_TIME            = 0.3;
-	
+
 	var
 		MOVE = 0,
 		PAN  = 1;
-	
+
 	function X3DFlyViewer (executionContext)
 	{
 		X3DViewer .call (this, executionContext);
@@ -68571,8 +68906,8 @@ function ($,
 				offset = this .getBrowser () .getElement () .offset (),
 				x      = event .pageX - offset .left,
 				y      = event .pageY - offset .top;
-			
-			switch (event .button)
+
+			switch (this .getButton (event .button))
 			{
 				case 0:
 				{
@@ -68583,7 +68918,7 @@ function ($,
 					event .stopImmediatePropagation ();
 
 					this .button = event .button;
-				
+
 					$(document) .bind ("mouseup.X3DFlyViewer"   + this .getId (), this .mouseup   .bind (this));
 					$(document) .bind ("mousemove.X3DFlyViewer" + this .getId (), this .mousemove .bind (this));
 					$(document) .bind ("touchend.X3DFlyViewer"  + this .getId (), this .touchend  .bind (this));
@@ -68626,7 +68961,7 @@ function ($,
 					event .stopImmediatePropagation ();
 
 					this .button = event .button;
-				
+
 					$(document) .bind ("mouseup.X3DFlyViewer"   + this .getId (), this .mouseup   .bind (this));
 					$(document) .bind ("mousemove.X3DFlyViewer" + this .getId (), this .mousemove .bind (this));
 
@@ -68643,7 +68978,7 @@ function ($,
 
 					if (this .getBrowser () .getBrowserOption ("Rubberband"))
 						this .getBrowser () .finished () .addInterest ("display", this, PAN);
-					
+
 					this .isActive_ = true;
 					break;
 				}
@@ -68658,7 +68993,7 @@ function ($,
 
 			this .event  = null;
 			this .button = -1;
-		
+
 			$(document) .unbind (".X3DFlyViewer" + this .getId ());
 
 			this .disconnect ();
@@ -68677,8 +69012,8 @@ function ($,
 				offset = this .getBrowser () .getElement () .offset (),
 				x      = event .pageX - offset .left,
 				y      = event .pageY - offset .top;
-			
-			switch (this .button)
+
+			switch (this .getButton (this .button))
 			{
 				case 0:
 				{
@@ -68808,7 +69143,7 @@ function ($,
 					event .button = 0;
 					event .pageX  = touches [0] .pageX;
 					event .pageY  = touches [0] .pageY;
-		
+
 					this .mousemove (event);
 					break;
 				}
@@ -68819,7 +69154,7 @@ function ($,
 					event .button = 0;
 					event .pageX  = (touches [0] .pageX + touches [1] .pageX) / 2;
 					event .pageY  = (touches [0] .pageY + touches [1] .pageY) / 2;
-		
+
 					this .mousemove (event);
 					break;
 				}
@@ -68844,18 +69179,18 @@ function ($,
 					viewpoint      = this .getActiveViewpoint (),
 					now            = performance .now (),
 					dt             = (now - this .startTime) / 1000;
-	
+
 				upVector .assign (viewpoint .getUpVector ());
-	
+
 				// Rubberband values
-	
+
 				up .setFromToVec (Vector3 .yAxis, upVector);
 
 				if (this .direction .z > 0)
 					rubberBandRotation .setFromToVec (up .multVecRot (direction .assign (this .direction)), up .multVecRot (axis .set (0, 0, 1)));
 				else
 					rubberBandRotation .setFromToVec (up .multVecRot (axis .set (0, 0, -1)), up .multVecRot (direction .assign (this .direction)));
-	
+
 				var rubberBandLength = this .direction .abs ();
 
 				// Determine positionOffset.
@@ -68866,13 +69201,13 @@ function ($,
 				speedFactor *= viewpoint .getSpeedFactor ();
 				speedFactor *= this .getBrowser () .getShiftKey () ? SHIFT_SPEED_FACTOR : SPEED_FACTOR;
 				speedFactor *= dt;
-	
+
 				var translation = this .getTranslationOffset (direction .assign (this .direction) .multiply (speedFactor));
-	
+
 				this .getActiveLayer () .constrainTranslation (translation, true);
-	
+
 				viewpoint .positionOffset_ = translation .add (viewpoint .positionOffset_ .getValue ());
-	
+
 				// Determine weight for rubberBandRotation.
 
 				var weight = ROTATION_SPEED_FACTOR * dt * Math .pow (rubberBandLength / (rubberBandLength + ROTATION_LIMIT), 2);
@@ -68901,11 +69236,11 @@ function ($,
 				viewpoint .orientationOffset_ = orientationOffset;
 
 				// GeoRotation
-	
+
 				geoRotation .setFromToVec (upVector, viewpoint .getUpVector ());
-	
+
 				viewpoint .orientationOffset_ = geoRotation .multLeft (viewpoint .orientationOffset_ .getValue ());
-	
+
 				this .startTime = now;
 			};
 		})(),
@@ -68923,24 +69258,24 @@ function ($,
 					now            = performance .now (),
 					dt             = (now - this .startTime) / 1000,
 					upVector       = viewpoint .getUpVector ();
-	
+
 				this .constrainPanDirection (direction .assign (this .direction));
-	
+
 				var speedFactor = 1;
-	
+
 				speedFactor *= navigationInfo .speed_ .getValue ();
 				speedFactor *= viewpoint .getSpeedFactor ();
 				speedFactor *= this .getBrowser () .getShiftKey () ? PAN_SHIFT_SPEED_FACTOR : PAN_SPEED_FACTOR;
 				speedFactor *= dt;
-	
+
 				var
 					orientation = viewpoint .getUserOrientation () .multRight (new Rotation4 (viewpoint .getUserOrientation () .multVecRot (axis .assign (Vector3 .yAxis)), upVector)),
 					translation = orientation .multVecRot (direction .multiply (speedFactor));
-	
+
 				this .getActiveLayer () .constrainTranslation (translation, true);
-	
+
 				viewpoint .positionOffset_ = translation .add (viewpoint .positionOffset_ .getValue ());
-	
+
 				this .startTime = now;
 			};
 		})(),
@@ -68964,7 +69299,7 @@ function ($,
 		{
 			if (this .startTime)
 				return;
-			
+
 			this .disconnect ();
 			this .getBrowser () .prepareEvents () .addInterest ("pan", this);
 			this .getBrowser () .addBrowserEvent ();
@@ -68980,7 +69315,7 @@ function ($,
 			return function (rollAngle)
 			{
 				var viewpoint = this .getActiveViewpoint ();
-	
+
 				if (this .orientationChaser .isActive_ .getValue () && this .orientationChaser .value_changed_ .hasInterest ("set_orientationOffset__", this))
 				{
 					orientationOffset
@@ -69003,7 +69338,7 @@ function ($,
 					this .orientationChaser .set_value_       = viewpoint .orientationOffset_;
 					this .orientationChaser .set_destination_ = orientationOffset;
 				}
-	
+
 				this .disconnect ();
 				this .orientationChaser .value_changed_ .addInterest ("set_orientationOffset__", this);
 			};
@@ -69017,7 +69352,7 @@ function ($,
 			return function (fromVector, toVector)
 			{
 				var viewpoint = this .getActiveViewpoint ();
-	
+
 				if (this .orientationChaser .isActive_ .getValue () && this .orientationChaser .value_changed_ .hasInterest ("set_orientationOffset__", this))
 				{
 					userOrientation
@@ -69027,9 +69362,9 @@ function ($,
 
 					if (viewpoint .getTypeName () !== "GeoViewpoint")
 						viewpoint .straightenHorizon (userOrientation);
-	
+
 					orientationOffset .assign (viewpoint .getOrientation ()) .inverse () .multRight (userOrientation);
-	
+
 					this .orientationChaser .set_destination_ = orientationOffset;
 				}
 				else
@@ -69040,13 +69375,13 @@ function ($,
 
 					if (viewpoint .getTypeName () !== "GeoViewpoint")
 						viewpoint .straightenHorizon (userOrientation);
-	
+
 					orientationOffset .assign (viewpoint .getOrientation ()) .inverse () .multRight (userOrientation);
-	
+
 					this .orientationChaser .set_value_       = viewpoint .orientationOffset_;
 					this .orientationChaser .set_destination_ = orientationOffset;
 				}
-	
+
 				this .disconnect ();
 				this .orientationChaser .value_changed_ .addInterest ("set_orientationOffset__", this);
 			};
@@ -69063,7 +69398,7 @@ function ($,
 			return function (interest, type)
 			{
 				// Configure HUD
-	
+
 				var
 					browser  = this .getBrowser (),
 					viewport = browser .getViewport (),
@@ -69071,11 +69406,11 @@ function ($,
 					height   = viewport [3];
 
 				Camera .ortho (0, width, 0, height, -1, 1, projectionMatrix);
-	
+
 				projectionMatrixArray .set (projectionMatrix);
-	
+
 				// Display Rubberband.
-	
+
 				if (type === MOVE)
 				{
 					fromPoint .set (this .fromVector .x, height - this .fromVector .z, 0);
@@ -69086,9 +69421,9 @@ function ($,
 					fromPoint .set (this .fromVector .x, height + this .fromVector .y, 0);
 					toPoint   .set (this .toVector   .x, height + this .toVector   .y, 0);
 				}
-	
+
 				this .transfer (fromPoint, toPoint);
-	
+
 				var
 					gl         = browser .getContext (),
 					shaderNode = browser .getLineShader (),
@@ -69098,7 +69433,7 @@ function ($,
 				{
 					shaderNode .enable (gl);
 					shaderNode .enableVertexAttribute (gl, this .lineBuffer);
-		
+
 					gl .uniform1i (shaderNode .x3d_NumClipPlanes,         0);
 					gl .uniform1i (shaderNode .x3d_FogType,               0);
 					gl .uniform1i (shaderNode .x3d_ColorMaterial,         false);
@@ -69106,22 +69441,22 @@ function ($,
 
 					gl .uniformMatrix4fv (shaderNode .x3d_ProjectionMatrix, false, projectionMatrixArray);
 					gl .uniformMatrix4fv (shaderNode .x3d_ModelViewMatrix,  false, modelViewMatrixArray);
-					
+
 					gl .disable (gl .DEPTH_TEST);
-		
+
 					// Draw a black and a white line.
 					gl .lineWidth (2);
 					gl .uniform3f (shaderNode .x3d_EmissiveColor, 0, 0, 0);
 					gl .uniform1f (shaderNode .x3d_Transparency,  0);
-		
+
 					gl .drawArrays (gl .LINES, 0, this .lineCount);
-		
+
 					gl .lineWidth (1);
 					gl .uniform3f (shaderNode .x3d_EmissiveColor, 1, 1, 1);
-		
+
 					gl .drawArrays (gl .LINES, 0, this .lineCount);
 					gl .enable (gl .DEPTH_TEST);
-		
+
 					gl .lineWidth (lineWidth);
 					shaderNode .disable (gl);
 				}
@@ -69550,9 +69885,9 @@ function (Fields,
 			else
 			{
 				var scale = fromViewpoint .getFieldOfView () / this .fieldOfView_ .getValue ();
-	
+
 				this .fieldOfViewInterpolator .keyValue_ = new Fields .MFFloat (scale, this .fieldOfViewScale_ .getValue ());
-	
+
 				this .fieldOfViewScale_ = scale;
 			}
 		},
@@ -69569,17 +69904,17 @@ function (Fields,
 			return function (point, viewport)
 			{
 			   // Returns the screen scale in meter/pixel for on pixel.
-	
+
 				var
 					width  = viewport [2],
 					height = viewport [3],
 					size   = Math .abs (point .z) * Math .tan (this .getFieldOfView () / 2) * 2;
-	
+
 				if (width > height)
 					size /= height;
 				else
 					size /= width;
-	
+
 				return screenScale .set (size, size, size);
 			};
 		})(),
@@ -69590,7 +69925,7 @@ function (Fields,
 			return function (viewport, nearValue)
 			{
 				// Returns viewport size in meters.
-	
+
 				var
 					width  = viewport [2],
 					height = viewport [3],
@@ -69599,7 +69934,7 @@ function (Fields,
 
 				if (aspect > 1)
 					return viewportSize .set (size * aspect, size);
-	
+
 				return viewportSize .set (size, size / aspect);
 			};
 		})(),
@@ -69615,8 +69950,6 @@ function (Fields,
 
 	return Viewpoint;
 });
-
-
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
  *******************************************************************************
@@ -69688,8 +70021,10 @@ function ($,
           Vector3)
 {
 "use strict";
-	
-	var SCROLL_FACTOR = 0.05;
+
+	var macOS = /Mac OS X/i .test (navigator .userAgent)
+
+	var SCROLL_FACTOR = macOS ? 1 / 160 : 1 / 20;
 
 	var
 		vector                 = new Vector3 (0 ,0, 0),
@@ -69728,7 +70063,7 @@ function ($,
 		{
 			if (this .button >= 0)
 				return;
-		
+
 			this .pressTime = performance .now ();
 
 			var
@@ -69736,7 +70071,7 @@ function ($,
 				x      = event .pageX - offset .left,
 				y      = event .pageY - offset .top;
 
-			switch (event .button)
+			switch (this .getButton (event .button))
 			{
 				case 1:
 				{
@@ -69746,11 +70081,11 @@ function ($,
 					event .stopImmediatePropagation ();
 
 					this .button = event .button;
-					
+
 					this .getBrowser () .getElement () .unbind ("mousemove.PlaneViewer");
 					$(document) .bind ("mouseup.PlaneViewer"   + this .getId (), this .mouseup .bind (this));
 					$(document) .bind ("mousemove.PlaneViewer" + this .getId (), this .mousemove .bind (this));
-		
+
 					this .getActiveViewpoint () .transitionStop ();
 					this .getBrowser () .setCursor ("MOVE");
 
@@ -69770,9 +70105,9 @@ function ($,
 
 			if (event .button !== this .button)
 				return;
-			
+
 			this .button = -1;
-		
+
 			$(document) .unbind (".PlaneViewer" + this .getId ());
 			this .getBrowser () .getElement () .bind ("mousemove.PlaneViewer", this .mousemove .bind (this));
 
@@ -69787,7 +70122,7 @@ function ($,
 				x      = event .pageX - offset .left,
 				y      = event .pageY - offset .top;
 
-			switch (this .button)
+			switch (this .getButton (this .button))
 			{
 				case 1:
 				{
@@ -69844,7 +70179,7 @@ function ($,
 
 			if (viewpoint .set_fieldOfView___)
 				viewpoint .set_fieldOfView___ (); // XXX: Immediately apply fieldOfViewScale;
-					
+
 			var
 				toPoint     = this .getPointOnCenterPlane (x, y, this .toPoint),
 				translation = viewpoint .getUserOrientation () .multVecRot (vector .assign (fromPoint) .subtract (toPoint));
@@ -70027,8 +70362,11 @@ function ($,
           Rotation4)
 {
 "use strict";
+
+	var macOS = /Mac OS X/i .test (navigator .userAgent)
+
 	var
-		SCROLL_FACTOR = 1.0 / 20.0,
+		SCROLL_FACTOR = macOS ? 1 / 120 : 1 / 20,
 		MOVE_TIME     = 0.3,
 		ROTATE_TIME   = 0.3;
 
@@ -70092,7 +70430,7 @@ function ($,
 		{
 			if (this .button >= 0)
 				return;
-		
+
 			this .pressTime = performance .now ();
 
 			var
@@ -70133,7 +70471,7 @@ function ($,
 				return;
 
 			this .button = -1;
-		
+
 			$(document) .unbind (".LookAtViewer" + this .getId ());
 
 			switch (event .button)
@@ -70157,7 +70495,7 @@ function ($,
 			event .stopImmediatePropagation ();
 
 			var
-				offset = this .getBrowser () .getElement () .offset (), 
+				offset = this .getBrowser () .getElement () .offset (),
 				x      = event .pageX - offset .left,
 				y      = this .getBrowser () .getElement () .height () - (event .pageY - offset .top);
 
@@ -70174,7 +70512,7 @@ function ($,
 				offset = this .getBrowser () .getElement () .offset (),
 				x      = event .pageX - offset .left,
 				y      = event .pageY - offset .top;
-			
+
 			switch (this .button)
 			{
 				case 0:
@@ -70204,19 +70542,19 @@ function ($,
 				// Stop event propagation.
 				event .preventDefault ();
 				event .stopImmediatePropagation ();
-	
+
 				// Change viewpoint position.
-	
+
 				var viewpoint = this .getActiveViewpoint ();
-	
+
 				viewpoint .transitionStop ();
 
 				step        = this .getDistanceToCenter (step) .multiply (event .zoomFactor || SCROLL_FACTOR),
 				translation = viewpoint .getUserOrientation () .multVecRot (translation .set (0, 0, step .abs ()));
-	
+
 				if (event .deltaY > 0)
-					this .addMove (translation .negate (), Vector3 .Zero);		
-				
+					this .addMove (translation .negate (), Vector3 .Zero);
+
 				else if (event .deltaY < 0)
 					this .addMove (translation, Vector3 .Zero);
 			};
@@ -70297,7 +70635,7 @@ function ($,
 			return function (event)
 			{
 				var touches = event .originalEvent .touches;
-	
+
 				switch (touches .length)
 				{
 					case 1:
@@ -70317,32 +70655,32 @@ function ($,
 						if (move)
 						{
 							// Look around (button 0).
-		
+
 							event .button = 0;
 							event .pageX  = (touches [0] .pageX + touches [1] .pageX) / 2;
 							event .pageY  = (touches [0] .pageY + touches [1] .pageY) / 2;
-				
+
 							this .mousemove (event);
 						}
 						else if (zoom)
-						{	
+						{
 							// Zoom (mouse wheel).
-		
+
 							var distance1 = this .touch1 .distance (this .touch2);
-			
+
 							this .touch1 .set (touches [0] .pageX, touches [0] .pageY);
 							this .touch2 .set (touches [1] .pageX, touches [1] .pageY);
-			
+
 							var
 								distance2 = this .touch1 .distance (this .touch2),
 								delta     = distance2 - distance1;
-			
+
 							event .deltaY     = delta;
 							event .zoomFactor = Math .abs (delta) / $(window) .width ();
 
 							this .mousewheel (event);
 						}
-		
+
 						this .touch1 .set (touches [0] .pageX, touches [0] .pageY);
 						this .touch2 .set (touches [1] .pageX, touches [1] .pageY);
 						break;
@@ -70377,13 +70715,13 @@ function ($,
 			return function (positionOffsetChange, centerOfRotationOffsetChange)
 			{
 				var viewpoint = this .getActiveViewpoint ();
-	
+
 				if (this .positionChaser .isActive_ .getValue () && this .positionChaser .value_changed_ .hasInterest ("set_positionOffset__", this))
 				{
 					positionOffset
 						.assign (this .positionChaser .set_destination_ .getValue ())
 						.add (positionOffsetChange);
-	
+
 					this .positionChaser .set_destination_ = positionOffset;
 				}
 				else
@@ -70391,11 +70729,11 @@ function ($,
 					positionOffset
 						.assign (viewpoint .positionOffset_ .getValue ())
 						.add (positionOffsetChange);
-	
+
 					this .positionChaser .set_value_       = viewpoint .positionOffset_;
 					this .positionChaser .set_destination_ = positionOffset;
 				}
-	
+
 				if (this .centerOfRotationChaser .isActive_ .getValue () && this .centerOfRotationChaser .value_changed_ .hasInterest ("set_centerOfRotationOffset__", this))
 				{
 					centerOfRotationOffset
@@ -70413,7 +70751,7 @@ function ($,
 					this .centerOfRotationChaser .set_value_       = viewpoint .centerOfRotationOffset_;
 					this .centerOfRotationChaser .set_destination_ = centerOfRotationOffset;
 				}
-	
+
 				this .disconnect ();
 				this .positionChaser         .value_changed_ .addInterest ("set_positionOffset__",         this);
 				this .centerOfRotationChaser .value_changed_ .addInterest ("set_centerOfRotationOffset__", this);
@@ -70428,7 +70766,7 @@ function ($,
 			return function (fromVector, toVector)
 			{
 				var viewpoint = this .getActiveViewpoint ();
-	
+
 				if (this .orientationChaser .isActive_ .getValue () && this .orientationChaser .value_changed_ .hasInterest ("set_orientationOffset__", this))
 				{
 					userOrientation
@@ -70437,9 +70775,9 @@ function ($,
 						.multRight (this .orientationChaser .set_destination_ .getValue ());
 
 					viewpoint .straightenHorizon (userOrientation);
-	
+
 					orientationOffset .assign (viewpoint .getOrientation ()) .inverse () .multRight (userOrientation);
-	
+
 					this .orientationChaser .set_destination_ = orientationOffset;
 				}
 				else
@@ -70449,13 +70787,13 @@ function ($,
 						.multRight (viewpoint .getUserOrientation ());
 
 					viewpoint .straightenHorizon (userOrientation);
-	
+
 					orientationOffset .assign (viewpoint .getOrientation ()) .inverse () .multRight (userOrientation);
-	
+
 					this .orientationChaser .set_value_       = viewpoint .orientationOffset_;
 					this .orientationChaser .set_destination_ = orientationOffset;
 				}
-	
+
 				this .disconnect ();
 				this .orientationChaser .value_changed_ .addInterest ("set_orientationOffset__", this);
 			};
@@ -73441,9 +73779,9 @@ function (Matrix3, Vector2)
 		{
 			case 0:
 			{
-				this .matrix = new Matrix3 (0.5, 0,   0,
-				                            0,   0.5, 0,
-				                            0,   0,   0);
+				this .matrix = new Matrix3 (0, 0, 0,
+				                            0, 0, 0,
+				                            0, 0, 0);
 				return;
 			}
 			case 2:
@@ -73492,7 +73830,7 @@ function (Matrix3, Vector2)
 		set: function (size, center)
 		{
 			var m = this .matrix;
-		
+
 			switch (arguments .length)
 			{
 				case 0:
@@ -73519,7 +73857,7 @@ function (Matrix3, Vector2)
 						sy  = (max .y - min .y) / 2,
 						cx  = (max .x + min .x) / 2,
 						cy  = (max .y + min .y) / 2;
-	
+
 					this .matrix .set (sx, 0,  0,
 					                   0,  sy, 0,
 					                   cx, cy, 1);
@@ -73557,13 +73895,13 @@ function (Matrix3, Vector2)
 			{
 				if (this .isEmpty ())
 					return this .assign (box);
-	
+
 				if (box .isEmpty ())
 					return this;
-	
+
 				this .getExtents (lhs_min, lhs_max);
 				box  .getExtents (rhs_min, rhs_max);
-	
+
 				return this .set (lhs_min .min (rhs_min), lhs_max .max (rhs_max), true);
 			};
 		})(),
@@ -73594,17 +73932,17 @@ function (Matrix3, Vector2)
 					m = this .matrix,
 					x = m .xAxis,
 					y = m .yAxis;
-	
+
 				p1 .assign (x) .add (y);
-	
+
 				var p2 = y .subtract (x);
-	
+
 				min .assign (p1) .min (p2);
 				max .assign (p1) .max (p2);
-	
+
 				p1 .negate ();
 				p2 .negate ();
-	
+
 				min .min (p1, p2);
 				max .max (p1, p2);
 			};
@@ -73618,7 +73956,7 @@ function (Matrix3, Vector2)
 			return function (point)
 			{
 				this .getExtents (min, max);
-	
+
 				return min .x <= point .x &&
 				       max .x >= point .x &&
 				       min .y <= point .y &&
@@ -73642,7 +73980,7 @@ function (Matrix3, Vector2)
 			return function ()
 			{
 				this .getAbsoluteExtents (min, max);
-	
+
 				return max .subtract (min);
 			};
 		})(),
@@ -73881,13 +74219,11 @@ function (TextAlignment,
 
 				// Calculate charSpacing and lineBounds.
 
-				var lineNumber = topToBottom ? l : numLines - l - 1;
-
 				var
 					charSpacing = 0,
 					length      = text .getLength (l);
 
-				lineBound .set (size .x, lineNumber == 0 ? max .y - font .descender / font .unitsPerEm : spacing) .multiply (scale);
+				lineBound .set (size .x * scale, ll == 0 ? max .y - font .descender / font .unitsPerEm * scale : spacing);
 
 				if (maxExtent)
 				{
@@ -74293,7 +74629,7 @@ function (TextAlignment,
 	return X3DTextGeometry;
 });
 
-var Bezier=function(t){function r(i){if(n[i])return n[i].exports;var e=n[i]={exports:{},id:i,loaded:!1};return t[i].call(e.exports,e,e.exports,r),e.loaded=!0,e.exports}var n={};return r.m=t,r.c=n,r.p="",r(0)}([function(t,r,n){"use strict";t.exports=n(1)},function(t,r,n){"use strict";var i="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(t){return typeof t}:function(t){return t&&"function"==typeof Symbol&&t.constructor===Symbol?"symbol":typeof t};!function(){function r(t,r,n,i,e){"undefined"==typeof e&&(e=.5);var o=y.projectionratio(e,t),s=1-o,u={x:o*r.x+s*i.x,y:o*r.y+s*i.y},a=y.abcratio(e,t),f={x:n.x+(n.x-u.x)/a,y:n.y+(n.y-u.y)/a};return{A:f,B:n,C:u}}var e=Math.abs,o=Math.min,s=Math.max,u=Math.cos,a=Math.sin,f=Math.acos,c=Math.sqrt,h=Math.PI,x={x:0,y:0,z:0},y=n(2),l=n(3),p=function(t){var r=t&&t.forEach?t:[].slice.call(arguments),n=!1;if("object"===i(r[0])){n=r.length;var o=[];r.forEach(function(t){["x","y","z"].forEach(function(r){"undefined"!=typeof t[r]&&o.push(t[r])})}),r=o}var s=!1,u=r.length;if(n){if(n>4){if(1!==arguments.length)throw new Error("Only new Bezier(point[]) is accepted for 4th and higher order curves");s=!0}}else if(6!==u&&8!==u&&9!==u&&12!==u&&1!==arguments.length)throw new Error("Only new Bezier(point[]) is accepted for 4th and higher order curves");var a=!s&&(9===u||12===u)||t&&t[0]&&"undefined"!=typeof t[0].z;this._3d=a;for(var f=[],c=0,h=a?3:2;u>c;c+=h){var x={x:r[c],y:r[c+1]};a&&(x.z=r[c+2]),f.push(x)}this.order=f.length-1,this.points=f;var l=["x","y"];a&&l.push("z"),this.dims=l,this.dimlen=l.length,function(t){for(var r=t.order,n=t.points,i=y.align(n,{p1:n[0],p2:n[r]}),o=0;o<i.length;o++)if(e(i[o].y)>1e-4)return void(t._linear=!1);t._linear=!0}(this),this._t1=0,this._t2=1,this.update()},v=n(4);p.SVGtoBeziers=function(t){return v(p,t)},p.quadraticFromPoints=function(t,n,i,e){if("undefined"==typeof e&&(e=.5),0===e)return new p(n,n,i);if(1===e)return new p(t,n,n);var o=r(2,t,n,i,e);return new p(t,o.A,i)},p.cubicFromPoints=function(t,n,i,e,o){"undefined"==typeof e&&(e=.5);var s=r(3,t,n,i,e);"undefined"==typeof o&&(o=y.dist(n,s.C));var u=o*(1-e)/e,a=y.dist(t,i),f=(i.x-t.x)/a,c=(i.y-t.y)/a,h=o*f,x=o*c,l=u*f,v=u*c,d={x:n.x-h,y:n.y-x},m={x:n.x+l,y:n.y+v},z=s.A,g={x:z.x+(d.x-z.x)/(1-e),y:z.y+(d.y-z.y)/(1-e)},b={x:z.x+(m.x-z.x)/e,y:z.y+(m.y-z.y)/e},_={x:t.x+(g.x-t.x)/e,y:t.y+(g.y-t.y)/e},w={x:i.x+(b.x-i.x)/(1-e),y:i.y+(b.y-i.y)/(1-e)};return new p(t,_,w,i)};var d=function(){return y};p.getUtils=d,p.PolyBezier=l,p.prototype={getUtils:d,valueOf:function(){return this.toString()},toString:function(){return y.pointsToString(this.points)},toSVG:function(t){if(this._3d)return!1;for(var r=this.points,n=r[0].x,i=r[0].y,e=["M",n,i,2===this.order?"Q":"C"],o=1,s=r.length;s>o;o++)e.push(r[o].x),e.push(r[o].y);return e.join(" ")},setRatios:function(t){if(t.length!==this.points.length)throw new Error("incorrect number of ratio values");this.ratios=t,this._lut=[]},update:function(){this._lut=[],this.dpoints=y.derive(this.points,this._3d),this.computedirection()},computedirection:function(){var t=this.points,r=y.angle(t[0],t[this.order],t[1]);this.clockwise=r>0},length:function(){return y.length(this.derivative.bind(this))},_lut:[],getLUT:function(t){if(t=t||100,this._lut.length===t)return this._lut;this._lut=[],t--;for(var r=0;t>=r;r++)this._lut.push(this.compute(r/t));return this._lut},on:function(t,r){r=r||5;for(var n,i=this.getLUT(),e=[],o=0,s=0;s<i.length;s++)n=i[s],y.dist(n,t)<r&&(e.push(n),o+=s/i.length);return e.length?o/=e.length:!1},project:function(t){var r=this.getLUT(),n=r.length-1,i=y.closest(r,t),e=i.mdist,o=i.mpos;if(0===o||o===n){var s=o/n,u=this.compute(s);return u.t=s,u.d=e,u}var a,s,f,c,h=(o-1)/n,x=(o+1)/n,l=.1/n;for(e+=1,s=h,a=s;x+l>s;s+=l)f=this.compute(s),c=y.dist(t,f),e>c&&(e=c,a=s);return f=this.compute(a),f.t=a,f.d=e,f},get:function(t){return this.compute(t)},point:function(t){return this.points[t]},compute:function(t){return this.ratios?y.computeWithRatios(t,this.points,this.ratios,this._3d):y.compute(t,this.points,this._3d,this.ratios)},raise:function(){for(var t,r,n,i=this.points,e=[i[0]],o=i.length,t=1;o>t;t++)r=i[t],n=i[t-1],e[t]={x:(o-t)/o*r.x+t/o*n.x,y:(o-t)/o*r.y+t/o*n.y};return e[o]=i[o-1],new p(e)},derivative:function(t){var r,n,i=1-t,e=0,o=this.dpoints[0];2===this.order&&(o=[o[0],o[1],x],r=i,n=t),3===this.order&&(r=i*i,n=i*t*2,e=t*t);var s={x:r*o[0].x+n*o[1].x+e*o[2].x,y:r*o[0].y+n*o[1].y+e*o[2].y};return this._3d&&(s.z=r*o[0].z+n*o[1].z+e*o[2].z),s},curvature:function(t){return y.curvature(t,this.points,this._3d)},inflections:function(){return y.inflections(this.points)},normal:function(t){return this._3d?this.__normal3(t):this.__normal2(t)},__normal2:function(t){var r=this.derivative(t),n=c(r.x*r.x+r.y*r.y);return{x:-r.y/n,y:r.x/n}},__normal3:function(t){var r=this.derivative(t),n=this.derivative(t+.01),i=c(r.x*r.x+r.y*r.y+r.z*r.z),e=c(n.x*n.x+n.y*n.y+n.z*n.z);r.x/=i,r.y/=i,r.z/=i,n.x/=e,n.y/=e,n.z/=e;var o={x:n.y*r.z-n.z*r.y,y:n.z*r.x-n.x*r.z,z:n.x*r.y-n.y*r.x},s=c(o.x*o.x+o.y*o.y+o.z*o.z);o.x/=s,o.y/=s,o.z/=s;var u=[o.x*o.x,o.x*o.y-o.z,o.x*o.z+o.y,o.x*o.y+o.z,o.y*o.y,o.y*o.z-o.x,o.x*o.z-o.y,o.y*o.z+o.x,o.z*o.z],a={x:u[0]*r.x+u[1]*r.y+u[2]*r.z,y:u[3]*r.x+u[4]*r.y+u[5]*r.z,z:u[6]*r.x+u[7]*r.y+u[8]*r.z};return a},hull:function(t){var r,n=this.points,i=[],e=[],o=0,s=0,u=0;for(e[o++]=n[0],e[o++]=n[1],e[o++]=n[2],3===this.order&&(e[o++]=n[3]);n.length>1;){for(i=[],s=0,u=n.length-1;u>s;s++)r=y.lerp(t,n[s],n[s+1]),e[o++]=r,i.push(r);n=i}return e},split:function(t,r){if(0===t&&r)return this.split(r).left;if(1===r)return this.split(t).right;var n=this.hull(t),i={left:new p(2===this.order?[n[0],n[3],n[5]]:[n[0],n[4],n[7],n[9]]),right:new p(2===this.order?[n[5],n[4],n[2]]:[n[9],n[8],n[6],n[3]]),span:n};if(i.left._t1=y.map(0,0,1,this._t1,this._t2),i.left._t2=y.map(t,0,1,this._t1,this._t2),i.right._t1=y.map(t,0,1,this._t1,this._t2),i.right._t2=y.map(1,0,1,this._t1,this._t2),!r)return i;r=y.map(r,t,1,0,1);var e=i.right.split(r);return e.left},extrema:function(){var t,r,n=this.dims,i={},e=[];return n.forEach(function(n){r=function(t){return t[n]},t=this.dpoints[0].map(r),i[n]=y.droots(t),3===this.order&&(t=this.dpoints[1].map(r),i[n]=i[n].concat(y.droots(t))),i[n]=i[n].filter(function(t){return t>=0&&1>=t}),e=e.concat(i[n].sort(y.numberSort))}.bind(this)),e=e.sort(y.numberSort).filter(function(t,r){return e.indexOf(t)===r}),i.values=e,i},bbox:function(){var t=this.extrema(),r={};return this.dims.forEach(function(n){r[n]=y.getminmax(this,n,t[n])}.bind(this)),r},overlaps:function(t){var r=this.bbox(),n=t.bbox();return y.bboxoverlap(r,n)},offset:function(t,r){if("undefined"!=typeof r){var n=this.get(t),i=this.normal(t),e={c:n,n:i,x:n.x+i.x*r,y:n.y+i.y*r};return this._3d&&(e.z=n.z+i.z*r),e}if(this._linear){var o=this.normal(0),s=this.points.map(function(r){var n={x:r.x+t*o.x,y:r.y+t*o.y};return r.z&&i.z&&(n.z=r.z+t*o.z),n});return[new p(s)]}var u=this.reduce();return u.map(function(r){return r.scale(t)})},simple:function(){if(3===this.order){var t=y.angle(this.points[0],this.points[3],this.points[1]),r=y.angle(this.points[0],this.points[3],this.points[2]);if(t>0&&0>r||0>t&&r>0)return!1}var n=this.normal(0),i=this.normal(1),o=n.x*i.x+n.y*i.y;this._3d&&(o+=n.z*i.z);var s=e(f(o));return h/3>s},reduce:function(){var t,r,n=0,i=0,o=.01,s=[],u=[],a=this.extrema().values;for(-1===a.indexOf(0)&&(a=[0].concat(a)),-1===a.indexOf(1)&&a.push(1),n=a[0],t=1;t<a.length;t++)i=a[t],r=this.split(n,i),r._t1=n,r._t2=i,s.push(r),n=i;return s.forEach(function(t){for(n=0,i=0;1>=i;)for(i=n+o;1+o>=i;i+=o)if(r=t.split(n,i),!r.simple()){if(i-=o,e(n-i)<o)return[];r=t.split(n,i),r._t1=y.map(n,0,1,t._t1,t._t2),r._t2=y.map(i,0,1,t._t1,t._t2),u.push(r),n=i;break}1>n&&(r=t.split(n,1),r._t1=y.map(n,0,1,t._t1,t._t2),r._t2=t._t2,u.push(r))}),u},scale:function(t){var r=this.order,n=!1;if("function"==typeof t&&(n=t),n&&2===r)return this.raise().scale(n);var i=this.clockwise,e=n?n(0):t,o=n?n(1):t,s=[this.offset(0,10),this.offset(1,10)],u=y.lli4(s[0],s[0].c,s[1],s[1].c);if(!u)throw new Error("cannot scale this curve. Try reducing it first.");var a=this.points,f=[];return[0,1].forEach(function(t){var n=f[t*r]=y.copy(a[t*r]);n.x+=(t?o:e)*s[t].n.x,n.y+=(t?o:e)*s[t].n.y}.bind(this)),n?([0,1].forEach(function(e){if(2!==this.order||!e){var o=a[e+1],s={x:o.x-u.x,y:o.y-u.y},h=n?n((e+1)/r):t;n&&!i&&(h=-h);var x=c(s.x*s.x+s.y*s.y);s.x/=x,s.y/=x,f[e+1]={x:o.x+h*s.x,y:o.y+h*s.y}}}.bind(this)),new p(f)):([0,1].forEach(function(t){if(2!==this.order||!t){var n=f[t*r],i=this.derivative(t),e={x:n.x+i.x,y:n.y+i.y};f[t+1]=y.lli4(n,e,u,a[t+1])}}.bind(this)),new p(f))},outline:function(t,r,n,i){function e(t,r,n,i,e){return function(o){var s=i/n,u=(i+e)/n,a=r-t;return y.map(o,0,1,t+s*a,t+u*a)}}r="undefined"==typeof r?t:r;var o,s=this.reduce(),u=s.length,a=[],f=[],c=0,h=this.length(),x="undefined"!=typeof n&&"undefined"!=typeof i;s.forEach(function(o){_=o.length(),x?(a.push(o.scale(e(t,n,h,c,_))),f.push(o.scale(e(-r,-i,h,c,_)))):(a.push(o.scale(t)),f.push(o.scale(-r))),c+=_}),f=f.map(function(t){return o=t.points,o[3]?t.points=[o[3],o[2],o[1],o[0]]:t.points=[o[2],o[1],o[0]],t}).reverse();var p=a[0].points[0],v=a[u-1].points[a[u-1].points.length-1],d=f[u-1].points[f[u-1].points.length-1],m=f[0].points[0],z=y.makeline(d,p),g=y.makeline(v,m),b=[z].concat(a).concat([g]).concat(f),_=b.length;return new l(b)},outlineshapes:function(t,r,n){r=r||t;for(var i=this.outline(t,r).curves,e=[],o=1,s=i.length;s/2>o;o++){var u=y.makeshape(i[o],i[s-o],n);u.startcap.virtual=o>1,u.endcap.virtual=s/2-1>o,e.push(u)}return e},intersects:function(t,r){return t?t.p1&&t.p2?this.lineIntersects(t):(t instanceof p&&(t=t.reduce()),this.curveintersects(this.reduce(),t,r)):this.selfintersects(r)},lineIntersects:function(t){var r=o(t.p1.x,t.p2.x),n=o(t.p1.y,t.p2.y),i=s(t.p1.x,t.p2.x),e=s(t.p1.y,t.p2.y),u=this;return y.roots(this.points,t).filter(function(t){var o=u.get(t);return y.between(o.x,r,i)&&y.between(o.y,n,e)})},selfintersects:function(t){var r,n,i,e,o=this.reduce(),s=o.length-2,u=[];for(r=0;s>r;r++)i=o.slice(r,r+1),e=o.slice(r+2),n=this.curveintersects(i,e,t),u=u.concat(n);return u},curveintersects:function(t,r,n){var i=[];t.forEach(function(t){r.forEach(function(r){t.overlaps(r)&&i.push({left:t,right:r})})});var e=[];return i.forEach(function(t){var r=y.pairiteration(t.left,t.right,n);r.length>0&&(e=e.concat(r))}),e},arcs:function(t){t=t||.5;var r=[];return this._iterate(t,r)},_error:function(t,r,n,i){var o=(i-n)/4,s=this.get(n+o),u=this.get(i-o),a=y.dist(t,r),f=y.dist(t,s),c=y.dist(t,u);return e(f-a)+e(c-a)},_iterate:function(t,r){var n,i=0,e=1;do{n=0,e=1;var o,s,f,c,h,x=this.get(i),l=!1,p=!1,v=e,d=1,m=0;do{p=l,c=f,v=(i+e)/2,m++,o=this.get(v),s=this.get(e),f=y.getccenter(x,o,s),f.interval={start:i,end:e};var z=this._error(f,x,i,e);if(l=t>=z,h=p&&!l,h||(d=e),l){if(e>=1){if(f.interval.end=d=1,c=f,e>1){var g={x:f.x+f.r*u(f.e),y:f.y+f.r*a(f.e)};f.e+=y.angle({x:f.x,y:f.y},g,this.get(1))}break}e+=(e-i)/2}else e=v}while(!h&&n++<100);if(n>=100)break;c=c?c:f,r.push(c),i=d}while(1>e);return r}},t.exports=p}()},function(t,r,n){"use strict";!function(){var r=Math.abs,i=Math.cos,e=Math.sin,o=Math.acos,s=Math.atan2,u=Math.sqrt,a=Math.pow,f=function(t){return 0>t?-a(-t,1/3):a(t,1/3)},c=Math.PI,h=2*c,x=c/2,y=1e-6,l=Number.MAX_SAFE_INTEGER||9007199254740991,p=Number.MIN_SAFE_INTEGER||-9007199254740991,v={x:0,y:0,z:0},d={Tvalues:[-.06405689286260563,.06405689286260563,-.1911188674736163,.1911188674736163,-.3150426796961634,.3150426796961634,-.4337935076260451,.4337935076260451,-.5454214713888396,.5454214713888396,-.6480936519369755,.6480936519369755,-.7401241915785544,.7401241915785544,-.820001985973903,.820001985973903,-.8864155270044011,.8864155270044011,-.9382745520027328,.9382745520027328,-.9747285559713095,.9747285559713095,-.9951872199970213,.9951872199970213],Cvalues:[.12793819534675216,.12793819534675216,.1258374563468283,.1258374563468283,.12167047292780339,.12167047292780339,.1155056680537256,.1155056680537256,.10744427011596563,.10744427011596563,.09761865210411388,.09761865210411388,.08619016153195327,.08619016153195327,.0733464814110803,.0733464814110803,.05929858491543678,.05929858491543678,.04427743881741981,.04427743881741981,.028531388628933663,.028531388628933663,.0123412297999872,.0123412297999872],arcfn:function(t,r){var n=r(t),i=n.x*n.x+n.y*n.y;return"undefined"!=typeof n.z&&(i+=n.z*n.z),u(i)},compute:function(t,r,n){if(0===t)return r[0];var i=r.length-1;if(1===t)return r[i];var e=r,o=1-t;if(0===i)return r[0];if(1===i)return x={x:o*e[0].x+t*e[1].x,y:o*e[0].y+t*e[1].y},n&&(x.z=o*e[0].z+t*e[1].z),x;if(4>i){var s,u,a,f=o*o,c=t*t,h=0;2===i?(e=[e[0],e[1],e[2],v],s=f,u=o*t*2,a=c):3===i&&(s=f*o,u=f*t*3,a=o*c*3,h=t*c);var x={x:s*e[0].x+u*e[1].x+a*e[2].x+h*e[3].x,y:s*e[0].y+u*e[1].y+a*e[2].y+h*e[3].y};return n&&(x.z=s*e[0].z+u*e[1].z+a*e[2].z+h*e[3].z),x}for(var y=JSON.parse(JSON.stringify(r));y.length>1;){for(var l=0;l<y.length-1;l++)y[l]={x:y[l].x+(y[l+1].x-y[l].x)*t,y:y[l].y+(y[l+1].y-y[l].y)*t},"undefined"!=typeof y[l].z&&(y[l]=y[l].z+(y[l+1].z-y[l].z)*t);y.splice(y.length-1,1)}return y[0]},computeWithRatios:function(t,r,n,i){var e,o=1-t,s=n,u=r,a=s[0],f=s[1],c=s[2],h=s[3];return a*=o,f*=t,2===u.length?(e=a+f,{x:(a*u[0].x+f*u[1].x)/e,y:(a*u[0].y+f*u[1].y)/e,z:i?(a*u[0].z+f*u[1].z)/e:!1}):(a*=o,f*=2*o,c*=t*t,3===u.length?(e=a+f+c,{x:(a*u[0].x+f*u[1].x+c*u[2].x)/e,y:(a*u[0].y+f*u[1].y+c*u[2].y)/e,z:i?(a*u[0].z+f*u[1].z+c*u[2].z)/e:!1}):(a*=o,f*=1.5*o,c*=3*o,h*=t*t*t,4===u.length?(e=a+f+c+h,{x:(a*u[0].x+f*u[1].x+c*u[2].x+h*u[3].x)/e,y:(a*u[0].y+f*u[1].y+c*u[2].y+h*u[3].y)/e,z:i?(a*u[0].z+f*u[1].z+c*u[2].z+h*u[3].z)/e:!1}):void 0))},derive:function(t,r){for(var n=[],i=t,e=i.length,o=e-1;e>1;e--,o--){for(var s,u=[],a=0;o>a;a++)s={x:o*(i[a+1].x-i[a].x),y:o*(i[a+1].y-i[a].y)},r&&(s.z=o*(i[a+1].z-i[a].z)),u.push(s);n.push(u),i=u}return n},between:function(t,r,n){return t>=r&&n>=t||d.approximately(t,r)||d.approximately(t,n)},approximately:function(t,n,i){return r(t-n)<=(i||y)},length:function(t){var r,n,i=.5,e=0,o=d.Tvalues.length;for(r=0;o>r;r++)n=i*d.Tvalues[r]+i,e+=d.Cvalues[r]*d.arcfn(n,t);return i*e},map:function(t,r,n,i,e){var o=n-r,s=e-i,u=t-r,a=u/o;return i+s*a},lerp:function(t,r,n){var i={x:r.x+t*(n.x-r.x),y:r.y+t*(n.y-r.y)};return r.z&&n.z&&(i.z=r.z+t*(n.z-r.z)),i},pointToString:function(t){var r=t.x+"/"+t.y;return"undefined"!=typeof t.z&&(r+="/"+t.z),r},pointsToString:function(t){return"["+t.map(d.pointToString).join(", ")+"]"},copy:function(t){return JSON.parse(JSON.stringify(t))},angle:function(t,r,n){var i=r.x-t.x,e=r.y-t.y,o=n.x-t.x,u=n.y-t.y,a=i*u-e*o,f=i*o+e*u;return s(a,f)},round:function(t,r){var n=""+t,i=n.indexOf(".");return parseFloat(n.substring(0,i+1+r))},dist:function(t,r){var n=t.x-r.x,i=t.y-r.y;return u(n*n+i*i)},closest:function(t,r){var n,i,e=a(2,63);return t.forEach(function(t,o){i=d.dist(r,t),e>i&&(e=i,n=o)}),{mdist:e,mpos:n}},abcratio:function(t,n){if(2!==n&&3!==n)return!1;if("undefined"==typeof t)t=.5;else if(0===t||1===t)return t;var i=a(t,n)+a(1-t,n),e=i-1;return r(e/i)},projectionratio:function(t,r){if(2!==r&&3!==r)return!1;if("undefined"==typeof t)t=.5;else if(0===t||1===t)return t;var n=a(1-t,r),i=a(t,r)+n;return n/i},lli8:function(t,r,n,i,e,o,s,u){var a=(t*i-r*n)*(e-s)-(t-n)*(e*u-o*s),f=(t*i-r*n)*(o-u)-(r-i)*(e*u-o*s),c=(t-n)*(o-u)-(r-i)*(e-s);return 0==c?!1:{x:a/c,y:f/c}},lli4:function(t,r,n,i){var e=t.x,o=t.y,s=r.x,u=r.y,a=n.x,f=n.y,c=i.x,h=i.y;return d.lli8(e,o,s,u,a,f,c,h)},lli:function(t,r){return d.lli4(t,t.c,r,r.c)},makeline:function(t,r){var i=n(1),e=t.x,o=t.y,s=r.x,u=r.y,a=(s-e)/3,f=(u-o)/3;return new i(e,o,e+a,o+f,e+2*a,o+2*f,s,u)},findbbox:function(t){var r=l,n=l,i=p,e=p;return t.forEach(function(t){var o=t.bbox();r>o.x.min&&(r=o.x.min),n>o.y.min&&(n=o.y.min),i<o.x.max&&(i=o.x.max),e<o.y.max&&(e=o.y.max)}),{x:{min:r,mid:(r+i)/2,max:i,size:i-r},y:{min:n,mid:(n+e)/2,max:e,size:e-n}}},shapeintersections:function(t,r,n,i,e){if(!d.bboxoverlap(r,i))return[];var o=[],s=[t.startcap,t.forward,t.back,t.endcap],u=[n.startcap,n.forward,n.back,n.endcap];return s.forEach(function(r){r.virtual||u.forEach(function(i){if(!i.virtual){var s=r.intersects(i,e);s.length>0&&(s.c1=r,s.c2=i,s.s1=t,s.s2=n,o.push(s))}})}),o},makeshape:function(t,r,n){var i=r.points.length,e=t.points.length,o=d.makeline(r.points[i-1],t.points[0]),s=d.makeline(t.points[e-1],r.points[0]),u={startcap:o,forward:t,back:r,endcap:s,bbox:d.findbbox([o,t,r,s])},a=d;return u.intersections=function(t){return a.shapeintersections(u,u.bbox,t,t.bbox,n)},u},getminmax:function(t,r,n){if(!n)return{min:0,max:0};var i,e,o=l,s=p;-1===n.indexOf(0)&&(n=[0].concat(n)),-1===n.indexOf(1)&&n.push(1);for(var u=0,a=n.length;a>u;u++)i=n[u],e=t.get(i),e[r]<o&&(o=e[r]),e[r]>s&&(s=e[r]);return{min:o,mid:(o+s)/2,max:s,size:s-o}},align:function(t,r){var n=r.p1.x,o=r.p1.y,u=-s(r.p2.y-o,r.p2.x-n),a=function(t){return{x:(t.x-n)*i(u)-(t.y-o)*e(u),y:(t.x-n)*e(u)+(t.y-o)*i(u)}};return t.map(a)},roots:function(t,r){r=r||{p1:{x:0,y:0},p2:{x:1,y:0}};var n=t.length-1,e=d.align(t,r),s=function(t){return t>=0&&1>=t};if(2===n){var a=e[0].y,c=e[1].y,x=e[2].y,y=a-2*c+x;if(0!==y){var l=-u(c*c-a*x),p=-a+c,v=-(l+p)/y,m=-(-l+p)/y;return[v,m].filter(s)}return c!==x&&0===y?[(2*c-x)/(2*c-2*x)].filter(s):[]}var z=e[0].y,g=e[1].y,b=e[2].y,_=e[3].y,y=-z+3*g-3*b+_,a=3*z-6*g+3*b,c=-3*z+3*g,x=z;if(d.approximately(y,0)){if(d.approximately(a,0))return d.approximately(c,0)?[]:[-x/c].filter(s);var w=u(c*c-4*a*x),E=2*a;return[(w-c)/E,(-c-w)/E].filter(s)}a/=y,c/=y,x/=y;var M,v,S,k,j,e=(3*c-a*a)/3,O=e/3,w=(2*a*a*a-9*a*c+27*x)/27,T=w/2,C=T*T+O*O*O;if(0>C){var L=-e/3,N=L*L*L,A=u(N),B=-w/(2*A),F=-1>B?-1:B>1?1:B,I=o(F),q=f(A),P=2*q;return S=P*i(I/3)-a/3,k=P*i((I+h)/3)-a/3,j=P*i((I+2*h)/3)-a/3,[S,k,j].filter(s)}if(0===C)return M=0>T?f(-T):-f(T),S=2*M-a/3,k=-M-a/3,[S,k].filter(s);var R=u(C);return M=f(-T+R),v=f(T+R),[M-v-a/3].filter(s)},droots:function(t){if(3===t.length){var r=t[0],n=t[1],i=t[2],e=r-2*n+i;if(0!==e){var o=-u(n*n-r*i),s=-r+n,a=-(o+s)/e,f=-(-o+s)/e;return[a,f]}return n!==i&&0===e?[(2*n-i)/(2*(n-i))]:[]}if(2===t.length){var r=t[0],n=t[1];return r!==n?[r/(r-n)]:[]}},curvature:function(t,n,i,e){var o,s,f,c,h=d.derive(n),x=h[0],y=h[1],l=0,p=0,v=d.compute(t,x),m=d.compute(t,y),z=v.x*v.x+v.y*v.y;if(i?(o=u(a(v.y*m.z-m.y*v.z,2)+a(v.z*m.x-m.z*v.x,2)+a(v.x*m.y-m.x*v.y,2)),s=a(z+v.z*v.z,2/3)):(o=v.x*m.y-v.y*m.x,s=a(z,2/3)),0===o||0===s)return{k:0,r:0};if(l=o/s,p=s/o,!e){var g=d.curvature(t-.001,n,i,!0).k,b=d.curvature(t+.001,n,i,!0).k;c=(b-l+(l-g))/2,f=(r(b-l)+r(l-g))/2}return{k:l,r:p,dk:c,adk:f}},inflections:function(t){if(t.length<4)return[];var r=d.align(t,{p1:t[0],p2:t.slice(-1)[0]}),n=r[2].x*r[1].y,i=r[3].x*r[1].y,e=r[1].x*r[2].y,o=r[3].x*r[2].y,s=18*(-3*n+2*i+3*e-o),u=18*(3*n-i-3*e),a=18*(e-n);if(d.approximately(s,0)){if(!d.approximately(u,0)){var f=-a/u;if(f>=0&&1>=f)return[f]}return[]}var c=u*u-4*s*a,h=Math.sqrt(c),o=2*s;return d.approximately(o,0)?[]:[(h-u)/o,-(u+h)/o].filter(function(t){return t>=0&&1>=t})},bboxoverlap:function(t,n){var i,e,o,s,u,a=["x","y"],f=a.length;for(i=0;f>i;i++)if(e=a[i],o=t[e].mid,s=n[e].mid,u=(t[e].size+n[e].size)/2,r(o-s)>=u)return!1;return!0},expandbox:function(t,r){r.x.min<t.x.min&&(t.x.min=r.x.min),r.y.min<t.y.min&&(t.y.min=r.y.min),r.z&&r.z.min<t.z.min&&(t.z.min=r.z.min),r.x.max>t.x.max&&(t.x.max=r.x.max),r.y.max>t.y.max&&(t.y.max=r.y.max),r.z&&r.z.max>t.z.max&&(t.z.max=r.z.max),t.x.mid=(t.x.min+t.x.max)/2,t.y.mid=(t.y.min+t.y.max)/2,t.z&&(t.z.mid=(t.z.min+t.z.max)/2),t.x.size=t.x.max-t.x.min,t.y.size=t.y.max-t.y.min,t.z&&(t.z.size=t.z.max-t.z.min)},pairiteration:function(t,r,n){var i=t.bbox(),e=r.bbox(),o=1e5,s=n||.5;if(i.x.size+i.y.size<s&&e.x.size+e.y.size<s)return[(o*(t._t1+t._t2)/2|0)/o+"/"+(o*(r._t1+r._t2)/2|0)/o];var u=t.split(.5),a=r.split(.5),f=[{left:u.left,right:a.left},{left:u.left,right:a.right},{left:u.right,right:a.right},{left:u.right,right:a.left}];f=f.filter(function(t){return d.bboxoverlap(t.left.bbox(),t.right.bbox())});var c=[];return 0===f.length?c:(f.forEach(function(t){c=c.concat(d.pairiteration(t.left,t.right,s))}),c=c.filter(function(t,r){return c.indexOf(t)===r}))},getccenter:function(t,r,n){var o,u=r.x-t.x,a=r.y-t.y,f=n.x-r.x,c=n.y-r.y,y=u*i(x)-a*e(x),l=u*e(x)+a*i(x),p=f*i(x)-c*e(x),v=f*e(x)+c*i(x),m=(t.x+r.x)/2,z=(t.y+r.y)/2,g=(r.x+n.x)/2,b=(r.y+n.y)/2,_=m+y,w=z+l,E=g+p,M=b+v,S=d.lli8(m,z,_,w,g,b,E,M),k=d.dist(S,t),j=s(t.y-S.y,t.x-S.x),O=s(r.y-S.y,r.x-S.x),T=s(n.y-S.y,n.x-S.x);return T>j?((j>O||O>T)&&(j+=h),j>T&&(o=T,T=j,j=o)):O>T&&j>O?(o=T,T=j,j=o):T+=h,S.s=j,S.e=T,S.r=k,S},numberSort:function(t,r){return t-r}};t.exports=d}()},function(t,r,n){"use strict";!function(){var r=n(2),i=function(t){this.curves=[],this._3d=!1,t&&(this.curves=t,this._3d=this.curves[0]._3d)};i.prototype={valueOf:function(){return this.toString()},toString:function(){return"["+this.curves.map(function(t){return r.pointsToString(t.points)}).join(", ")+"]"},addCurve:function(t){this.curves.push(t),this._3d=this._3d||t._3d},length:function(){return this.curves.map(function(t){return t.length()}).reduce(function(t,r){return t+r})},curve:function(t){return this.curves[t]},bbox:function e(){for(var t=this.curves,e=t[0].bbox(),n=1;n<t.length;n++)r.expandbox(e,t[n].bbox());return e},offset:function o(t){var o=[];return this.curves.forEach(function(r){o=o.concat(r.offset(t))}),new i(o)}},t.exports=i}()},function(t,r,n){"use strict";function i(t,r,n){if("Z"!==r){if("M"===r)return void(s={x:n[0],y:n[1]});var i=[!1,s.x,s.y].concat(n),e=t.bind.apply(t,i),o=new e,u=n.slice(-2);return s={x:u[0],y:u[1]},o}}function e(t,r){for(var n,e,s,u=o(r).split(" "),a=new RegExp("[MLCQZ]",""),f=[],c={C:6,Q:4,L:2,M:2};u.length;)n=u.splice(0,1)[0],a.test(n)&&(s=u.splice(0,c[n]).map(parseFloat),e=i(t,n,s),e&&f.push(e));return new t.PolyBezier(f)}var o=n(5),s={x:!1,y:!1};t.exports=e},function(t,r){"use strict";function n(t){t=t.replace(/,/g," ").replace(/-/g," - ").replace(/-\s+/g,"-").replace(/([a-zA-Z])/g," $1 ");var r,n,i,e,o,s,u=t.replace(/([a-zA-Z])\s?/g,"|$1").split("|"),a=u.length,f=[],c=0,h=0,x=0,y=0,l=0,p=0,v=0,d=0,m="";for(r=1;a>r;r++)if(n=u[r],i=n.substring(0,1),e=i.toLowerCase(),f=n.replace(i,"").trim().split(" "),f=f.filter(function(t){return""!==t}).map(parseFloat),o=f.length,"m"===e){if(m+="M ","m"===i?(x+=f[0],y+=f[1]):(x=f[0],y=f[1]),c=x,h=y,m+=x+" "+y+" ",o>2)for(s=0;o>s;s+=2)"m"===i?(x+=f[s],y+=f[s+1]):(x=f[s],y=f[s+1]),m+=["L",x,y,""].join(" ")}else if("l"===e)for(s=0;o>s;s+=2)"l"===i?(x+=f[s],y+=f[s+1]):(x=f[s],y=f[s+1]),m+=["L",x,y,""].join(" ");else if("h"===e)for(s=0;o>s;s++)"h"===i?x+=f[s]:x=f[s],m+=["L",x,y,""].join(" ");else if("v"===e)for(s=0;o>s;s++)"v"===i?y+=f[s]:y=f[s],m+=["L",x,y,""].join(" ");else if("q"===e)for(s=0;o>s;s+=4)"q"===i?(l=x+f[s],p=y+f[s+1],x+=f[s+2],y+=f[s+3]):(l=f[s],p=f[s+1],x=f[s+2],y=f[s+3]),m+=["Q",l,p,x,y,""].join(" ");else if("t"===e)for(s=0;o>s;s+=2)l=x+(x-l),p=y+(y-p),"t"===i?(x+=f[s],y+=f[s+1]):(x=f[s],y=f[s+1]),m+=["Q",l,p,x,y,""].join(" ");else if("c"===e)for(s=0;o>s;s+=6)"c"===i?(l=x+f[s],p=y+f[s+1],v=x+f[s+2],d=y+f[s+3],x+=f[s+4],y+=f[s+5]):(l=f[s],p=f[s+1],v=f[s+2],d=f[s+3],x=f[s+4],y=f[s+5]),m+=["C",l,p,v,d,x,y,""].join(" ");else if("s"===e)for(s=0;o>s;s+=4)l=x+(x-v),p=y+(y-d),"s"===i?(v=x+f[s],d=y+f[s+1],x+=f[s+2],y+=f[s+3]):(v=f[s],d=f[s+1],x=f[s+2],y=f[s+3]),m+=["C",l,p,v,d,x,y,""].join(" ");else"z"===e&&(m+="Z ",x=c,y=h);return m.trim()}t.exports=n}]);
+var Bezier=function(t){function r(i){if(n[i])return n[i].exports;var e=n[i]={exports:{},id:i,loaded:!1};return t[i].call(e.exports,e,e.exports,r),e.loaded=!0,e.exports}var n={};return r.m=t,r.c=n,r.p="",r(0)}([function(t,r,n){"use strict";t.exports=n(1)},function(t,r,n){"use strict";var i="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(t){return typeof t}:function(t){return t&&"function"==typeof Symbol&&t.constructor===Symbol&&t!==Symbol.prototype?"symbol":typeof t};!function(){function r(t,r,n,i,e){"undefined"==typeof e&&(e=.5);var o=y.projectionratio(e,t),s=1-o,u={x:o*r.x+s*i.x,y:o*r.y+s*i.y},a=y.abcratio(e,t),f={x:n.x+(n.x-u.x)/a,y:n.y+(n.y-u.y)/a};return{A:f,B:n,C:u}}var e=Math.abs,o=Math.min,s=Math.max,u=Math.cos,a=Math.sin,f=Math.acos,c=Math.sqrt,h=Math.PI,x={x:0,y:0,z:0},y=n(2),l=n(3),p=function(t){var r=t&&t.forEach?t:[].slice.call(arguments),n=!1;if("object"===i(r[0])){n=r.length;var o=[];r.forEach(function(t){["x","y","z"].forEach(function(r){"undefined"!=typeof t[r]&&o.push(t[r])})}),r=o}var s=!1,u=r.length;if(n){if(n>4){if(1!==arguments.length)throw new Error("Only new Bezier(point[]) is accepted for 4th and higher order curves");s=!0}}else if(6!==u&&8!==u&&9!==u&&12!==u&&1!==arguments.length)throw new Error("Only new Bezier(point[]) is accepted for 4th and higher order curves");var a=!s&&(9===u||12===u)||t&&t[0]&&"undefined"!=typeof t[0].z;this._3d=a;for(var f=[],c=0,h=a?3:2;c<u;c+=h){var x={x:r[c],y:r[c+1]};a&&(x.z=r[c+2]),f.push(x)}this.order=f.length-1,this.points=f;var l=["x","y"];a&&l.push("z"),this.dims=l,this.dimlen=l.length,function(t){for(var r=t.order,n=t.points,i=y.align(n,{p1:n[0],p2:n[r]}),o=0;o<i.length;o++)if(e(i[o].y)>1e-4)return void(t._linear=!1);t._linear=!0}(this),this._t1=0,this._t2=1,this.update()},v=n(4);p.SVGtoBeziers=function(t){return v(p,t)},p.quadraticFromPoints=function(t,n,i,e){if("undefined"==typeof e&&(e=.5),0===e)return new p(n,n,i);if(1===e)return new p(t,n,n);var o=r(2,t,n,i,e);return new p(t,o.A,i)},p.cubicFromPoints=function(t,n,i,e,o){"undefined"==typeof e&&(e=.5);var s=r(3,t,n,i,e);"undefined"==typeof o&&(o=y.dist(n,s.C));var u=o*(1-e)/e,a=y.dist(t,i),f=(i.x-t.x)/a,c=(i.y-t.y)/a,h=o*f,x=o*c,l=u*f,v=u*c,d={x:n.x-h,y:n.y-x},m={x:n.x+l,y:n.y+v},z=s.A,g={x:z.x+(d.x-z.x)/(1-e),y:z.y+(d.y-z.y)/(1-e)},b={x:z.x+(m.x-z.x)/e,y:z.y+(m.y-z.y)/e},_={x:t.x+(g.x-t.x)/e,y:t.y+(g.y-t.y)/e},w={x:i.x+(b.x-i.x)/(1-e),y:i.y+(b.y-i.y)/(1-e)};return new p(t,_,w,i)};var d=function(){return y};p.getUtils=d,p.PolyBezier=l,p.prototype={getUtils:d,valueOf:function(){return this.toString()},toString:function(){return y.pointsToString(this.points)},toSVG:function(t){if(this._3d)return!1;for(var r=this.points,n=r[0].x,i=r[0].y,e=["M",n,i,2===this.order?"Q":"C"],o=1,s=r.length;o<s;o++)e.push(r[o].x),e.push(r[o].y);return e.join(" ")},setRatios:function(t){if(t.length!==this.points.length)throw new Error("incorrect number of ratio values");this.ratios=t,this._lut=[]},verify:function(){var t=this.coordDigest();t!==this._print&&(this._print=t,this.update())},coordDigest:function(){return this.points.map(function(t,r){return""+r+t.x+t.y+(t.z?t.z:0)}).join("")},update:function(t){this._lut=[],this.dpoints=y.derive(this.points,this._3d),this.computedirection()},computedirection:function(){var t=this.points,r=y.angle(t[0],t[this.order],t[1]);this.clockwise=r>0},length:function(){return y.length(this.derivative.bind(this))},_lut:[],getLUT:function(t){if(this.verify(),t=t||100,this._lut.length===t)return this._lut;this._lut=[],t--;for(var r=0;r<=t;r++)this._lut.push(this.compute(r/t));return this._lut},on:function(t,r){r=r||5;for(var n,i=this.getLUT(),e=[],o=0,s=0;s<i.length;s++)n=i[s],y.dist(n,t)<r&&(e.push(n),o+=s/i.length);return!!e.length&&(o/=e.length)},project:function(t){var r,n,i,e,o=this.getLUT(),s=o.length-1,u=y.closest(o,t),a=u.mdist,f=u.mpos,c=(f-1)/s,h=(f+1)/s,x=.1/s;for(a+=1,n=c,r=n;n<h+x;n+=x)i=this.compute(n),e=y.dist(t,i),e<a&&(a=e,r=n);return i=this.compute(r),i.t=r,i.d=a,i},get:function(t){return this.compute(t)},point:function(t){return this.points[t]},compute:function(t){return this.ratios?y.computeWithRatios(t,this.points,this.ratios,this._3d):y.compute(t,this.points,this._3d,this.ratios)},raise:function(){for(var t,r,n,i=this.points,e=[i[0]],o=i.length,t=1;t<o;t++)r=i[t],n=i[t-1],e[t]={x:(o-t)/o*r.x+t/o*n.x,y:(o-t)/o*r.y+t/o*n.y};return e[o]=i[o-1],new p(e)},derivative:function(t){var r,n,i=1-t,e=0,o=this.dpoints[0];2===this.order&&(o=[o[0],o[1],x],r=i,n=t),3===this.order&&(r=i*i,n=i*t*2,e=t*t);var s={x:r*o[0].x+n*o[1].x+e*o[2].x,y:r*o[0].y+n*o[1].y+e*o[2].y};return this._3d&&(s.z=r*o[0].z+n*o[1].z+e*o[2].z),s},curvature:function(t){return y.curvature(t,this.points,this._3d)},inflections:function(){return y.inflections(this.points)},normal:function(t){return this._3d?this.__normal3(t):this.__normal2(t)},__normal2:function(t){var r=this.derivative(t),n=c(r.x*r.x+r.y*r.y);return{x:-r.y/n,y:r.x/n}},__normal3:function(t){var r=this.derivative(t),n=this.derivative(t+.01),i=c(r.x*r.x+r.y*r.y+r.z*r.z),e=c(n.x*n.x+n.y*n.y+n.z*n.z);r.x/=i,r.y/=i,r.z/=i,n.x/=e,n.y/=e,n.z/=e;var o={x:n.y*r.z-n.z*r.y,y:n.z*r.x-n.x*r.z,z:n.x*r.y-n.y*r.x},s=c(o.x*o.x+o.y*o.y+o.z*o.z);o.x/=s,o.y/=s,o.z/=s;var u=[o.x*o.x,o.x*o.y-o.z,o.x*o.z+o.y,o.x*o.y+o.z,o.y*o.y,o.y*o.z-o.x,o.x*o.z-o.y,o.y*o.z+o.x,o.z*o.z],a={x:u[0]*r.x+u[1]*r.y+u[2]*r.z,y:u[3]*r.x+u[4]*r.y+u[5]*r.z,z:u[6]*r.x+u[7]*r.y+u[8]*r.z};return a},hull:function(t){var r,n=this.points,i=[],e=[],o=0,s=0,u=0;for(e[o++]=n[0],e[o++]=n[1],e[o++]=n[2],3===this.order&&(e[o++]=n[3]);n.length>1;){for(i=[],s=0,u=n.length-1;s<u;s++)r=y.lerp(t,n[s],n[s+1]),e[o++]=r,i.push(r);n=i}return e},split:function(t,r){if(0===t&&r)return this.split(r).left;if(1===r)return this.split(t).right;var n=this.hull(t),i={left:new p(2===this.order?[n[0],n[3],n[5]]:[n[0],n[4],n[7],n[9]]),right:new p(2===this.order?[n[5],n[4],n[2]]:[n[9],n[8],n[6],n[3]]),span:n};if(i.left._t1=y.map(0,0,1,this._t1,this._t2),i.left._t2=y.map(t,0,1,this._t1,this._t2),i.right._t1=y.map(t,0,1,this._t1,this._t2),i.right._t2=y.map(1,0,1,this._t1,this._t2),!r)return i;r=y.map(r,t,1,0,1);var e=i.right.split(r);return e.left},extrema:function(){var t,r,n=this.dims,i={},e=[];return n.forEach(function(n){r=function(t){return t[n]},t=this.dpoints[0].map(r),i[n]=y.droots(t),3===this.order&&(t=this.dpoints[1].map(r),i[n]=i[n].concat(y.droots(t))),i[n]=i[n].filter(function(t){return t>=0&&t<=1}),e=e.concat(i[n].sort(y.numberSort))}.bind(this)),e=e.sort(y.numberSort).filter(function(t,r){return e.indexOf(t)===r}),i.values=e,i},bbox:function(){var t=this.extrema(),r={};return this.dims.forEach(function(n){r[n]=y.getminmax(this,n,t[n])}.bind(this)),r},overlaps:function(t){var r=this.bbox(),n=t.bbox();return y.bboxoverlap(r,n)},offset:function(t,r){if("undefined"!=typeof r){var n=this.get(t),i=this.normal(t),e={c:n,n:i,x:n.x+i.x*r,y:n.y+i.y*r};return this._3d&&(e.z=n.z+i.z*r),e}if(this._linear){var o=this.normal(0),s=this.points.map(function(r){var n={x:r.x+t*o.x,y:r.y+t*o.y};return r.z&&i.z&&(n.z=r.z+t*o.z),n});return[new p(s)]}var u=this.reduce();return u.map(function(r){return r._linear?r.offset(t)[0]:r.scale(t)})},simple:function(){if(3===this.order){var t=y.angle(this.points[0],this.points[3],this.points[1]),r=y.angle(this.points[0],this.points[3],this.points[2]);if(t>0&&r<0||t<0&&r>0)return!1}var n=this.normal(0),i=this.normal(1),o=n.x*i.x+n.y*i.y;this._3d&&(o+=n.z*i.z);var s=e(f(o));return s<h/3},reduce:function(){var t,r,n=0,i=0,o=.01,s=[],u=[],a=this.extrema().values;for(a.indexOf(0)===-1&&(a=[0].concat(a)),a.indexOf(1)===-1&&a.push(1),n=a[0],t=1;t<a.length;t++)i=a[t],r=this.split(n,i),r._t1=n,r._t2=i,s.push(r),n=i;return s.forEach(function(t){for(n=0,i=0;i<=1;)for(i=n+o;i<=1+o;i+=o)if(r=t.split(n,i),!r.simple()){if(i-=o,e(n-i)<o)return[];r=t.split(n,i),r._t1=y.map(n,0,1,t._t1,t._t2),r._t2=y.map(i,0,1,t._t1,t._t2),u.push(r),n=i;break}n<1&&(r=t.split(n,1),r._t1=y.map(n,0,1,t._t1,t._t2),r._t2=t._t2,u.push(r))}),u},scale:function(t){var r=this.order,n=!1;if("function"==typeof t&&(n=t),n&&2===r)return this.raise().scale(n);var i=this.clockwise,e=n?n(0):t,o=n?n(1):t,s=[this.offset(0,10),this.offset(1,10)],u=y.lli4(s[0],s[0].c,s[1],s[1].c);if(!u)throw new Error("cannot scale this curve. Try reducing it first.");var a=this.points,f=[];return[0,1].forEach(function(t){var n=f[t*r]=y.copy(a[t*r]);n.x+=(t?o:e)*s[t].n.x,n.y+=(t?o:e)*s[t].n.y}.bind(this)),n?([0,1].forEach(function(e){if(2!==this.order||!e){var o=a[e+1],s={x:o.x-u.x,y:o.y-u.y},h=n?n((e+1)/r):t;n&&!i&&(h=-h);var x=c(s.x*s.x+s.y*s.y);s.x/=x,s.y/=x,f[e+1]={x:o.x+h*s.x,y:o.y+h*s.y}}}.bind(this)),new p(f)):([0,1].forEach(function(t){if(2!==this.order||!t){var n=f[t*r],i=this.derivative(t),e={x:n.x+i.x,y:n.y+i.y};f[t+1]=y.lli4(n,e,u,a[t+1])}}.bind(this)),new p(f))},outline:function(t,r,n,i){function e(t,r,n,i,e){return function(o){var s=i/n,u=(i+e)/n,a=r-t;return y.map(o,0,1,t+s*a,t+u*a)}}r="undefined"==typeof r?t:r;var o,s=this.reduce(),u=s.length,a=[],f=[],c=0,h=this.length(),x="undefined"!=typeof n&&"undefined"!=typeof i;s.forEach(function(o){_=o.length(),x?(a.push(o.scale(e(t,n,h,c,_))),f.push(o.scale(e(-r,-i,h,c,_)))):(a.push(o.scale(t)),f.push(o.scale(-r))),c+=_}),f=f.map(function(t){return o=t.points,o[3]?t.points=[o[3],o[2],o[1],o[0]]:t.points=[o[2],o[1],o[0]],t}).reverse();var p=a[0].points[0],v=a[u-1].points[a[u-1].points.length-1],d=f[u-1].points[f[u-1].points.length-1],m=f[0].points[0],z=y.makeline(d,p),g=y.makeline(v,m),b=[z].concat(a).concat([g]).concat(f),_=b.length;return new l(b)},outlineshapes:function(t,r,n){r=r||t;for(var i=this.outline(t,r).curves,e=[],o=1,s=i.length;o<s/2;o++){var u=y.makeshape(i[o],i[s-o],n);u.startcap.virtual=o>1,u.endcap.virtual=o<s/2-1,e.push(u)}return e},intersects:function(t,r){return t?t.p1&&t.p2?this.lineIntersects(t):(t instanceof p&&(t=t.reduce()),this.curveintersects(this.reduce(),t,r)):this.selfintersects(r)},lineIntersects:function(t){var r=o(t.p1.x,t.p2.x),n=o(t.p1.y,t.p2.y),i=s(t.p1.x,t.p2.x),e=s(t.p1.y,t.p2.y),u=this;return y.roots(this.points,t).filter(function(t){var o=u.get(t);return y.between(o.x,r,i)&&y.between(o.y,n,e)})},selfintersects:function(t){var r,n,i,e,o=this.reduce(),s=o.length-2,u=[];for(r=0;r<s;r++)i=o.slice(r,r+1),e=o.slice(r+2),n=this.curveintersects(i,e,t),u=u.concat(n);return u},curveintersects:function(t,r,n){var i=[];t.forEach(function(t){r.forEach(function(r){t.overlaps(r)&&i.push({left:t,right:r})})});var e=[];return i.forEach(function(t){var r=y.pairiteration(t.left,t.right,n);r.length>0&&(e=e.concat(r))}),e},arcs:function(t){t=t||.5;var r=[];return this._iterate(t,r)},_error:function(t,r,n,i){var o=(i-n)/4,s=this.get(n+o),u=this.get(i-o),a=y.dist(t,r),f=y.dist(t,s),c=y.dist(t,u);return e(f-a)+e(c-a)},_iterate:function(t,r){var n,i=0,e=1;do{n=0,e=1;var o,s,f,c,h,x=this.get(i),l=!1,p=!1,v=e,d=1,m=0;do{p=l,c=f,v=(i+e)/2,m++,o=this.get(v),s=this.get(e),f=y.getccenter(x,o,s),f.interval={start:i,end:e};var z=this._error(f,x,i,e);if(l=z<=t,h=p&&!l,h||(d=e),l){if(e>=1){if(f.interval.end=d=1,c=f,e>1){var g={x:f.x+f.r*u(f.e),y:f.y+f.r*a(f.e)};f.e+=y.angle({x:f.x,y:f.y},g,this.get(1))}break}e+=(e-i)/2}else e=v}while(!h&&n++<100);if(n>=100)break;c=c?c:f,r.push(c),i=d}while(e<1);return r}},t.exports=p}()},function(t,r,n){"use strict";!function(){var r=Math.abs,i=Math.cos,e=Math.sin,o=Math.acos,s=Math.atan2,u=Math.sqrt,a=Math.pow,f=function(t){return t<0?-a(-t,1/3):a(t,1/3)},c=Math.PI,h=2*c,x=c/2,y=1e-6,l=Number.MAX_SAFE_INTEGER||9007199254740991,p=Number.MIN_SAFE_INTEGER||-9007199254740991,v={x:0,y:0,z:0},d={Tvalues:[-.06405689286260563,.06405689286260563,-.1911188674736163,.1911188674736163,-.3150426796961634,.3150426796961634,-.4337935076260451,.4337935076260451,-.5454214713888396,.5454214713888396,-.6480936519369755,.6480936519369755,-.7401241915785544,.7401241915785544,-.820001985973903,.820001985973903,-.8864155270044011,.8864155270044011,-.9382745520027328,.9382745520027328,-.9747285559713095,.9747285559713095,-.9951872199970213,.9951872199970213],Cvalues:[.12793819534675216,.12793819534675216,.1258374563468283,.1258374563468283,.12167047292780339,.12167047292780339,.1155056680537256,.1155056680537256,.10744427011596563,.10744427011596563,.09761865210411388,.09761865210411388,.08619016153195327,.08619016153195327,.0733464814110803,.0733464814110803,.05929858491543678,.05929858491543678,.04427743881741981,.04427743881741981,.028531388628933663,.028531388628933663,.0123412297999872,.0123412297999872],arcfn:function(t,r){var n=r(t),i=n.x*n.x+n.y*n.y;return"undefined"!=typeof n.z&&(i+=n.z*n.z),u(i)},compute:function(t,r,n){if(0===t)return r[0];var i=r.length-1;if(1===t)return r[i];var e=r,o=1-t;if(0===i)return r[0];if(1===i)return x={x:o*e[0].x+t*e[1].x,y:o*e[0].y+t*e[1].y},n&&(x.z=o*e[0].z+t*e[1].z),x;if(i<4){var s,u,a,f=o*o,c=t*t,h=0;2===i?(e=[e[0],e[1],e[2],v],s=f,u=o*t*2,a=c):3===i&&(s=f*o,u=f*t*3,a=o*c*3,h=t*c);var x={x:s*e[0].x+u*e[1].x+a*e[2].x+h*e[3].x,y:s*e[0].y+u*e[1].y+a*e[2].y+h*e[3].y};return n&&(x.z=s*e[0].z+u*e[1].z+a*e[2].z+h*e[3].z),x}for(var y=JSON.parse(JSON.stringify(r));y.length>1;){for(var l=0;l<y.length-1;l++)y[l]={x:y[l].x+(y[l+1].x-y[l].x)*t,y:y[l].y+(y[l+1].y-y[l].y)*t},"undefined"!=typeof y[l].z&&(y[l]=y[l].z+(y[l+1].z-y[l].z)*t);y.splice(y.length-1,1)}return y[0]},computeWithRatios:function(t,r,n,i){var e,o=1-t,s=n,u=r,a=s[0],f=s[1],c=s[2],h=s[3];return a*=o,f*=t,2===u.length?(e=a+f,{x:(a*u[0].x+f*u[1].x)/e,y:(a*u[0].y+f*u[1].y)/e,z:!!i&&(a*u[0].z+f*u[1].z)/e}):(a*=o,f*=2*o,c*=t*t,3===u.length?(e=a+f+c,{x:(a*u[0].x+f*u[1].x+c*u[2].x)/e,y:(a*u[0].y+f*u[1].y+c*u[2].y)/e,z:!!i&&(a*u[0].z+f*u[1].z+c*u[2].z)/e}):(a*=o,f*=1.5*o,c*=3*o,h*=t*t*t,4===u.length?(e=a+f+c+h,{x:(a*u[0].x+f*u[1].x+c*u[2].x+h*u[3].x)/e,y:(a*u[0].y+f*u[1].y+c*u[2].y+h*u[3].y)/e,z:!!i&&(a*u[0].z+f*u[1].z+c*u[2].z+h*u[3].z)/e}):void 0))},derive:function(t,r){for(var n=[],i=t,e=i.length,o=e-1;e>1;e--,o--){for(var s,u=[],a=0;a<o;a++)s={x:o*(i[a+1].x-i[a].x),y:o*(i[a+1].y-i[a].y)},r&&(s.z=o*(i[a+1].z-i[a].z)),u.push(s);n.push(u),i=u}return n},between:function(t,r,n){return r<=t&&t<=n||d.approximately(t,r)||d.approximately(t,n)},approximately:function(t,n,i){return r(t-n)<=(i||y)},length:function(t){var r,n,i=.5,e=0,o=d.Tvalues.length;for(r=0;r<o;r++)n=i*d.Tvalues[r]+i,e+=d.Cvalues[r]*d.arcfn(n,t);return i*e},map:function(t,r,n,i,e){var o=n-r,s=e-i,u=t-r,a=u/o;return i+s*a},lerp:function(t,r,n){var i={x:r.x+t*(n.x-r.x),y:r.y+t*(n.y-r.y)};return r.z&&n.z&&(i.z=r.z+t*(n.z-r.z)),i},pointToString:function(t){var r=t.x+"/"+t.y;return"undefined"!=typeof t.z&&(r+="/"+t.z),r},pointsToString:function(t){return"["+t.map(d.pointToString).join(", ")+"]"},copy:function(t){return JSON.parse(JSON.stringify(t))},angle:function(t,r,n){var i=r.x-t.x,e=r.y-t.y,o=n.x-t.x,u=n.y-t.y,a=i*u-e*o,f=i*o+e*u;return s(a,f)},round:function(t,r){var n=""+t,i=n.indexOf(".");return parseFloat(n.substring(0,i+1+r))},dist:function(t,r){var n=t.x-r.x,i=t.y-r.y;return u(n*n+i*i)},closest:function(t,r){var n,i,e=a(2,63);return t.forEach(function(t,o){i=d.dist(r,t),i<e&&(e=i,n=o)}),{mdist:e,mpos:n}},abcratio:function(t,n){if(2!==n&&3!==n)return!1;if("undefined"==typeof t)t=.5;else if(0===t||1===t)return t;var i=a(t,n)+a(1-t,n),e=i-1;return r(e/i)},projectionratio:function(t,r){if(2!==r&&3!==r)return!1;if("undefined"==typeof t)t=.5;else if(0===t||1===t)return t;var n=a(1-t,r),i=a(t,r)+n;return n/i},lli8:function(t,r,n,i,e,o,s,u){var a=(t*i-r*n)*(e-s)-(t-n)*(e*u-o*s),f=(t*i-r*n)*(o-u)-(r-i)*(e*u-o*s),c=(t-n)*(o-u)-(r-i)*(e-s);return 0!=c&&{x:a/c,y:f/c}},lli4:function(t,r,n,i){var e=t.x,o=t.y,s=r.x,u=r.y,a=n.x,f=n.y,c=i.x,h=i.y;return d.lli8(e,o,s,u,a,f,c,h)},lli:function(t,r){return d.lli4(t,t.c,r,r.c)},makeline:function(t,r){var i=n(1),e=t.x,o=t.y,s=r.x,u=r.y,a=(s-e)/3,f=(u-o)/3;return new i(e,o,e+a,o+f,e+2*a,o+2*f,s,u)},findbbox:function(t){var r=l,n=l,i=p,e=p;return t.forEach(function(t){var o=t.bbox();r>o.x.min&&(r=o.x.min),n>o.y.min&&(n=o.y.min),i<o.x.max&&(i=o.x.max),e<o.y.max&&(e=o.y.max)}),{x:{min:r,mid:(r+i)/2,max:i,size:i-r},y:{min:n,mid:(n+e)/2,max:e,size:e-n}}},shapeintersections:function(t,r,n,i,e){if(!d.bboxoverlap(r,i))return[];var o=[],s=[t.startcap,t.forward,t.back,t.endcap],u=[n.startcap,n.forward,n.back,n.endcap];return s.forEach(function(r){r.virtual||u.forEach(function(i){if(!i.virtual){var s=r.intersects(i,e);s.length>0&&(s.c1=r,s.c2=i,s.s1=t,s.s2=n,o.push(s))}})}),o},makeshape:function(t,r,n){var i=r.points.length,e=t.points.length,o=d.makeline(r.points[i-1],t.points[0]),s=d.makeline(t.points[e-1],r.points[0]),u={startcap:o,forward:t,back:r,endcap:s,bbox:d.findbbox([o,t,r,s])},a=d;return u.intersections=function(t){return a.shapeintersections(u,u.bbox,t,t.bbox,n)},u},getminmax:function(t,r,n){if(!n)return{min:0,max:0};var i,e,o=l,s=p;n.indexOf(0)===-1&&(n=[0].concat(n)),n.indexOf(1)===-1&&n.push(1);for(var u=0,a=n.length;u<a;u++)i=n[u],e=t.get(i),e[r]<o&&(o=e[r]),e[r]>s&&(s=e[r]);return{min:o,mid:(o+s)/2,max:s,size:s-o}},align:function(t,r){var n=r.p1.x,o=r.p1.y,u=-s(r.p2.y-o,r.p2.x-n),a=function(t){return{x:(t.x-n)*i(u)-(t.y-o)*e(u),y:(t.x-n)*e(u)+(t.y-o)*i(u)}};return t.map(a)},roots:function(t,r){r=r||{p1:{x:0,y:0},p2:{x:1,y:0}};var n=t.length-1,e=d.align(t,r),s=function(t){return 0<=t&&t<=1};if(2===n){var a=e[0].y,c=e[1].y,x=e[2].y,y=a-2*c+x;if(0!==y){var l=-u(c*c-a*x),p=-a+c,v=-(l+p)/y,m=-(-l+p)/y;return[v,m].filter(s)}return c!==x&&0===y?[(2*c-x)/(2*c-2*x)].filter(s):[]}var z=e[0].y,g=e[1].y,b=e[2].y,_=e[3].y,y=-z+3*g-3*b+_,a=3*z-6*g+3*b,c=-3*z+3*g,x=z;if(d.approximately(y,0)){if(d.approximately(a,0))return d.approximately(c,0)?[]:[-x/c].filter(s);var w=u(c*c-4*a*x),E=2*a;return[(w-c)/E,(-c-w)/E].filter(s)}a/=y,c/=y,x/=y;var S,v,M,k,j,e=(3*c-a*a)/3,O=e/3,w=(2*a*a*a-9*a*c+27*x)/27,T=w/2,C=T*T+O*O*O;if(C<0){var L=-e/3,N=L*L*L,A=u(N),B=-w/(2*A),F=B<-1?-1:B>1?1:B,I=o(F),q=f(A),P=2*q;return M=P*i(I/3)-a/3,k=P*i((I+h)/3)-a/3,j=P*i((I+2*h)/3)-a/3,[M,k,j].filter(s)}if(0===C)return S=T<0?f(-T):-f(T),M=2*S-a/3,k=-S-a/3,[M,k].filter(s);var R=u(C);return S=f(-T+R),v=f(T+R),[S-v-a/3].filter(s)},droots:function(t){if(3===t.length){var r=t[0],n=t[1],i=t[2],e=r-2*n+i;if(0!==e){var o=-u(n*n-r*i),s=-r+n,a=-(o+s)/e,f=-(-o+s)/e;return[a,f]}return n!==i&&0===e?[(2*n-i)/(2*(n-i))]:[]}if(2===t.length){var r=t[0],n=t[1];return r!==n?[r/(r-n)]:[]}},curvature:function(t,n,i,e){var o,s,f,c,h=d.derive(n),x=h[0],y=h[1],l=0,p=0,v=d.compute(t,x),m=d.compute(t,y),z=v.x*v.x+v.y*v.y;if(i?(o=u(a(v.y*m.z-m.y*v.z,2)+a(v.z*m.x-m.z*v.x,2)+a(v.x*m.y-m.x*v.y,2)),s=a(z+v.z*v.z,1.5)):(o=v.x*m.y-v.y*m.x,s=a(z,1.5)),0===o||0===s)return{k:0,r:0};if(l=o/s,p=s/o,!e){var g=d.curvature(t-.001,n,i,!0).k,b=d.curvature(t+.001,n,i,!0).k;c=(b-l+(l-g))/2,f=(r(b-l)+r(l-g))/2}return{k:l,r:p,dk:c,adk:f}},inflections:function(t){if(t.length<4)return[];var r=d.align(t,{p1:t[0],p2:t.slice(-1)[0]}),n=r[2].x*r[1].y,i=r[3].x*r[1].y,e=r[1].x*r[2].y,o=r[3].x*r[2].y,s=18*(-3*n+2*i+3*e-o),u=18*(3*n-i-3*e),a=18*(e-n);if(d.approximately(s,0)){if(!d.approximately(u,0)){var f=-a/u;if(0<=f&&f<=1)return[f]}return[]}var c=u*u-4*s*a,h=Math.sqrt(c),o=2*s;return d.approximately(o,0)?[]:[(h-u)/o,-(u+h)/o].filter(function(t){return 0<=t&&t<=1})},bboxoverlap:function(t,n){var i,e,o,s,u,a=["x","y"],f=a.length;for(i=0;i<f;i++)if(e=a[i],o=t[e].mid,s=n[e].mid,u=(t[e].size+n[e].size)/2,r(o-s)>=u)return!1;return!0},expandbox:function(t,r){r.x.min<t.x.min&&(t.x.min=r.x.min),r.y.min<t.y.min&&(t.y.min=r.y.min),r.z&&r.z.min<t.z.min&&(t.z.min=r.z.min),r.x.max>t.x.max&&(t.x.max=r.x.max),r.y.max>t.y.max&&(t.y.max=r.y.max),r.z&&r.z.max>t.z.max&&(t.z.max=r.z.max),t.x.mid=(t.x.min+t.x.max)/2,t.y.mid=(t.y.min+t.y.max)/2,t.z&&(t.z.mid=(t.z.min+t.z.max)/2),t.x.size=t.x.max-t.x.min,t.y.size=t.y.max-t.y.min,t.z&&(t.z.size=t.z.max-t.z.min)},pairiteration:function(t,r,n){var i=t.bbox(),e=r.bbox(),o=1e5,s=n||.5;if(i.x.size+i.y.size<s&&e.x.size+e.y.size<s)return[(o*(t._t1+t._t2)/2|0)/o+"/"+(o*(r._t1+r._t2)/2|0)/o];var u=t.split(.5),a=r.split(.5),f=[{left:u.left,right:a.left},{left:u.left,right:a.right},{left:u.right,right:a.right},{left:u.right,right:a.left}];f=f.filter(function(t){return d.bboxoverlap(t.left.bbox(),t.right.bbox())});var c=[];return 0===f.length?c:(f.forEach(function(t){c=c.concat(d.pairiteration(t.left,t.right,s))}),c=c.filter(function(t,r){return c.indexOf(t)===r}))},getccenter:function(t,r,n){var o,u=r.x-t.x,a=r.y-t.y,f=n.x-r.x,c=n.y-r.y,y=u*i(x)-a*e(x),l=u*e(x)+a*i(x),p=f*i(x)-c*e(x),v=f*e(x)+c*i(x),m=(t.x+r.x)/2,z=(t.y+r.y)/2,g=(r.x+n.x)/2,b=(r.y+n.y)/2,_=m+y,w=z+l,E=g+p,S=b+v,M=d.lli8(m,z,_,w,g,b,E,S),k=d.dist(M,t),j=s(t.y-M.y,t.x-M.x),O=s(r.y-M.y,r.x-M.x),T=s(n.y-M.y,n.x-M.x);return j<T?((j>O||O>T)&&(j+=h),j>T&&(o=T,T=j,j=o)):T<O&&O<j?(o=T,T=j,j=o):T+=h,M.s=j,M.e=T,M.r=k,M},numberSort:function(t,r){return t-r}};t.exports=d}()},function(t,r,n){"use strict";!function(){var r=n(2),i=function(t){this.curves=[],this._3d=!1,t&&(this.curves=t,this._3d=this.curves[0]._3d)};i.prototype={valueOf:function(){return this.toString()},toString:function(){return"["+this.curves.map(function(t){return r.pointsToString(t.points)}).join(", ")+"]"},addCurve:function(t){this.curves.push(t),this._3d=this._3d||t._3d},length:function(){return this.curves.map(function(t){return t.length()}).reduce(function(t,r){return t+r})},curve:function(t){return this.curves[t]},bbox:function t(){for(var n=this.curves,t=n[0].bbox(),i=1;i<n.length;i++)r.expandbox(t,n[i].bbox());return t},offset:function t(r){var t=[];return this.curves.forEach(function(n){t=t.concat(n.offset(r))}),new i(t)}},t.exports=i}()},function(t,r,n){"use strict";function i(t,r,n){if("Z"!==r){if("M"===r)return void(s={x:n[0],y:n[1]});var i=[!1,s.x,s.y].concat(n),e=t.bind.apply(t,i),o=new e,u=n.slice(-2);return s={x:u[0],y:u[1]},o}}function e(t,r){for(var n,e,s,u=o(r).split(" "),a=new RegExp("[MLCQZ]",""),f=[],c={C:6,Q:4,L:2,M:2};u.length;)n=u.splice(0,1)[0],a.test(n)&&(s=u.splice(0,c[n]).map(parseFloat),e=i(t,n,s),e&&f.push(e));return new t.PolyBezier(f)}var o=n(5),s={x:!1,y:!1};t.exports=e},function(t,r){"use strict";function n(t){t=t.replace(/,/g," ").replace(/-/g," - ").replace(/-\s+/g,"-").replace(/([a-zA-Z])/g," $1 ");var r,n,i,e,o,s,u=t.replace(/([a-zA-Z])\s?/g,"|$1").split("|"),a=u.length,f=[],c=0,h=0,x=0,y=0,l=0,p=0,v=0,d=0,m="";for(r=1;r<a;r++)if(n=u[r],i=n.substring(0,1),e=i.toLowerCase(),f=n.replace(i,"").trim().split(" "),f=f.filter(function(t){return""!==t}).map(parseFloat),o=f.length,"m"===e){if(m+="M ","m"===i?(x+=f[0],y+=f[1]):(x=f[0],y=f[1]),c=x,h=y,m+=x+" "+y+" ",o>2)for(s=0;s<o;s+=2)"m"===i?(x+=f[s],y+=f[s+1]):(x=f[s],y=f[s+1]),m+=["L",x,y,""].join(" ")}else if("l"===e)for(s=0;s<o;s+=2)"l"===i?(x+=f[s],y+=f[s+1]):(x=f[s],y=f[s+1]),m+=["L",x,y,""].join(" ");else if("h"===e)for(s=0;s<o;s++)"h"===i?x+=f[s]:x=f[s],m+=["L",x,y,""].join(" ");else if("v"===e)for(s=0;s<o;s++)"v"===i?y+=f[s]:y=f[s],m+=["L",x,y,""].join(" ");else if("q"===e)for(s=0;s<o;s+=4)"q"===i?(l=x+f[s],p=y+f[s+1],x+=f[s+2],y+=f[s+3]):(l=f[s],p=f[s+1],x=f[s+2],y=f[s+3]),m+=["Q",l,p,x,y,""].join(" ");else if("t"===e)for(s=0;s<o;s+=2)l=x+(x-l),p=y+(y-p),"t"===i?(x+=f[s],y+=f[s+1]):(x=f[s],y=f[s+1]),m+=["Q",l,p,x,y,""].join(" ");else if("c"===e)for(s=0;s<o;s+=6)"c"===i?(l=x+f[s],p=y+f[s+1],v=x+f[s+2],d=y+f[s+3],x+=f[s+4],y+=f[s+5]):(l=f[s],p=f[s+1],v=f[s+2],d=f[s+3],x=f[s+4],y=f[s+5]),m+=["C",l,p,v,d,x,y,""].join(" ");else if("s"===e)for(s=0;s<o;s+=4)l=x+(x-v),p=y+(y-d),"s"===i?(v=x+f[s],d=y+f[s+1],x+=f[s+2],y+=f[s+3]):(v=f[s],d=f[s+1],x=f[s+2],y=f[s+3]),m+=["C",l,p,v,d,x,y,""].join(" ");else"z"===e&&(m+="Z ",x=c,y=h);return m.trim()}t.exports=n}]);
 define('bezier', ['bezier/bezier'], function (main) { return main; });
 
 define("bezier/bezier", function(){});
@@ -74440,13 +74776,15 @@ function (Fields,
 						{
 							var
 								glyph         = line [g],
-								glyphVertices = this .getGlyphGeometry (font, glyph, primitiveQuality);
+								glyphVertices = this .getGlyphGeometry (font, glyph, primitiveQuality),
+								xOffset       = minorAlignment .x + translation .x + advanceWidth + g * charSpacing,
+								yOffset       = minorAlignment .y + translation .y;
 
 							for (var v = 0, vl = glyphVertices .length; v < vl; ++ v)
 							{
 								var
-									x = glyphVertices [v] .x * size + minorAlignment .x + translation .x + advanceWidth + g * charSpacing,
-									y = glyphVertices [v] .y * size + minorAlignment .y + translation .y;
+									x = glyphVertices [v] .x * size + xOffset,
+									y = glyphVertices [v] .y * size + yOffset;
 
 								texCoordArray .push ((x - origin .x) / spacing, (y - origin .y) / spacing, 0, 1);
 								normalArray   .push (0, 0, 1);
@@ -89532,7 +89870,7 @@ function ($,
 	function X3DRenderObject (executionContext)
 	{
 		this .cameraSpaceMatrix        = new MatrixStack (Matrix4);
-		this .inverseCameraSpaceMatrix = new MatrixStack (Matrix4);
+		this .viewMatrix               = new MatrixStack (Matrix4);
 		this .projectionMatrix         = new MatrixStack (Matrix4);
 		this .modelViewMatrix          = new MatrixStack (Matrix4);
 		this .viewVolumes              = [ ];
@@ -89583,9 +89921,9 @@ function ($,
 		{
 			return this .cameraSpaceMatrix;
 		},
-		getInverseCameraSpaceMatrix: function ()
+		getViewMatrix: function ()
 		{
-			return this .inverseCameraSpaceMatrix;
+			return this .viewMatrix;
 		},
 		getProjectionMatrix: function ()
 		{
@@ -89631,7 +89969,7 @@ function ($,
 			{
 				var fogContainer = this .localFogs [0] || fog .getFogs () .pop ();
 
-				modelViewMatrix .assign (fog .getModelMatrix ()) .multRight (this .getInverseCameraSpaceMatrix () .get ());
+				modelViewMatrix .assign (fog .getModelMatrix ()) .multRight (this .getViewMatrix () .get ());
 				fogContainer .set (fog, modelViewMatrix);
 
 				this .localFog = this .localFogs [0] = fogContainer;
@@ -90249,7 +90587,7 @@ function ($,
 								//if (getBrowser () -> getBrowserOptions () -> animateStairWalks ())
 								//{
 								//	float step = getBrowser () -> getCurrentSpeed () / getBrowser () -> getCurrentFrameRate ();
-								//	step = abs (getInverseCameraSpaceMatrix () .mult_matrix_dir (Vector3f (0, step, 0) * up));
+								//	step = abs (getViewMatrix () .mult_matrix_dir (Vector3f (0, step, 0) * up));
 								//
 								//	Vector3f offset = Vector3f (0, step, 0) * up;
 								//
@@ -90578,7 +90916,6 @@ function (X3DBaseNode)
 	{
 		X3DBaseNode .call (this, executionContext);
 
-		this .layer = layer;
 		this .array = [ defaultNode ];
 	}
 
@@ -90605,99 +90942,92 @@ function (X3DBaseNode)
 		{
 			return this .array [this .array .length - 1];
 		},
-		forcePush: function (node)
+		pushOnTop: function (node)
 		{
+			if (node !== this .array [0])
+			{
+				this .top () .isBound_ = false;
+				this .array .push (node);
+			}
+
 			node .isBound_  = true;
 			node .bindTime_ = this .getBrowser () .getCurrentTime ();
 
-			this .push (node);
+			this .addNodeEvent ();
 		},
-		push: function (node)
+		update: function (layer, removedNodes, changedNodes)
 		{
-			if (this .array .length === 0)
+			if (removedNodes .length === 0 && changedNodes .length === 0)
 				return;
 
-			if (node === this .array [0])
-				return;
+			// Save top node for later use.
 
-			var top = this .top ();
+			var boundNode = this .top ();
 
-			if (node !== top)
+			// Remove invisible nodes and unbind them if needed.
+
+			for (var i = 0, length = removedNodes .length; i < length; ++ i)
 			{
-				this .pushOnTop (node);
+				var
+					removedNode = removedNodes [i],
+					index       = this .array .indexOf (removedNode);
 
-				if (top .isBound_ .getValue ())
+				if (index > -1)
 				{
-					top .set_bind_ = false;
-					top .isBound_  = false;
+					this .array .splice (index, 1);
 				}
 
-				if (! node .isBound_ .getValue ())
+				if (removedNode .isBound_ .getValue ())
 				{
-					node .isBound_  = true;
-					node .bindTime_ = this .getBrowser () .getCurrentTime ();
-					node .transitionStart (top);
+					removedNode .isBound_ = false;
 				}
-
-				this .pushOnTop (node);
-
-				this .addNodeEvent ();
 			}
-		},
-		pushOnTop: function (node)
-		{
-			var index = this .array .indexOf (node);
 
-			if (index > -1)
-				this .array .splice (index, 1);
+			// Unbind nodes with set_bind false and pop top node.
 
-			this .array .push (node);
-		},
-		remove: function (node)
-		{
-			if (node === this .array [0])
-				return;
+			var unbindNodes = changedNodes .filter (node => ! node .set_bind_ .getValue ());
 
-			// If on top, pop node.
-
-			var top = this .top ();
-
-			if (node === top)
-				return this .pop (node);
-
-			// Simply remove.
-
-			var index = this .array .indexOf (node);
-
-			if (index > -1)
-				this .array .splice (index, 1);
-		},
-		pop: function (node)
-		{
-			if (node === this .array [0])
-				return;
-
-			var top = this .top ();
-
-			if (node === top)
+			for (var i = 0, length = unbindNodes .length; i < length; ++ i)
 			{
-				if (node .isBound_ .getValue ())
-					node .isBound_ = false;
+				unbindNodes [i] .isBound_ = false;
+			}
 
-				if (this .array .length === 0)
-					return;
-
+			if (unbindNodes .indexOf (boundNode) > -1)
+			{
 				this .array .pop ();
+			}
 
-				top = this .top ();
+			// Push nodes with set_bind true to top of stack.
 
-				if (! top .isBound_ .getValue ())
+			var bindNodes = changedNodes .filter (node => node .set_bind_ .getValue ());
+
+			for (var i = 0, length = bindNodes .length; i < length; ++ i)
+			{
+				var
+					bindNode = bindNodes [i],
+					index    = this .array .indexOf (bindNode);
+
+				if (index > -1)
 				{
-					top .set_bind_ = true;
-					top .isBound_  = true;
-					top .bindTime_ = this .getBrowser () .getCurrentTime ();
-					top .transitionStart (node);
+					this .array .splice (index, 1);
 				}
+
+				this .array .push (bindNode);
+			}
+
+			// Bind top node if not bound.
+
+			var top = this .top ();
+
+			if (! top .isBound_ .getValue ())
+			{
+				// Bound node could be the default node, and this node must be unbound here.
+				boundNode .isBound_ = false;
+
+				top .isBound_  = true;
+				top .bindTime_ = this .getBrowser () .getCurrentTime ();
+
+				top .transitionStart (layer, boundNode);
 
 				this .addNodeEvent ();
 			}
@@ -90763,27 +91093,14 @@ function (X3DBaseNode)
 {
 "use strict";
 
-	function equals (lhs, rhs)
-	{
-		if (lhs .length !== rhs .length)
-			return false;
-
-		for (var i = 0; i < lhs .length; ++ i)
-		{
-			if (lhs [i] !== rhs [i])
-				return false
-		}
-
-		return true;
-	}
-
 	function BindableList (executionContext, layer, defaultNode)
 	{
 		X3DBaseNode .call (this, executionContext);
 
-		this .layer     = layer;
-		this .collected = [ defaultNode ];
-		this .array     = [ defaultNode ];
+		this .collected    = [ defaultNode ];
+		this .array        = [ defaultNode ];
+		this .updateTime   = 0;
+		this .removedNodes = [ ];
 	}
 
 	BindableList .prototype = Object .assign (Object .create (X3DBaseNode .prototype),
@@ -90863,8 +91180,12 @@ function (X3DBaseNode)
 		{
 			return this .collected .push (node);
 		},
-		update: function ()
+		update: function (layer, stack)
 		{
+			var
+				changedNodes = this .collected .filter (node => node .updateTime > this .updateTime),
+				removedNodes = this .removedNodes;
+
 			if (! equals (this .collected, this .array))
 			{
 				// Unbind nodes not in current list (collected);
@@ -90875,8 +91196,7 @@ function (X3DBaseNode)
 
 					if (this .collected .indexOf (node) < 0)
 					{
-						if (node .isBound_ .getValue ())
-							node .set_bind_ = false;
+						removedNodes .push (node);
 					}
 				}
 
@@ -90888,9 +91208,35 @@ function (X3DBaseNode)
 				this .collected = tmp;
 			}
 
+			// Clear collected array.
+
 			this .collected .length = 1;
+
+			// Update stack.
+
+			stack .update (layer, removedNodes, changedNodes)
+
+			removedNodes .length = 0;
+
+			// Advance update time.
+
+			this .updateTime = performance .now () / 1000;
 		},
 	});
+
+	function equals (lhs, rhs)
+	{
+		if (lhs .length !== rhs .length)
+			return false;
+
+		for (var i = 0; i < lhs .length; ++ i)
+		{
+			if (lhs [i] !== rhs [i])
+				return false
+		}
+
+		return true;
+	}
 
 	return BindableList;
 });
@@ -91086,16 +91432,6 @@ function (Fields,
 		},
 		set_type__: function ()
 		{
-			this .availableViewers_ .length = 0;;
-
-			var
-				examineViewer = false,
-				walkViewer    = false,
-				flyViewer     = false,
-				planeViewer   = false,
-				noneViewer    = false,
-				lookAt        = false;
-
 			// Determine active viewer.
 
 			this .viewer_ = "EXAMINE";
@@ -91126,6 +91462,14 @@ function (Fields,
 			}
 
 			// Determine available viewers.
+
+			var
+				examineViewer = false,
+				walkViewer    = false,
+				flyViewer     = false,
+				planeViewer   = false,
+				noneViewer    = false,
+				lookAt        = false;
 
 			if (! this .type_ .length)
 			{
@@ -91162,25 +91506,25 @@ function (Fields,
 						case "NONE":
 							noneViewer = true;
 							continue;
+						case "ANY":
+							examineViewer = true;
+							walkViewer    = true;
+							flyViewer     = true;
+							planeViewer   = true;
+							noneViewer    = true;
+							lookAt        = true;
+							break;
+						default:
+							// Some string defaults to EXAMINE.
+							examineViewer = true;
+							continue;
 					}
 
-					if (string == "ANY")
-					{
-						examineViewer = true;
-						walkViewer    = true;
-						flyViewer     = true;
-						planeViewer   = true;
-						noneViewer    = true;
-						lookAt        = true;
-
-						// Leave for loop.
-						break;
-					}
-
-					// Some string defaults to EXAMINE.
-					examineViewer = true;
+					break;
 				}
 			}
+
+			this .availableViewers_ .length = 0;
 
 			if (examineViewer)
 				this .availableViewers_ .push ("EXAMINE");
@@ -91224,18 +91568,6 @@ function (Fields,
 
 			if (this .transitionActive_ .getValue ())
 				this .transitionActive_ = false;
-		},
-		bindToLayer: function (layer)
-		{
-			layer .getNavigationInfoStack () .push (this);
-		},
-		unbindFromLayer: function (layer)
-		{
-			layer .getNavigationInfoStack () .pop (this);
-		},
-		removeFromLayer: function (layer)
-		{
-			layer .getNavigationInfoStack () .remove (this);
 		},
 		enable: function (type, renderObject)
 		{
@@ -91480,7 +91812,7 @@ define ('x_ite/Components/EnvironmentalEffects/Fog',[
 function (Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DBindableNode, 
+          X3DBindableNode,
           X3DFogObject,
           TraverseType,
 		  X3DConstants,
@@ -91532,18 +91864,6 @@ function (Fields,
 		{
 			return this .modelMatrix;
 		},
-		bindToLayer: function (layer)
-		{
-			layer .getFogStack () .push (this);
-		},
-		unbindFromLayer: function (layer)
-		{
-			layer .getFogStack () .pop (this);
-		},
-		removeFromLayer: function (layer)
-		{
-			layer .getFogStack () .remove (this);
-		},
 		traverse: function (type, renderObject)
 		{
 			renderObject .getLayer () .getFogs () .push (this);
@@ -91554,8 +91874,6 @@ function (Fields,
 
 	return Fog;
 });
-
-
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
  *******************************************************************************
@@ -91800,18 +92118,6 @@ function (X3DBindableNode,
 				this .textures |= 1 << bit;
 			else
 				this .textures &= ~(1 << bit);
-		},
-		bindToLayer: function (layer)
-		{
-			layer .getBackgroundStack () .push (this);
-		},
-		unbindFromLayer: function (layer)
-		{
-			layer .getBackgroundStack () .pop (this);
-		},
-		removeFromLayer: function (layer)
-		{
-			layer .getBackgroundStack () .remove (this);
 		},
 		setHidden: function (value)
 		{
@@ -92105,7 +92411,7 @@ function (X3DBindableNode,
 					// Rotate and scale background.
 
 					modelViewMatrix .assign (this .modelMatrix);
-					modelViewMatrix .multRight (renderObject .getInverseCameraSpaceMatrix () .get ());
+					modelViewMatrix .multRight (renderObject .getViewMatrix () .get ());
 					modelViewMatrix .get (null, rotation);
 					modelViewMatrix .identity ();
 					modelViewMatrix .rotate (rotation);
@@ -92507,20 +92813,20 @@ function (X3DNode,
 		this .groupNode       = groupNode;
 		this .currentViewport = null;
 
-		this .defaultBackground     = new Background (executionContext);
-		this .defaultFog            = new Fog (executionContext);
 		this .defaultNavigationInfo = new NavigationInfo (executionContext);
 		this .defaultViewpoint      = defaultViewpoint;
+		this .defaultBackground     = new Background (executionContext);
+		this .defaultFog            = new Fog (executionContext);
 
-		this .backgroundStack     = new BindableStack (executionContext, this, this .defaultBackground);
-		this .fogStack            = new BindableStack (executionContext, this, this .defaultFog);
 		this .navigationInfoStack = new BindableStack (executionContext, this, this .defaultNavigationInfo);
 		this .viewpointStack      = new BindableStack (executionContext, this, this .defaultViewpoint);
+		this .backgroundStack     = new BindableStack (executionContext, this, this .defaultBackground);
+		this .fogStack            = new BindableStack (executionContext, this, this .defaultFog);
 
-		this .backgrounds     = new BindableList (executionContext, this, this .defaultBackground);
-		this .fogs            = new BindableList (executionContext, this, this .defaultFog);
 		this .navigationInfos = new BindableList (executionContext, this, this .defaultNavigationInfo);
 		this .viewpoints      = new BindableList (executionContext, this, this .defaultViewpoint);
+		this .backgrounds     = new BindableList (executionContext, this, this .defaultBackground);
+		this .fogs            = new BindableList (executionContext, this, this .defaultFog);
 
 		this .defaultBackground .setHidden (true);
 		this .defaultFog        .setHidden (true);
@@ -92539,19 +92845,19 @@ function (X3DNode,
 			X3DRenderObject .prototype .initialize .call (this);
 
 			this .defaultNavigationInfo .setup ();
+			this .defaultViewpoint      .setup ();
 			this .defaultBackground     .setup ();
 			this .defaultFog            .setup ();
-			this .defaultViewpoint      .setup ();
 
-			this .backgroundStack     .setup ();
-			this .fogStack            .setup ();
 			this .navigationInfoStack .setup ();
 			this .viewpointStack      .setup ();
+			this .backgroundStack     .setup ();
+			this .fogStack            .setup ();
 
-			this .backgrounds     .setup ();
-			this .fogs            .setup ();
 			this .navigationInfos .setup ();
 			this .viewpoints      .setup ();
+			this .backgrounds     .setup ();
+			this .fogs            .setup ();
 
 			this .viewport_       .addInterest ("set_viewport__", this);
 
@@ -92663,15 +92969,10 @@ function (X3DNode,
 				fog            = this .fogs            .getBound (),
 				viewpoint      = this .viewpoints      .getBound (viewpointName);
 
-			this .navigationInfoStack .forcePush (navigationInfo);
-			this .backgroundStack     .forcePush (background);
-			this .fogStack            .forcePush (fog);
-			this .viewpointStack      .forcePush (viewpoint);
-
-			navigationInfo .addLayer (this);
-			background     .addLayer (this);
-			fog            .addLayer (this);
-			viewpoint      .addLayer (this);
+			this .navigationInfoStack .pushOnTop (navigationInfo);
+			this .viewpointStack      .pushOnTop (viewpoint);
+			this .backgroundStack     .pushOnTop (background);
+			this .fogStack            .pushOnTop (fog);
 
 			viewpoint .resetUserOffsets ();
 		},
@@ -92681,9 +92982,9 @@ function (X3DNode,
 
 			var viewpoint = this .getViewpoint ();
 
-			this .getCameraSpaceMatrix        () .pushMatrix (viewpoint .getCameraSpaceMatrix ());
-			this .getInverseCameraSpaceMatrix () .pushMatrix (viewpoint .getInverseCameraSpaceMatrix ());
-			this .getProjectionMatrix         () .pushMatrix (viewpoint .getProjectionMatrix (this));
+			this .getProjectionMatrix ()  .pushMatrix (viewpoint .getProjectionMatrix (this));
+			this .getCameraSpaceMatrix () .pushMatrix (viewpoint .getCameraSpaceMatrix ());
+			this .getViewMatrix ()        .pushMatrix (viewpoint .getViewMatrix ());
 
 			switch (type)
 			{
@@ -92705,9 +93006,9 @@ function (X3DNode,
 					break;
 			}
 
-			this .getProjectionMatrix         () .pop ();
-			this .getInverseCameraSpaceMatrix () .pop ();
-			this .getCameraSpaceMatrix        () .pop ();
+			this .getViewMatrix ()        .pop ();
+			this .getCameraSpaceMatrix () .pop ();
+			this .getProjectionMatrix ()  .pop ();
 		},
 		pointer: function (type, renderObject)
 		{
@@ -92729,7 +93030,7 @@ function (X3DNode,
 				}
 
 				browser .setHitRay (this .getProjectionMatrix () .get (), viewport);
-				this .getModelViewMatrix () .pushMatrix (this .getInverseCameraSpaceMatrix () .get ());
+				this .getModelViewMatrix () .pushMatrix (this .getViewMatrix () .get ());
 
 				this .currentViewport .push (this);
 				this .groupNode .traverse (type, renderObject);
@@ -92746,14 +93047,14 @@ function (X3DNode,
 			this .groupNode .traverse (type, renderObject);
 			this .currentViewport .pop (this);
 
-			this .navigationInfos .update ();
-			this .backgrounds     .update ();
-			this .fogs            .update ();
-			this .viewpoints      .update ();
+			this .getModelViewMatrix () .pop ();
+
+			this .navigationInfos .update (this, this .navigationInfoStack);
+			this .viewpoints      .update (this, this .viewpointStack);
+			this .backgrounds     .update (this, this .backgroundStack);
+			this .fogs            .update (this, this .fogStack);
 
 			this .getViewpoint () .update ();
-
-			this .getModelViewMatrix () .pop ();
 		},
 		picking: function (type, renderObject)
 		{
@@ -92782,7 +93083,7 @@ function (X3DNode,
 			Camera .ortho (-size, size, -size, size, -size, size, projectionMatrix);
 
 			this .getProjectionMatrix () .pushMatrix (projectionMatrix);
-			this .getModelViewMatrix  () .pushMatrix (this .getInverseCameraSpaceMatrix () .get ());
+			this .getModelViewMatrix  () .pushMatrix (this .getViewMatrix () .get ());
 
 			// Render
 			this .currentViewport .push (this);
@@ -92796,7 +93097,7 @@ function (X3DNode,
 		{
 			this .getNavigationInfo () .enable (type, renderObject);
 
-			this .getModelViewMatrix () .pushMatrix (this .getInverseCameraSpaceMatrix () .get ());
+			this .getModelViewMatrix () .pushMatrix (this .getViewMatrix () .get ());
 
 			this .currentViewport .push (this);
 			renderObject .render (type, this .groupNode .traverse, this .groupNode);
@@ -95658,7 +95959,7 @@ function (Fields,
 							centerOfRotationMatrix .translate (this .viewpointNode .getUserCenterOfRotation ());
 							centerOfRotationMatrix .multRight (invModelMatrix .assign (modelMatrix) .inverse ());
 
-							modelMatrix .multRight (this .viewpointNode .getInverseCameraSpaceMatrix ());
+							modelMatrix .multRight (this .viewpointNode .getViewMatrix ());
 							modelMatrix .get (null, orientation);
 							modelMatrix .inverse ();
 
@@ -105138,8 +105439,8 @@ function (Fields,
 		constructor: ViewpointGroup,
 		fieldDefinitions: new FieldDefinitionArray ([
 			new X3DFieldDefinition (X3DConstants .inputOutput, "metadata",          new Fields .SFNode ()),
-			new X3DFieldDefinition (X3DConstants .inputOutput, "displayed",         new Fields .SFBool (true)),
 			new X3DFieldDefinition (X3DConstants .inputOutput, "description",       new Fields .SFString ()),
+			new X3DFieldDefinition (X3DConstants .inputOutput, "displayed",         new Fields .SFBool (true)),
 			new X3DFieldDefinition (X3DConstants .inputOutput, "retainUserOffsets", new Fields .SFBool ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput, "size",              new Fields .SFVec3f ()),
 			new X3DFieldDefinition (X3DConstants .inputOutput, "center",            new Fields .SFVec3f ()),
@@ -109144,6 +109445,9 @@ function (Fields,
 			{
 				var first = index [i];
 
+				if (first < 0)
+					continue;
+
 				if (++ i < length)
 				{
 					var second = index [i];
@@ -109582,7 +109886,7 @@ function (Fields,
 
 			this .setPrimitiveMode (this .getBrowser () .getContext () .LINES);
 			this .setSolid (false);
-			
+
 			this .set_attrib__ ();
 			this .set_fogCoord__ ();
 			this .set_color__ ();
@@ -109708,8 +110012,6 @@ function (Fields,
 
 	return LineSet;
 });
-
-
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
  *******************************************************************************
@@ -113002,6 +113304,7 @@ function ($,
 			this .URL = this .getExecutionContext () .getURL () .transform (this .URL);
 
 			this .audio .attr ("src", this .URL);
+			this .audio .get (0) .load ();
 		},
 		setError: function ()
 		{
@@ -113979,6 +114282,7 @@ function ($,
 			this .URL = this .getExecutionContext () .getURL () .transform (this .URL);
 
 			this .video .attr ("src", this .URL);
+			this .video .get (0) .load ();
 		},
 		setError: function ()
 		{
@@ -114797,7 +115101,7 @@ function ($,
           Fields,
           X3DFieldDefinition,
           FieldDefinitionArray,
-          X3DTexture2DNode, 
+          X3DTexture2DNode,
           X3DConstants,
           Algorithm)
 {
@@ -114911,6 +115215,36 @@ function ($,
 				}
 			}
 		},
+		resize: function (input, inputWidth, inputHeight, outputWidth, outputHeight)
+		{
+		   // Nearest neighbor scaling algorithm for very small images.
+
+			var
+				output = new Uint8Array (outputWidth * outputHeight * 4),
+				scaleX = outputWidth / inputWidth,
+				scaleY = outputHeight / inputHeight;
+
+			for (var y = 0; y < outputHeight; ++ y)
+			{
+				var
+					inputW  = Math .floor (y / scaleY) * inputWidth,
+					outputW = y * outputWidth;
+
+				for (var x = 0; x < outputWidth; ++ x)
+				{
+					var
+						index       = (inputW + Math.floor (x / scaleX)) * 4,
+						indexScaled = (outputW + x) * 4;
+
+					output [indexScaled]     = input [index];
+					output [indexScaled + 1] = input [index + 1];
+					output [indexScaled + 2] = input [index + 2];
+					output [indexScaled + 3] = input [index + 3];
+				}
+			}
+
+			return output;
+		},
 		set_image__: function ()
 		{
 			var
@@ -114968,7 +115302,7 @@ function ($,
 
 					cx2 .clearRect (0, 0, width, height);
 					cx2 .drawImage (canvas1, 0, 0, canvas1 .width, canvas1 .height, 0, 0, width, height);
-	
+
 					data = cx2 .getImageData (0, 0, width, height) .data;
 				}
 
@@ -114985,8 +115319,6 @@ function ($,
 
 	return PixelTexture;
 });
-
-
 
 /* -*- Mode: JavaScript; coding: utf-8; tab-width: 3; indent-tabs-mode: tab; c-basic-offset: 3 -*-
  *******************************************************************************
@@ -115773,11 +116105,13 @@ function (ComponentInfoArray,
 
 	SupportedComponents .addBaseComponent (
 	{
-		title:      "Humanoid animation (H-Anim)",
-		name:       "H-Anim",
+		title:      "Humanoid animation (HAnim)",
+		name:       "HAnim",
 		level:       3,
 		providerUrl: urls .getProviderUrl ("h-anim"),
 	});
+
+	SupportedComponents .addAlias ("H-Anim", "HAnim");
 
 	SupportedComponents .addBaseComponent (
 	{
@@ -115807,7 +116141,7 @@ function (ComponentInfoArray,
 	{
 		title:      "Layout",
 		name:       "Layout",
-		level:       1,
+		level:       2,
 		providerUrl: urls .getProviderUrl ("layout"),
 	});
 
@@ -115911,7 +116245,7 @@ function (ComponentInfoArray,
 	{
 		title:      "Shape",
 		name:       "Shape",
-		level:       4,
+		level:       5,
 		providerUrl: urls .getProviderUrl (),
 	});
 
@@ -116085,7 +116419,7 @@ function (ProfileInfo,
 			SupportedComponents ["Geometry3D"],
 			SupportedComponents ["Geospatial"],
 			SupportedComponents ["Grouping"],
-			SupportedComponents ["H-Anim"],
+			SupportedComponents ["HAnim"],
 			SupportedComponents ["Interpolation"],
 			SupportedComponents ["KeyDeviceSensor"],
 			SupportedComponents ["Layering"],

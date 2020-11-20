@@ -164,11 +164,13 @@ function (ComponentInfoArray,
 
 	SupportedComponents .addBaseComponent (
 	{
-		title:      "Humanoid animation (H-Anim)",
-		name:       "H-Anim",
+		title:      "Humanoid animation (HAnim)",
+		name:       "HAnim",
 		level:       3,
 		providerUrl: urls .getProviderUrl ("h-anim"),
 	});
+
+	SupportedComponents .addAlias ("H-Anim", "HAnim");
 
 	SupportedComponents .addBaseComponent (
 	{
@@ -198,7 +200,7 @@ function (ComponentInfoArray,
 	{
 		title:      "Layout",
 		name:       "Layout",
-		level:       1,
+		level:       2,
 		providerUrl: urls .getProviderUrl ("layout"),
 	});
 
@@ -302,7 +304,7 @@ function (ComponentInfoArray,
 	{
 		title:      "Shape",
 		name:       "Shape",
-		level:       4,
+		level:       5,
 		providerUrl: urls .getProviderUrl (),
 	});
 

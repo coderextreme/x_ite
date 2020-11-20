@@ -4,11 +4,12 @@
 use strict;
 use warnings;
 use v5.10.0;
+use utf8;
 use open qw/:std :utf8/;
 
-my $CWD = `pwd`;
-chomp $CWD;
+use Cwd;
 
+my $CWD = cwd;
 say $CWD;
 
 my $VERSION;
@@ -43,31 +44,50 @@ sub publish
 	system "git", "push", "origin", "--tags";
 }
 
-sub rsync
+sub update
 {
 	my $release = shift;
-	my $local   = "/home/holger/Projekte/X_ITE/dist";
-	my $ftp     = "/html/create3000.de/code/htdocs/x_ite";
-	my $host    = "alfa3008.alfahosting-server.de";
-	my $user    = netuser ($host);
+	my $dist    = "$CWD/dist";
+	my $code    = "$CWD/../code/docs/x_ite/$release";
 
 	say "Uploading $release";
 
-	#system "mkdir", "-p", "$ftp/$release/dist/";
-	#system "rsync", "-r", "-x", "-c", "-v", "--progress", "--delete", "$local/", "$ftp/$release/dist/";
+	system "rm", "-r", "$code/dist";
 
-	system "lftp", "-e", "mkdir -p $ftp/$release/dist; bye", "ftp://$user\@$host";
-	system "lftp", "-e", "mirror --reverse --delete --overwrite --use-cache --verbose $local $ftp/$release/dist; bye", "ftp://$user\@$host";
+	system "mkdir", "-p", $code;
+	system "cp", "-r", $dist, "$code/dist";
 }
 
-sub netuser
+sub upload
 {
-	my $host  = shift;
-	my $netrc = `cat ~/.netrc`;
+	my $code = "$CWD/../code";
 
-	$netrc =~ /machine\s+$host\s+login\s+(\w+)/;
+	chdir $code;
 
-	return $1;
+	system "git", "add", "-A";
+	system "git", "commit", "-am", "Published version $VERSION-$REVISION";
+	system "git", "push";
+	system "git", "push", "origin";
+}
+
+sub wiki
+{
+	my $VERSION = shift;
+
+	chdir "$CWD/../x_ite.wiki/";
+
+	my $home = `cat 'Home.md'`;
+
+	$home =~ s|/x_ite/\d+\.\d+\.\d+/dist/|/x_ite/$VERSION/dist/|sgo;
+
+	open HOME, ">", "Home.md";
+	print HOME $home;
+	close HOME;
+
+	system "git", "add", "-A";
+	system "git", "commit", "-am", "Updated Home.md because of new version '$VERSION'";
+	system "git", "push";
+	system "git", "push", "origin";
 }
 
 my $result = system "zenity", "--question", "--text=Do you really want to publish X_ITE X3D v$VERSION-$REVISION now?", "--ok-label=Yes", "--cancel-label=No";
@@ -85,17 +105,23 @@ if ($result == 0)
 
 	unless ($ALPHA)
 	{
-		publish ("$VERSION");
+		publish ($VERSION);
 		publish ("latest");
 	}
 
-	# FTP
+	# code
 
-	rsync ("alpha");
+	update ("alpha");
 
 	unless ($ALPHA)
 	{
-		rsync ("latest");
-		rsync ($VERSION);
+		update ("latest");
+		update ($VERSION);
 	}
+
+	upload;
+
+	# Wiki
+
+	wiki ($VERSION) unless $ALPHA;
 }

@@ -100,6 +100,19 @@ function (X3DBaseNode,
 		{
 			return this .getBrowser () .getActiveLayer () .getViewpoint ();
 		},
+		getButton: function (button)
+		{
+			// If Alt key is pressed and button 0, then emulate button 1 (middle).
+			if (button === 0)
+			{
+				if (this .getBrowser () .getAltKey ())
+				{
+					return 1;
+				}
+			}
+
+			return button;
+		},
 		getPointOnCenterPlane: function (x, y, result)
 		{
 			try
@@ -137,8 +150,12 @@ function (X3DBaseNode,
 		},
 		trackballProjectToSphere: function (x, y, vector)
 		{
-			x =  x / this .getBrowser () .getViewport () [2] - 0.5;
-			y = -y / this .getBrowser () .getViewport () [3] + 0.5;
+			var viewport = this .getViewport () .getRectangle (this .getBrowser ());
+
+			y = this .getBrowser () .getViewport () [3] - y;
+
+			x = (x - viewport [0]) / viewport [2] - 0.5;
+			y = (y - viewport [1]) / viewport [3] - 0.5;
 
 			return vector .set (x, y, tbProjectToSphere (0.5, x, y));
 		},

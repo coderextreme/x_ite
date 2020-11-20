@@ -35,7 +35,7 @@ var X_ITE_EXAMPLES = [
 	{ component: "Grouping", test: "Group" },
 	{ component: "Grouping", test: "Switch" },
 	{ component: "Grouping", test: "Transform" },
-	{ component: "H-Anim", test: "HAnimHumanoid" },
+	{ component: "HAnim", test: "HAnimHumanoid" },
 	{ component: "Interpolation", test: "ColorInterpolator" },
 	{ component: "Interpolation", test: "CoordinateInterpolator" },
 	{ component: "Interpolation", test: "OrientationInterpolator" },
@@ -147,4 +147,4 @@ var X_ITE_EXAMPLES = [
 	{ component: "X3D", test: "WaterQuality" },
 	{ component: "X_ITE", test: "BlendMode" },
 ];
-X_ITE_EXAMPLES .server = "http://media.create3000.de/components";
+X_ITE_EXAMPLES .server = "https://create3000.github.io/media/examples";
