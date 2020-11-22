@@ -70,13 +70,13 @@ function (
 		this .parents           = [ ];
 		this .parser            = new Parser (this .scene);
 		this .url               = new Fields .MFString ();
-		this .x3djsonNS         = "http://www.web3d.org/specifications/x3d-namespace";
+		this .x3djsonNS         = "https://www.web3d.org/specifications/x3d-namespace";
 	}
 
 	JSONParser.prototype = Object.create(XMLParser.prototype);
 
 	JSONParser .prototype.
-		 constructor = JSONParser;
+		constructor = JSONParser;
 
 		/**
 		 * Load X3D JSON into an element.
@@ -91,7 +91,7 @@ function (
 			return child;
 		};
 
-		// 'http://www.web3d.org/specifications/x3d-namespace'
+		// 'https://www.web3d.org/specifications/x3d-namespace'
 
 		// Load X3D JavaScript object into XML or DOM
 
@@ -238,7 +238,7 @@ function (
 			str = str.replace(/(\\+)"/g, '\\"');
 			*/
 			str = str.replace(/\\/g, '\\\\');
-			str = str.replace(/"/g, '\\\"');
+			str = str.replace(/"/g, '\\"');
 			if (y !== str) {
 				console.log("X3DJSONLD [] replacing", y, "with", str);
 			}
@@ -293,8 +293,7 @@ function (
 						}
 						*/
 						this.ConvertToX3DOM(object[key], key, element);
-					} else if (typeof object[key] === 'undefined') {
-					} else {
+					} else if (typeof object[key] !== 'undefined') {
 						console.error("Unknown type found in array "+typeof object[key]);
 					}
 				} else if (typeof object[key] === 'object') {
@@ -302,7 +301,24 @@ function (
 					if (key === 'X3D') {
 						this.ConvertToX3DOM(object[key], key, element);
 					} else {
-						this.ConvertObject(key, object, element, containerField);
+						// this.ConvertObject(key, object, element, containerField);
+						if ( key === "-skin" || key === "-skeleton" || key === "-value" )
+						{
+						    var firstNode = object[ key ][ 0 ];
+						    for ( var skv in firstNode )
+						    {
+							firstNode[ skv ][ "@containerField" ] = key.substr( 1 );
+							this.ConvertObject( key, object, element, firstNode[ skv ][ "@containerField" ] );
+						    }
+						}
+                				else if (key.indexOf("HAnim") === 0 && key !== "HAnimHumanoid" && typeof object[key]['@USE'] != 'undefined')
+						{
+							object[key]['@containerField'] = key.substr(5).toLowerCase()+"s";
+							this.ConvertObject(key, object, element, object[key]['@containerField']);
+						} else {
+							this.ConvertObject(key, object, element, containerField);
+						}
+
 					}
 				} else if (typeof object[key] === 'number') {
 					this.elementSetAttribute(element, key.substr(1),object[key]);
@@ -316,8 +332,7 @@ function (
 					}
 				} else if (typeof object[key] === 'boolean') {
 					this.elementSetAttribute(element, key.substr(1),object[key]);
-				} else if (typeof object[key] === 'undefined') {
-				} else {
+				} else if (typeof object[key] !== 'undefined') {
 					console.error("Unknown type found in object "+typeof object[key]);
 					console.error(object);
 				}
