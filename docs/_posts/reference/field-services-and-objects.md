@@ -163,19 +163,19 @@ Removes a field callback function associated with *key*.
 
 #### **fromString** (*value: string, scene?: X3DScene*): void
 
-Set value from string.
+Set value from string. If an X3DScene is provided, units are respected and necessary conversions are performed.
 
 #### **fromVRMLString** (*value: string, scene?: X3DScene*): void
 
-Set value from VRML string.
+Set value from VRML string. If an X3DScene is provided, units are respected and necessary conversions are performed.
 
 #### **fromXMLString** (*value: string, scene?: X3DScene*): void
 
-Set value from XML string.
+Set value from XML string. If an X3DScene is provided, units are respected and necessary conversions are performed.
 
 #### **fromJSONString** (*value: string, scene?: X3DScene*): void
 
-Set value from JSON string.
+Set value from JSON string. If an X3DScene is provided, units are respected and necessary conversions are performed.
 
 #### **dispose** (): void
 
@@ -332,11 +332,11 @@ Returns a white color.
 
 ### Static Methods
 
-#### **fromHSVA** (*h: number, s: number, v: number, a: number*): SFColorRGBA
+#### **fromHSVA** (*h: number, s: number, v: number, a: number = 1*): SFColorRGBA
 
 Creates a SFColorRGBA object from a HSV color value; *h* is the hue, *s* is the saturation, *v* is the value and *a* is the alpha component of the HSVA color.
 
-The saturation and value component must be in the range [0,1], and the hue component must be in the range [0,2π].
+The saturation, value and alpha component must be in the range [0,1], and the hue component must be in the range [0,2π].
 
 <x3d-script-area name="X3D ECMAScript Example: SFColorRGBA fromHSVA">
 <pre>
@@ -387,7 +387,7 @@ Alpha component of the color.
 
 Returns an array with the components of the color's HSVA value.
 
-#### **setHSVA** (*h: number, s: number, v: number, a: number*): void
+#### **setHSVA** (*h: number, s: number, v: number, a: number = 1*): void
 
 Sets a HSVA color value; *h* is the hue, *s* is the saturation, *v* is the value and *a* is the alpha component of the HSVA color.
 
@@ -501,10 +501,6 @@ The SFMatrix3d/f object provides many useful methods for performing manipulation
 
 A new matrix initialized with the identity matrix is created and returned.
 
-#### *sfMatrix3d/fObjectName* = new **SFMatrix3d/f** (*r1: SFVec3d/f, r2: SFVec3d/f, r3: SFVec3d/f*)
-
-A new matrix initialized with the vectors in *r1* through *r3* of type SFVec3d/f is created and returned.
-
 #### *sfMatrix3d/fObjectName* = new **SFMatrix3d/f** (*f11: number, f12: number, f13: number, f21: number, f22: number, f23: number, f31: number, f32: number, f33: number*)
 
 A new matrix initialized with the values in *f11* through *f44* is created and returned.
@@ -518,6 +514,10 @@ const copy = new SFMatrix3d (... matrix); // Copy using spread syntax.
 ```
 
 ### Static Properties
+
+#### **ZERO**: SFMatrix3d/f
+
+Returns the zero matrix.
 
 #### **IDENTITY**: SFMatrix3d/f
 
@@ -631,10 +631,6 @@ The SFMatrix4d/f object provides many useful methods for performing manipulation
 
 A new matrix initialized with the identity matrix is created and returned.
 
-#### *sfMatrix4d/fObjectName* = new **SFMatrix4d/f** (*r1: SFVec4d/f, r2: SFVec4d/f, r3: SFVec4d/f, r4: SFVec4d/f*)
-
-A new matrix initialized with the vectors in *r1* through *r4* of type SFVec4d/f is created and returned.
-
 #### *sfMatrix4d/fObjectName* = new **SFMatrix4d/f** (*f11: number, f12: number, f13: number, f14: number, f21: number, f22: number, f23: number, f24: number, f31: number, f32: number, f33: number, f34: number, f41: number, f42: number, f43: number, f44: number*)
 
 A new matrix initialized with the values in *f11* through *f44* is created and returned.
@@ -648,6 +644,10 @@ const copy = new SFMatrix4d (... matrix); // Copy using spread syntax.
 ```
 
 ### Static Properties
+
+#### **ZERO**: SFMatrix4d/f
+
+Returns the zero matrix.
 
 #### **IDENTITY**: SFMatrix4d/f
 
@@ -865,10 +865,6 @@ print (rotation);
 </pre>
 </x3d-script-area>
 
-#### *sfRotationObjectName* = new **SFRotation** (*matrix: SFMatrix3d/f*)
-
-*matrix* is an SFMatrix3d/f rotation matrix object whose value is converted into an SFRotation object.
-
 ### Iterator
 
 The `[@@iterator]()` method of SFRotation instances implements the iterable protocol and allows SFRotation objects to be consumed by most syntaxes expecting iterables, such as the spread syntax and `for...of` loops. It returns an iterator object that yields the object's properties in order.
@@ -882,6 +878,16 @@ const copy = new SFRotation (... rotation); // Copy using spread syntax.
 #### **IDENTITY**: SFRotation
 
 Returns the identity rotation.
+
+### Static Methods
+
+#### **fromMatrix** (*matrix: SFMatrix3d/f*): SFRotation
+
+*matrix* is an SFMatrix3d/f rotation matrix object whose value is converted into an SFRotation object.
+
+#### **fromQuaternion** (*x: number, y: number, z: number, w:number *): SFRotation
+
+`x`, `y`, `z`, `w` is a quaternion whose value is converted into an SFRotation object.
 
 ### Properties
 

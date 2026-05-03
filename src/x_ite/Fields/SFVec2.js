@@ -4,42 +4,28 @@ import Vector2                from "../../standard/Math/Numbers/Vector2.js";
 
 function SFVec2Template (TypeName, double)
 {
-   function SFVec2 (x, y)
+   function SFVec2 (x = 0, y = 0)
    {
-      switch (arguments .length)
-      {
-         case 0:
-            X3DField .call (this, new Vector2 ());
-            break;
-
-         case 1:
-            X3DField .call (this, arguments [0]);
-            break;
-
-         case 2:
-            X3DField .call (this, new Vector2 (+x, +y));
-            break;
-
-         default:
-            throw new Error ("Invalid arguments.");
-      }
+      X3DField .call (this, new Vector2 (+x, +y));
    }
+
+   SFVecPrototypeTemplate (SFVec2, TypeName, Vector2, double)
 
    Object .defineProperties (SFVec2,
    {
       X_AXIS:
       {
-         value: new SFVec2 (1, 0),
+         value: SFVec2 .fromValue (Vector2 .X_AXIS),
          enumerable: true,
       },
       Y_AXIS:
       {
-         value: new SFVec2 (0, 1),
+         value: SFVec2 .fromValue (Vector2 .Y_AXIS),
          enumerable: true,
       },
    });
 
-   return SFVecPrototypeTemplate (SFVec2, TypeName, Vector2, double);
+   return SFVec2;
 }
 
 const SFVec2 = {

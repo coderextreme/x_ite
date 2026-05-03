@@ -7,14 +7,31 @@ tags: [New, Releases]
 ---
 X_ITE follows the [npm version syntax](https://docs.npmjs.com/about-semantic-versioning). Keep this in mind when choosing a version number.
 
+## X_ITE v15.0 Series
+
+*Leipzig, 3rd May 2026:* The 15.0 release of X_ITE introduces several breaking changes aimed at improving consistency and performance across field handling.
+
+- Out-of-range access for MF fields: Multi-value fields (MF*) derived from X3DArrayField now return undefined when accessing an index that is out of range. This behavior is now treated as a security risk to prevent unintended data access. Previously, such access could return unexpected values or behave inconsistently. Applications relying on the old behavior should add explicit set the length of the array.
+- Optimized constructors for SF and MF fields: Fields derived from X3DField now use more efficient constructors. As a result, some construction patterns have changed:
+  - `new SFRotation(matrix)` has been replaced with `SFRotation.fromMatrix(matrix)`.
+  - SFMatrix[34][df] constructors that previously accepted multiple vector arguments should now use spread syntax:
+
+```js
+new SFMatrix3f (... row0, ... row1, ... row2)
+new SFMatrix4f (... row0, ... row1, ... row2, ... row3)
+```
+
+These changes improve performance and align the API more closely with modern JavaScript practices, but require minor updates to existing code.
+
 ## X_ITE v14.2 Series
 
 *Leipzig, 26th April 2026:* This series introduces a breaking change where `X3DConstants.CONNECTION_ERROR` has been renamed to `X3DConstants.INITIALIZED_ERROR`, so existing code should be updated accordingly to avoid runtime issues. In addition, touch device handling has been improved when the NONE viewer is active, resulting in more consistent and reliable interaction behavior on mobile and touch-enabled devices.
 
 ### Notable Changes
 
-- [x] Breaking change: `X3DConstants.CONNECTION_ERROR` is now `X3DConstants.INITIALIZED_ERROR`. `X3DConstants.CONNECTION_ERROR` is now fired when a WebGL Context Lost event occurs.
+- [x] Breaking change: `X3DConstants.CONNECTION_ERROR` is now `X3DConstants.INITIALIZED_ERROR`. `X3DConstants.CONNECTION_ERROR` is now fired when a WebGL context lost event occurs.
 - [x] Better handling of touch devices when NONE viewer is active.
+- [x] [ScreenFontStyle](/x_ite/components/layout/screenfontstyle/) now uses content scale value to determine texture size.
 
 ## X_ITE v14.1 Series
 

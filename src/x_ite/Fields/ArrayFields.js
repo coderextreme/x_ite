@@ -12,7 +12,6 @@ import SFVec4              from "./SFVec4.js";
 import X3DField            from "../Base/X3DField.js";
 import X3DObjectArrayField from "../Base/X3DObjectArrayField.js";
 import X3DTypedArrayField  from "../Base/X3DTypedArrayField.js";
-import X3DConstants        from "../Base/X3DConstants.js";
 import Matrix3             from "../../standard/Math/Numbers/Matrix3.js";
 import Matrix4             from "../../standard/Math/Numbers/Matrix4.js";
 import Rotation4           from "../../standard/Math/Numbers/Rotation4.js";
@@ -245,10 +244,7 @@ Object .assign (Object .setPrototypeOf (MFNode .prototype, X3DObjectArrayField .
 for (const key of Object .keys (MFNode .prototype))
    Object .defineProperty (MFNode .prototype, key, { enumerable: false });
 
-Object .defineProperties (MFNode,
-{
-   ... X3DField .getStaticProperties ("MFNode"),
-});
+X3DField .addStaticProperties (MFNode, "MFNode");
 
 function MFString (... args)
 {
@@ -290,10 +286,7 @@ Object .assign (Object .setPrototypeOf (MFString .prototype, X3DObjectArrayField
 for (const key of Object .keys (MFString .prototype))
    Object .defineProperty (MFString .prototype, key, { enumerable: false });
 
-Object .defineProperties (MFString,
-{
-   ... X3DField .getStaticProperties ("MFString"),
-});
+X3DField .addStaticProperties (MFString, "MFString");
 
 /**
  * MFImage
@@ -315,10 +308,7 @@ Object .assign (Object .setPrototypeOf (MFImage .prototype, X3DObjectArrayField 
 for (const key of Object .keys (MFImage .prototype))
    Object .defineProperty (MFImage .prototype, key, { enumerable: false });
 
-Object .defineProperties (MFImage,
-{
-   ... X3DField .getStaticProperties ("MFImage"),
-});
+X3DField .addStaticProperties (MFImage, "MFImage");
 
 function TypedArrayTemplate (TypeName, SingleType, ValueType, ArrayType, Components, singleValue)
 {
@@ -354,10 +344,7 @@ function TypedArrayTemplate (TypeName, SingleType, ValueType, ArrayType, Compone
    for (const key of Object .keys (ArrayField .prototype))
       Object .defineProperty (ArrayField .prototype, key, { enumerable: false });
 
-   Object .defineProperties (ArrayField,
-   {
-      ... X3DField .getStaticProperties (TypeName),
-   });
+   X3DField .addStaticProperties (ArrayField, TypeName);
 
    return ArrayField;
 }
