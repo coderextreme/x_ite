@@ -133,53 +133,101 @@ None
 
 ### Methods
 
+#### **copy** (): X3DField
+
+Returns a copy of this X3DField.
+
+<x3d-script-area name="X3D ECMAScript Example: X3DField copy">
+<pre>
+const field = new SFVec3f (2, 4, 8);
+const copy  = field .copy ();
+
+print (copy .equals (field));
+print (copy !== field);
+print (copy);
+// Expected output: true
+// Expected output: true
+// Expected output: 2 4 8
+</pre>
+</x3d-script-area>
+
+#### **dispose** (): void
+
+Disposes this X3DField. The object can then no longer be used.
+
+#### **equals** (*field: X3DField*): boolean
+
+Returns `true` if the value of the passed SF* or MF* *field* of the same type is equals to this object, otherwise `false`.
+
+#### **fromString** (*value: string, scene?: X3DScene*): void
+
+Set the value from a string. If an X3DScene is provided, units are respected and necessary conversions are performed. The string can be any legal value as produced by the `toString()` function.
+
+#### **fromVRMLString** (*value: string, scene?: X3DScene*): void
+
+Set the value from a VRML string. If an X3DScene is provided, units are respected and necessary conversions are performed. The string can be any legal value as produced by the `toVRMLString()` function.
+
+<x3d-script-area name="X3D ECMAScript Example: X3DField fromVRMLString">
+<pre>
+const field = new MFInt32 ();
+
+field .fromVRMLString ("[ 0, 1, -1, 2147483647, -2147483648, 42 ]");
+
+print (field .toVRMLString ({ style: "COMPACT" }));
+// Expected output: [ 0, 1, -1, 2147483647, -2147483648, 42 ]
+</pre>
+</x3d-script-area>
+
+#### **fromXMLString** (*value: string, scene?: X3DScene*): void
+
+Set the value from a XML string. If an X3DScene is provided, units are respected and necessary conversions are performed. The string can be any legal value as produced by the `toXMLString()` function.
+
+#### **fromJSONString** (*value: string, scene?: X3DScene*): void
+
+Set the value from a JSON string. If an X3DScene is provided, units are respected and necessary conversions are performed. The string can be any legal value as produced by the `toJSONString()` function.
+
 #### **getType** (): number
 
 Returns one of the **Field Type Constants** from [X3DConstants](/x_ite/reference/constants-services/#field-type-constants) object.
+
+<x3d-script-area name="X3D ECMAScript Example: X3DField getType">
+<pre>
+const field = new MFBool ();
+
+print (field instanceof MFBool);
+print (field .getType () === X3DConstants .MFBool);
+print (field .getTypeName ());
+// Expected output: true
+// Expected output: true
+// Expected output: MFBool
+</pre>
+</x3d-script-area>
 
 #### **getTypeName** (): string
 
 Returns the field type name.
 
-#### **copy** (): X3DField
+#### **toString** (*options?: Options*): string
 
-Returns a copy of this X3DField.
+Returns the a string that, if parsed as the value of an X3DField field with `fromString`, will produce this field. Actually, this function is the same as `toVRMLString`, except for SFNode and MFNode, which produce a limited representation of the field.
 
-#### **equals** (*field: X3DField*): boolean
+#### **toVRMLString** (*options?: Options*): string
 
-Returns `true` if the passed SF* or MF* *field* of the same type is equals to this object, otherwise `false`.
+Returns the X3D VRML-encoded string that, if parsed as the value of an X3DField field with `fromVRMLString`, will produce this field.
 
-<!--
-#### **addFieldCallback** (*key: any, callback: (value: any) => void*): void
+For options see [X3DScene.toVRMLString](/x_ite/reference/scene-services/#tovrmlstring-options-options-string-non-standard).
 
-Adds a field callback function, if external browser interface is used. *key* is a custom key of any type associated with the *callback*, this key can later be used to remove the callback. The callback is called when the field has been changed.
+#### **toXMLString** (*options?: Options*): string
 
-The callback has a signature of `function (value)`, where value is the current value of the field.
+Returns the X3D XML-encoded string that, if parsed as the value of an X3DField field with `fromXMLString`, will produce this field.
 
-#### **removeFieldCallback** (*key: any*): void
+For options see [X3DScene.toVRMLString](/x_ite/reference/scene-services/#tovrmlstring-options-options-string-non-standard).
 
-Removes a field callback function associated with *key*.
--->
+#### **toJSONString** (*options?: Options*): string
 
-#### **fromString** (*value: string, scene?: X3DScene*): void
+Returns the X3D JSON-encoded string that, if parsed as the value of an X3DField field with `fromJSONString`, will produce this field.
 
-Set value from string. If an X3DScene is provided, units are respected and necessary conversions are performed.
-
-#### **fromVRMLString** (*value: string, scene?: X3DScene*): void
-
-Set value from VRML string. If an X3DScene is provided, units are respected and necessary conversions are performed.
-
-#### **fromXMLString** (*value: string, scene?: X3DScene*): void
-
-Set value from XML string. If an X3DScene is provided, units are respected and necessary conversions are performed.
-
-#### **fromJSONString** (*value: string, scene?: X3DScene*): void
-
-Set value from JSON string. If an X3DScene is provided, units are respected and necessary conversions are performed.
-
-#### **dispose** (): void
-
-Disposes this X3DField. The object can then no longer be used.
+For options see [X3DScene.toVRMLString](/x_ite/reference/scene-services/#tovrmlstring-options-options-string-non-standard).
 
 ## SFColor Object
 
@@ -515,13 +563,13 @@ const copy = new SFMatrix3d (... matrix); // Copy using spread syntax.
 
 ### Static Properties
 
-#### **ZERO**: SFMatrix3d/f
-
-Returns the zero matrix.
-
 #### **IDENTITY**: SFMatrix3d/f
 
 Returns the identity matrix.
+
+#### **ZERO**: SFMatrix3d/f
+
+Returns the zero matrix.
 
 ### Properties
 
@@ -645,13 +693,13 @@ const copy = new SFMatrix4d (... matrix); // Copy using spread syntax.
 
 ### Static Properties
 
-#### **ZERO**: SFMatrix4d/f
-
-Returns the zero matrix.
-
 #### **IDENTITY**: SFMatrix4d/f
 
 Returns the identity matrix.
+
+#### **ZERO**: SFMatrix4d/f
+
+Returns the zero matrix.
 
 ### Properties
 
@@ -812,21 +860,21 @@ Returns the node type name.
 
 Removes a field callback function associated with *key* and *name* from the field.
 
-#### **toVRMLString** (options?: Options): string
+#### **toVRMLString** (*options?: Options*): string
 
-Returns the X3D VRML-encoded string that, if parsed as the value of an SFNode field, will produce this node.
-
-For options see [X3DScene.toVRMLString](/x_ite/reference/scene-services/#tovrmlstring-options-options-string-non-standard).
-
-#### **toXMLString** (options?: Options): string
-
-Returns the X3D XML-encoded string that, if parsed as the value of an SFNode field, will produce this node.
+Returns the X3D VRML-encoded string that, if parsed as the value of a SFNode field, will produce this node.
 
 For options see [X3DScene.toVRMLString](/x_ite/reference/scene-services/#tovrmlstring-options-options-string-non-standard).
 
-#### **toJSONString** (options?: Options): string
+#### **toXMLString** (*options?: Options*): string
 
-Returns the X3D JSON-encoded string that, if parsed as the value of an SFNode field, will produce this node.
+Returns the X3D XML-encoded string that, if parsed as the value of a SFNode field, will produce this node.
+
+For options see [X3DScene.toVRMLString](/x_ite/reference/scene-services/#tovrmlstring-options-options-string-non-standard).
+
+#### **toJSONString** (*options?: Options*): string
+
+Returns the X3D JSON-encoded string that, if parsed as the value of a SFNode field, will produce this node.
 
 For options see [X3DScene.toVRMLString](/x_ite/reference/scene-services/#tovrmlstring-options-options-string-non-standard).
 
@@ -885,7 +933,7 @@ Returns the identity rotation.
 
 *matrix* is an SFMatrix3d/f rotation matrix object whose value is converted into an SFRotation object.
 
-#### **fromQuaternion** (*x: number, y: number, z: number, w:number *): SFRotation
+#### **fromQuaternion** (*x: number, y: number, z: number, w: number*): SFRotation
 
 `x`, `y`, `z`, `w` is a quaternion whose value is converted into an SFRotation object.
 
@@ -969,7 +1017,7 @@ Set the value of this rotation to the quaternion passed in *x, y, z, w*.
 
 Returns a SFRotation whose value is the spherical linear interpolation between this object's rotation and *destRotation* at value 0 <= *t* <= 1. For *t* = 0, the value is this object's rotation. For *t* = 1, the value is *destRotation*.
 
-#### **straighten** (*upVector?: SFVec3d/f = new SFVec3f (0, 1, 0)*): SFRotation
+#### **straighten** (*upVector: SFVec3d/f = new SFVec3f (0, 1, 0)*): SFRotation
 
 Straightens the rotation so that the x-axis of the resulting rotation is parallel to the plane spawned by upVector. The default  value for *upVector* is the y-axis.
 
