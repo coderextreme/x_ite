@@ -217,10 +217,35 @@ function SFVecPrototypeTemplate (Constructor, TypeName, Vector, double, properti
       ["w", Object .assign ({ enumerable: true }, w)],
    ];
 
-   indices .length = Vector .prototype .length;
-   props   .length = Vector .prototype .length;
+   const constants = [
+      "X_AXIS",
+      "Y_AXIS",
+      "Z_AXIS",
+      "W_AXIS",
+   ];
+
+   const negatives = [
+      "NEGATIVE_X_AXIS",
+      "NEGATIVE_Y_AXIS",
+      "NEGATIVE_Z_AXIS",
+      "NEGATIVE_W_AXIS",
+   ];
+
+   indices   .length = Vector .prototype .length;
+   props     .length = Vector .prototype .length;
+   constants .length = Vector .prototype .length;
+   negatives .length = Vector .prototype .length;
 
    Object .defineProperties (Constructor .prototype, Object .fromEntries (indices .concat (props)));
+
+   Object .defineProperties (Constructor, Object .fromEntries ([
+      "ONE",
+      "NEGATIVE_ONE",
+      "ZERO",
+      ... constants,
+      ... negatives,
+   ]
+   .map (key => [key, { value: Constructor .fromValue (Vector [key]), enumerable: true }])));
 
    return Constructor;
 }

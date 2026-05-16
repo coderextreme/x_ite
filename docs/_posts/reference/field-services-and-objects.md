@@ -209,7 +209,7 @@ Returns the field type name.
 
 #### **toString** (*options?: Options*): string
 
-Returns the a string that, if parsed as the value of an X3DField field with `fromString`, will produce this field. Actually, this function is the same as `toVRMLString`, except for SFNode and MFNode, which produce a limited representation of the field.
+Returns a string that, if parsed as the value of an X3DField field with `fromString`, will produce this field. Actually, this function is the same as `toVRMLString`, except for SFNode and MFNode, which produce a limited representation of the field.
 
 #### **toVRMLString** (*options?: Options*): string
 
@@ -233,33 +233,15 @@ For options see [X3DScene.toVRMLString](/x_ite/reference/scene-services/#tovrmls
 
 The SFColor object corresponds to an X3D SFColor field.
 
-### Instance Creation Method(s)
-
-#### *sfColorObjectName* = new **SFColor** ()
-
-A new color initialized with zero values is created and returned.
-
-#### *sfColorObjectName* = new **SFColor** (*r: number, g: number, b: number*)
-
-*r, g,* and *b* are scalar values with the red, green, and blue values of the color in the range [0,1].
-
-### Iterator
-
-The `[@@iterator]()` method of SFColor instances implements the iterable protocol and allows SFColor objects to be consumed by most syntaxes expecting iterables, such as the spread syntax and `for...of` loops. It returns an iterator object that yields the object's properties in order.
-
-```js
-const copy = new SFColor (... color); // Copy using spread syntax.
-```
-
 ### Static Properties
 
 #### **BLACK**: SFColor
 
-Returns a black color.
+Returns a black color. This property is read-only.
 
 #### **WHITE**: SFColor
 
-Returns a white color.
+Returns a white color. This property is read-only.
 
 ### Static Methods
 
@@ -287,6 +269,24 @@ print (blue);
 // Expected output: 0.1843137 0.5058824 0.9686275
 </pre>
 </x3d-script-area>
+
+### Instance Creation Method(s)
+
+#### *sfColorObjectName* = new **SFColor** ()
+
+A new color initialized with zero values is created and returned.
+
+#### *sfColorObjectName* = new **SFColor** (*r: number, g: number, b: number*)
+
+*r, g,* and *b* are scalar values with the red, green, and blue values of the color in the range [0,1].
+
+### Iterator
+
+The `[@@iterator]()` method of SFColor instances implements the iterable protocol and allows SFColor objects to be consumed by most syntaxes expecting iterables, such as the spread syntax and `for...of` loops. It returns an iterator object that yields the object's properties in order.
+
+```js
+const copy = new SFColor (... color); // Copy using spread syntax.
+```
 
 ### Properties
 
@@ -346,37 +346,19 @@ Linearly interpolates in HSV space between source color and destination color by
 
 The SFColorRGBA object corresponds to an X3D SFColorRGBA field.
 
-### Instance Creation Method(s)
-
-#### *sfColorRGBAObjectName* = new **SFColorRGBA** ()
-
-A new color initialized with zero values is created and returned.
-
-#### *sfColorRGBAObjectName* = new **SFColorRGBA** (*r: number, g: number, b: number, a: number*)
-
-*r, g, b* and *a* are scalar values with the red, green and blue values of the color in the range [0,1].
-
-### Iterator
-
-The `[@@iterator]()` method of SFColorRGBA instances implements the iterable protocol and allows SFColorRGBA objects to be consumed by most syntaxes expecting iterables, such as the spread syntax and `for...of` loops. It returns an iterator object that yields the object's properties in order.
-
-```js
-const copy = new SFColorRGBA (... color); // Copy using spread syntax.
-```
-
 ### Static Properties
 
 #### **BLACK**: SFColorRGBA
 
-Returns a black color.
+Returns a black color. This property is read-only.
 
 #### **TRANSPARENT**: SFColorRGBA
 
-Returns a fully transparent color.
+Returns a fully transparent color. This property is read-only.
 
 #### **WHITE**: SFColorRGBA
 
-Returns a white color.
+Returns a white color. This property is read-only.
 
 ### Static Methods
 
@@ -404,6 +386,24 @@ print (blue);
 #### **fromString** (*value: string*): SFColorRGBA
 
 Creates a SFColorRGBA object from string. *value* can be any valid X3D or CSS color value. Hex values must start with `0x`.
+
+### Instance Creation Method(s)
+
+#### *sfColorRGBAObjectName* = new **SFColorRGBA** ()
+
+A new color initialized with zero values is created and returned.
+
+#### *sfColorRGBAObjectName* = new **SFColorRGBA** (*r: number, g: number, b: number, a: number*)
+
+*r, g, b* and *a* are scalar values with the red, green and blue values of the color in the range [0,1].
+
+### Iterator
+
+The `[@@iterator]()` method of SFColorRGBA instances implements the iterable protocol and allows SFColorRGBA objects to be consumed by most syntaxes expecting iterables, such as the spread syntax and `for...of` loops. It returns an iterator object that yields the object's properties in order.
+
+```js
+const copy = new SFColorRGBA (... color); // Copy using spread syntax.
+```
 
 ### Properties
 
@@ -543,6 +543,16 @@ None
 
 The SFMatrix3d/f object provides many useful methods for performing manipulations on 3×3 matrices.
 
+### Static Properties
+
+#### **IDENTITY**: SFMatrix3d/f
+
+Returns the identity matrix. This property is read-only.
+
+#### **ZERO**: SFMatrix3d/f
+
+Returns the zero matrix. This property is read-only.
+
 ### Instance Creation Method(s)
 
 #### *sfMatrix3d/fObjectName* = new **SFMatrix3d/f** ()
@@ -560,16 +570,6 @@ The `[@@iterator]()` method of SFMatrix3d/f instances implements the iterable pr
 ```js
 const copy = new SFMatrix3d (... matrix); // Copy using spread syntax.
 ```
-
-### Static Properties
-
-#### **IDENTITY**: SFMatrix3d/f
-
-Returns the identity matrix.
-
-#### **ZERO**: SFMatrix3d/f
-
-Returns the zero matrix.
 
 ### Properties
 
@@ -673,6 +673,16 @@ Returns a SFMatrix3d/f whose value is the object skewed by the passed *angle* (i
 
 The SFMatrix4d/f object provides many useful methods for performing manipulations on 4×4 matrices.
 
+### Static Properties
+
+#### **IDENTITY**: SFMatrix4d/f
+
+Returns the identity matrix. This property is read-only.
+
+#### **ZERO**: SFMatrix4d/f
+
+Returns the zero matrix. This property is read-only.
+
 ### Instance Creation Method(s)
 
 #### *sfMatrix4d/fObjectName* = new **SFMatrix4d/f** ()
@@ -690,16 +700,6 @@ The `[@@iterator]()` method of SFMatrix4d/f instances implements the iterable pr
 ```js
 const copy = new SFMatrix4d (... matrix); // Copy using spread syntax.
 ```
-
-### Static Properties
-
-#### **IDENTITY**: SFMatrix4d/f
-
-Returns the identity matrix.
-
-#### **ZERO**: SFMatrix4d/f
-
-Returns the zero matrix.
 
 ### Properties
 
@@ -882,6 +882,32 @@ For options see [X3DScene.toVRMLString](/x_ite/reference/scene-services/#tovrmls
 
 The SFRotation object corresponds to an X3D SFRotation field.
 
+### Static Properties
+
+#### **IDENTITY**: SFRotation
+
+Returns the identity rotation. This property is read-only.
+
+### Static Methods
+
+#### **fromMatrix** (*matrix: SFMatrix3d/f*): SFRotation
+
+*matrix* is an SFMatrix3d/f rotation matrix object whose value is converted into an SFRotation object.
+
+<x3d-script-area name="X3D ECMAScript Example: SFRotation fromMatrix">
+<pre>
+const matrix   = new SFMatrix3f (0, 1, 0, 0, 0, 1, 1, 0, 0);
+const rotation = SFRotation .fromMatrix (matrix);
+
+print (rotation);
+// Expected output: 0.577350269189626 0.577350269189626 0.577350269189626 2.0943951023932
+</pre>
+</x3d-script-area>
+
+#### **fromQuaternion** (*x: number, y: number, z: number, w: number*): SFRotation
+
+`x`, `y`, `z`, `w` is a quaternion whose value is converted into an SFRotation object.
+
 ### Instance Creation Method(s)
 
 #### *sfRotationObjectName* = new **SFRotation** ()
@@ -920,22 +946,6 @@ The `[@@iterator]()` method of SFRotation instances implements the iterable prot
 ```js
 const copy = new SFRotation (... rotation); // Copy using spread syntax.
 ```
-
-### Static Properties
-
-#### **IDENTITY**: SFRotation
-
-Returns the identity rotation.
-
-### Static Methods
-
-#### **fromMatrix** (*matrix: SFMatrix3d/f*): SFRotation
-
-*matrix* is an SFMatrix3d/f rotation matrix object whose value is converted into an SFRotation object.
-
-#### **fromQuaternion** (*x: number, y: number, z: number, w: number*): SFRotation
-
-`x`, `y`, `z`, `w` is a quaternion whose value is converted into an SFRotation object.
 
 ### Properties
 
@@ -1025,6 +1035,36 @@ Straightens the rotation so that the x-axis of the resulting rotation is paralle
 
 The SFVec2d/f object corresponds to an X3D SFVec2d/f field.
 
+### Static Properties
+
+#### **ZERO**: SFVec2d/f
+
+Returns a vector with all elements set to 0. This property is read-only.
+
+#### **ONE**: SFVec2d/f
+
+Returns a vector with all elements set to 1. This property is read-only.
+
+#### **X_AXIS**: SFVec2d/f
+
+Returns the x-axis vector. This property is read-only.
+
+#### **Y_AXIS**: SFVec2d/f
+
+Returns the y-axis vector. This property is read-only.
+
+#### **NEGATIVE_ONE**: SFVec2d/f
+
+Returns a vector with all elements set to -1. This property is read-only.
+
+#### **NEGATIVE_X_AXIS**: SFVec2d/f
+
+Returns the negative x-axis vector. This property is read-only.
+
+#### **NEGATIVE_Y_AXIS**: SFVec2d/f
+
+Returns the negative y-axis vector. This property is read-only.
+
 ### Instance Creation Method(s)
 
 #### *sfVec2d/fObjectName* = new **SFVec2d/f** ()
@@ -1042,16 +1082,6 @@ The `[@@iterator]()` method of SFVec2d/f instances implements the iterable proto
 ```js
 const copy = new SFVec2d (... vector); // Copy using spread syntax.
 ```
-
-### Static Properties
-
-#### **X_AXIS**: SFVec2d/f
-
-Returns the x-axis vector.
-
-#### **Y_AXIS**: SFVec2d/f
-
-Returns the y-axis vector.
 
 ### Properties
 
@@ -1159,6 +1189,44 @@ Returns an SFVec2d/f whose value is the passed SFVec2d/f subtracted, componentwi
 
 The SFVec3d/f object corresponds to an X3D SFVec3d/f field.
 
+### Static Properties
+
+#### **ZERO**: SFVec3d/f
+
+Returns a vector with all elements set to 0. This property is read-only.
+
+#### **ONE**: SFVec3d/f
+
+Returns a vector with all elements set to 1. This property is read-only.
+
+#### **X_AXIS**: SFVec3d/f
+
+Returns the x-axis vector. This property is read-only.
+
+#### **Y_AXIS**: SFVec3d/f
+
+Returns the y-axis vector. This property is read-only.
+
+#### **Z_AXIS**: SFVec3d/f
+
+Returns the z-axis vector. This property is read-only.
+
+#### **NEGATIVE_ONE**: SFVec3d/f
+
+Returns a vector with all elements set to -1. This property is read-only.
+
+#### **NEGATIVE_X_AXIS**: SFVec3d/f
+
+Returns the negative x-axis vector. This property is read-only.
+
+#### **NEGATIVE_Y_AXIS**: SFVec3d/f
+
+Returns the negative y-axis vector. This property is read-only.
+
+#### **NEGATIVE_Z_AXIS**: SFVec3d/f
+
+Returns the negative z-axis vector. This property is read-only.
+
 ### Instance Creation Method(s)
 
 #### *sfVec3d/fObjectName* = new **SFVec3d/f** ()
@@ -1176,20 +1244,6 @@ The `[@@iterator]()` method of SFVec3d/f instances implements the iterable proto
 ```js
 const copy = new SFVec3d (... vector); // Copy using spread syntax.
 ```
-
-### Static Properties
-
-#### **X_AXIS**: SFVec3d/f
-
-Returns the x-axis vector.
-
-#### **Y_AXIS**: SFVec3d/f
-
-Returns the y-axis vector.
-
-#### **Z_AXIS**: SFVec3d/f
-
-Returns the z-axis vector.
 
 ### Properties
 
@@ -1306,6 +1360,52 @@ Returns an SFVec3d/f whose value is the passed SFVec3d/f subtracted, componentwi
 
 The SFVec4d/f object corresponds to an X3D SFVec4d/f field.
 
+### Static Properties
+
+#### **ZERO**: SFVec4d/f
+
+Returns a vector with all elements set to 0. This property is read-only.
+
+#### **ONE**: SFVec4d/f
+
+Returns a vector with all elements set to 1. This property is read-only.
+
+#### **X_AXIS**: SFVec4d/f
+
+Returns the x-axis vector. This property is read-only.
+
+#### **Y_AXIS**: SFVec4d/f
+
+Returns the y-axis vector. This property is read-only.
+
+#### **Z_AXIS**: SFVec4d/f
+
+Returns the z-axis vector. This property is read-only.
+
+#### **W_AXIS**: SFVec4d/f
+
+Returns the w-axis vector. This property is read-only.
+
+#### **NEGATIVE_ONE**: SFVec4d/f
+
+Returns a vector with all elements set to -1. This property is read-only.
+
+#### **NEGATIVE_X_AXIS**: SFVec4d/f
+
+Returns the negative x-axis vector. This property is read-only.
+
+#### **NEGATIVE_Y_AXIS**: SFVec4d/f
+
+Returns the negative y-axis vector. This property is read-only.
+
+#### **NEGATIVE_Z_AXIS**: SFVec4d/f
+
+Returns the negative z-axis vector. This property is read-only.
+
+#### **NEGATIVE_W_AXIS**: SFVec4d/f
+
+Returns the negative w-axis vector. This property is read-only.
+
 ### Instance Creation Method(s)
 
 #### *sfVec4d/fObjectName* = new **SFVec4d/f** ()
@@ -1323,20 +1423,6 @@ The `[@@iterator]()` method of SFVec4d/f instances implements the iterable proto
 ```js
 const copy = new SFVec4d (... vector); // Copy using spread syntax.
 ```
-
-### Static Properties
-
-#### **X_AXIS**: SFVec4d/f
-
-Returns the x-axis vector.
-
-#### **Y_AXIS**: SFVec4d/f
-
-Returns the y-axis vector.
-
-#### **Z_AXIS**: SFVec4d/f
-
-Returns the z-axis vector.
 
 ### Properties
 

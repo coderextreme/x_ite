@@ -17,25 +17,6 @@ function SFVec3Template (TypeName, double)
       },
    });
 
-   Object .defineProperties (SFVec3,
-   {
-      X_AXIS:
-      {
-         value: SFVec3 .fromValue (Vector3 .X_AXIS),
-         enumerable: true,
-      },
-      Y_AXIS:
-      {
-         value: SFVec3 .fromValue (Vector3 .Y_AXIS),
-         enumerable: true,
-      },
-      Z_AXIS:
-      {
-         value: SFVec3 .fromValue (Vector3 .Z_AXIS),
-         enumerable: true,
-      },
-   });
-
    return SFVec3;
 }
 

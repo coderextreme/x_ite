@@ -14,16 +14,15 @@ function Image (width, height, comp, array)
    this .height = Math .max (height|0, 0);
    this .comp   = Algorithm .clamp (comp|0, 0, 4);
    this .array  = new MFInt32 ();
-   this .array .setValue (array);
+
+   if (array)
+      this .array .setValue (array);
+
    this .array .length = this .width * this .height;
 }
 
 Object .assign (Image .prototype,
 {
-   copy ()
-   {
-      return new Image (this .width, this .height, this .comp, this .array);
-   },
    equals (image)
    {
       return this .width  === image .width &&
@@ -36,14 +35,8 @@ Object .assign (Image .prototype,
       this .width  = image .width;
       this .height = image .height;
       this .comp   = image .comp;
+
       this .array .assign (image .array);
-   },
-   set (width, height, comp, array)
-   {
-      this .width  = width|0;
-      this .height = height|0;
-      this .comp   = comp|0;
-      this .array .assign (array);
    },
    getWidth ()
    {
@@ -52,7 +45,6 @@ Object .assign (Image .prototype,
    setWidth (value)
    {
       this .width = Math .max (value|0, 0);
-      this .array .length = this .width * this .height;
    },
    getHeight ()
    {
@@ -61,7 +53,6 @@ Object .assign (Image .prototype,
    setHeight (value)
    {
       this .height = Math .max (value|0, 0);
-      this .array .length = this .width * this .height;
    },
    getComp ()
    {
@@ -78,7 +69,6 @@ Object .assign (Image .prototype,
    setArray (value)
    {
       this .array .setValue (value);
-      this .array .length = this .width * this .height;
    },
 });
 
@@ -86,28 +76,30 @@ Object .assign (Image .prototype,
  *  SFImage
  */
 
-const _set_size = Symbol ();
-
-function SFImage (width = 0, height = 0, comp = 0, array = new MFInt32 ())
+function SFImage (width = 0, height = 0, comp = 0, array)
 {
    X3DField .call (this, new Image (width, height, comp, array));
 
    this .getValue () .getArray () .addParent (this);
-   this .addInterest (_set_size, this);
 }
 
 Object .assign (Object .setPrototypeOf (SFImage .prototype, X3DField .prototype),
 {
-   [_set_size] ()
-   {
-      this .getValue () .getArray () .length = this .width * this .height;
-   },
    *[Symbol .iterator] ()
    {
       yield  this .width;
       yield  this .height;
       yield  this .comp;
       yield* this .array;
+   },
+   addEvent ()
+   {
+      const size = this .width * this .height;
+
+      if (this .array .length !== size)
+         this .array .length = size;
+
+      X3DField .prototype .addEvent .call (this);
    },
    copy ()
    {
@@ -282,7 +274,6 @@ const array = {
    set (value)
    {
       this .getValue () .setArray (value);
-      this .addEvent ();
    },
 };
 
